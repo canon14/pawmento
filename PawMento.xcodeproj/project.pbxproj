@@ -19,22 +19,9 @@
 		66A0808C2FC2413E00C5D6D2 /* PawMento.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PawMento.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
-/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		66A080C02FC242E500C5D6D2 /* Exceptions for "PawMento" folder in "PawMento" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Info.plist,
-			);
-			target = 66A0808B2FC2413E00C5D6D2 /* PawMento */;
-		};
-/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
-
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		66A0808E2FC2413E00C5D6D2 /* PawMento */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				66A080C02FC242E500C5D6D2 /* Exceptions for "PawMento" folder in "PawMento" target */,
-			);
 			path = PawMento;
 			sourceTree = "<group>";
 		};
