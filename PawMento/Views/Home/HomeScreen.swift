@@ -2,6 +2,7 @@ import SwiftUI
 
 struct HomeScreen: View {
     @State private var selectedTab: BottomNavBar.Tab = .home
+    @State private var showCoachChat = false
     
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -16,7 +17,9 @@ struct HomeScreen: View {
                         
                         WellnessScoreHero()
                         
-                        AskCoachCard()
+                        AskCoachCard(action: {
+                            showCoachChat = true
+                        })
                         
                         PatternAlertCard()
                         
@@ -45,6 +48,18 @@ struct HomeScreen: View {
                 BottomNavBar(selectedTab: $selectedTab)
             }
             .edgesIgnoringSafeArea(.bottom)
+        }
+        .onChange(of: selectedTab) { newValue in
+            if newValue == .coach {
+                showCoachChat = true
+            }
+        }
+        .fullScreenCover(isPresented: $showCoachChat, onDismiss: {
+            if selectedTab == .coach {
+                selectedTab = .home
+            }
+        }) {
+            CoachChatView()
         }
     }
 }

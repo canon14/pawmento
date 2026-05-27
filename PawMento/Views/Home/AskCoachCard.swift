@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct AskCoachCard: View {
+    var action: () -> Void = {}
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
@@ -10,9 +12,7 @@ struct AskCoachCard: View {
                 Spacer()
             }
             
-            Button(action: {
-                // Action
-            }) {
+            Button(action: action) {
                 HStack {
                     Text("How was Buddy's vomiting last week?")
                         .font(.bodyMD)
