@@ -90,7 +90,7 @@ class AICoachClient {
                     request.setValue(anthropicApiKey, forHTTPHeaderField: "x-api-key")
                     
                     let body: [String: Any] = [
-                        "model": "claude-3-haiku-20240307", // Cost management
+                        "model": "claude-haiku-4-5-20251001", // Cost management
                         "max_tokens": 1024,
                         "system": AICoachPrompt.systemPrompt,
                         "messages": messages,
