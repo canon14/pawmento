@@ -2,6 +2,7 @@ import SwiftUI
 
 struct TopHeaderView: View {
     @EnvironmentObject var petStore: PetStore
+    @State private var showSettings = false
     
     var body: some View {
         HStack {
@@ -49,9 +50,9 @@ struct TopHeaderView: View {
             Spacer()
             
             Button(action: {
-                // Action for notifications
+                showSettings = true
             }) {
-                Image(systemName: "bell.fill") // SF Symbol as stand-in for Material icon
+                Image(systemName: "gear") // Replaced bell with gear
                     .foregroundColor(.primary)
                     .frame(width: 40, height: 40)
                     .background(Color.surfaceContainer)
@@ -61,6 +62,9 @@ struct TopHeaderView: View {
         .padding(.horizontal, 20)
         .padding(.vertical, 12)
         .background(Color.background)
+        .sheet(isPresented: $showSettings) {
+            SettingsView()
+        }
     }
 }
 
