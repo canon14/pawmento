@@ -4,6 +4,7 @@ struct CoachChatView: View {
     @StateObject private var viewModel = CoachViewModel()
     @State private var inputText = ""
     @Environment(\.dismiss) var dismiss
+    @EnvironmentObject var petStore: PetStore
     
     var body: some View {
         VStack(spacing: 0) {
@@ -120,7 +121,8 @@ struct CoachChatView: View {
                 Text("Coach")
                     .font(.headlineSM)
                 HStack(spacing: 4) {
-                    Text("🐶 Buddy")
+                    let petName = petStore.activePet?.name ?? "your pet"
+                    Text("🐶 \(petName)")
                         .font(.labelSM)
                         .foregroundColor(.secondaryText)
                     Image(systemName: "chevron.down")
@@ -160,4 +162,5 @@ struct CoachChatView: View {
 
 #Preview {
     CoachChatView()
+        .environmentObject(PetStore())
 }

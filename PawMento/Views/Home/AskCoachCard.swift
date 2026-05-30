@@ -1,9 +1,12 @@
 import SwiftUI
 
 struct AskCoachCard: View {
+    @EnvironmentObject var petStore: PetStore
     var action: () -> Void = {}
     
     var body: some View {
+        let petName = petStore.activePet?.name ?? "your pet"
+        
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text("💬 Ask the Coach")
@@ -14,7 +17,7 @@ struct AskCoachCard: View {
             
             Button(action: action) {
                 HStack {
-                    Text("How was Buddy's vomiting last week?")
+                    Text("How is \(petName) today?")
                         .font(.bodyMD)
                         .foregroundColor(.onSurfaceVariant)
                         .multilineTextAlignment(.leading)
@@ -50,6 +53,7 @@ struct AskCoachCard: View {
 
 #Preview {
     AskCoachCard()
+        .environmentObject(PetStore())
         .padding()
         .background(Color.background)
 }

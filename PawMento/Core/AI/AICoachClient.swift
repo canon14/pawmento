@@ -102,7 +102,18 @@ class AICoachClient {
                     let (result, response) = try await URLSession.shared.bytes(for: request)
                     
                     guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
-                        continuation.finish(throwing: URLError(.badServerResponse))
+                        var errorBody = ""
+                        for try await line in result.lines {
+                            errorBody += line
+                        }
+                        if let data = errorBody.data(using: .utf8),
+                           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                           let errorObj = json["error"] as? [String: Any],
+                           let message = errorObj["message"] as? String {
+                            continuation.finish(throwing: NSError(domain: "AnthropicAPI", code: httpResponse?.statusCode ?? 500, userInfo: [NSLocalizedDescriptionKey: "API Error: \(message)"]))
+                        } else {
+                            continuation.finish(throwing: URLError(.badServerResponse))
+                        }
                         return
                     }
                     

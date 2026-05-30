@@ -66,7 +66,11 @@ class CoachViewModel: ObservableObject {
         } catch {
             isTyping = false
             if let index = messages.firstIndex(where: { $0.id == assistantMessageId }) {
-                messages[index].content = "I lost connection — please tap to retry."
+                if error.localizedDescription.contains("API Error") {
+                    messages[index].content = "\(error.localizedDescription)\n\n(Tip: Your $5 deposit may take a little longer to unlock Claude 3 access on Anthropic's servers.)"
+                } else {
+                    messages[index].content = "I lost connection — please tap to retry."
+                }
             }
         }
     }

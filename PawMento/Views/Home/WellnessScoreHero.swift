@@ -1,9 +1,12 @@
 import SwiftUI
 
 struct WellnessScoreHero: View {
+    @EnvironmentObject var petStore: PetStore
     @State private var progress: CGFloat = 0.0
     
     var body: some View {
+        let petName = petStore.activePet?.name ?? "Your pet"
+        
         VStack(spacing: 0) {
             ZStack(alignment: .topTrailing) {
                 // Background Gradient
@@ -44,7 +47,7 @@ struct WellnessScoreHero: View {
                     .padding(.top, 40)
                     .padding(.bottom, 20)
                     
-                    Text("Buddy's having a good day ✨")
+                    Text("\(petName)'s having a good day ✨")
                         .font(.headlineSM)
                         .foregroundColor(.onSurface)
                         .padding(.bottom, 8)
@@ -103,6 +106,7 @@ struct WellnessScoreHero: View {
 
 #Preview {
     WellnessScoreHero()
+        .environmentObject(PetStore())
         .padding()
         .background(Color.background)
 }
