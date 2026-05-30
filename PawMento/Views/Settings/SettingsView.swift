@@ -21,7 +21,7 @@ struct SettingsView: View {
                         .foregroundColor(.error)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
-                        .background(Color.errorContainer)
+                        .background(Color.error.opacity(0.1))
                         .cornerRadius(16)
                 }
                 .padding(.horizontal, 24)
