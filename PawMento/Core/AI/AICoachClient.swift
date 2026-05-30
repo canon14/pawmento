@@ -110,7 +110,8 @@ class AICoachClient {
                            let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                            let errorObj = json["error"] as? [String: Any],
                            let message = errorObj["message"] as? String {
-                            continuation.finish(throwing: NSError(domain: "AnthropicAPI", code: httpResponse?.statusCode ?? 500, userInfo: [NSLocalizedDescriptionKey: "API Error: \(message)"]))
+                            let statusCode = (response as? HTTPURLResponse)?.statusCode ?? 500
+                            continuation.finish(throwing: NSError(domain: "AnthropicAPI", code: statusCode, userInfo: [NSLocalizedDescriptionKey: "API Error: \(message)"]))
                         } else {
                             continuation.finish(throwing: URLError(.badServerResponse))
                         }
