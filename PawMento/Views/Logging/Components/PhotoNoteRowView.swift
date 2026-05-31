@@ -16,9 +16,7 @@ struct PhotoNoteRowView: View {
             // Photo Well
             Button(action: {
                 if photo == nil {
-                    pickerSourceType = .camera
-                    showingImagePicker = true
-                    TelemetryEngine.shared.track(event: .quick_log_photo_added, properties: ["method": "tap_camera"])
+                    showingActionSheet = true
                 }
             }) {
                 ZStack {
@@ -65,10 +63,6 @@ struct PhotoNoteRowView: View {
                 .frame(width: 72, height: 72)
             }
             .buttonStyle(PlainButtonStyle())
-            .simultaneousGesture(LongPressGesture().onEnded { _ in
-                showingActionSheet = true
-                TelemetryEngine.shared.track(event: .quick_log_photo_added, properties: ["method": "longpress_library"])
-            })
             
             // Note Field
             ZStack(alignment: .topLeading) {

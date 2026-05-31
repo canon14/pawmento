@@ -40,7 +40,7 @@ struct RecentActivityTimeline: View {
                         ForEach(logStore.logs.prefix(3)) { log in
                             TimelineItem(
                                 iconText: log.category.emoji,
-                                title: "\(log.category.rawValue) logged",
+                                title: log.note ?? "Logged activity",
                                 time: formatTime(log.recordedAt)
                             )
                         }

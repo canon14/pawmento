@@ -132,9 +132,9 @@ struct QuickLogSheetView: View {
                             selectedCategory == nil ? Color.warmTan.opacity(0.4) : Color.warmTan
                         )
                         .cornerRadius(14)
-                        .shadow(color: Color.warmTan.opacity(selectedCategory == nil ? 0 : 0.2), radius: 8, x: 0, y: 4)
+                        .shadow(color: Color.warmTan.opacity((selectedCategory == nil || note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) ? 0 : 0.2), radius: 8, x: 0, y: 4)
                     }
-                    .disabled(selectedCategory == nil || isSaving || showSuccess)
+                    .disabled(selectedCategory == nil || note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSaving || showSuccess)
                     .offset(x: showErrorShake && !reduceMotion ? 10 : -10)
                     .animation(showErrorShake && !reduceMotion ? Animation.default.repeatCount(3).speed(4) : .default, value: showErrorShake)
                     
@@ -203,7 +203,7 @@ struct QuickLogSheetView: View {
     }
     
     private func saveLog() {
-        guard let category = selectedCategory, let petId = petStore.activePet?.id else {
+        guard let category = selectedCategory, let petId = petStore.activePet?.id, !note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             showErrorShake = true
             let generator = UINotificationFeedbackGenerator()
             generator.notificationOccurred(.error)

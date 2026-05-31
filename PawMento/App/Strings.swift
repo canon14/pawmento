@@ -4,7 +4,7 @@ struct AppStrings {
     struct QuickLog {
         static let title = String(localized: "Quick Log", comment: "Header title for the quick log sheet")
         static let cancel = String(localized: "Cancel", comment: "Cancel button text")
-        static let tapToDescribe = String(localized: "Tap to describe... (optional)", comment: "Placeholder for the note field")
+        static let tapToDescribe = String(localized: "Tap to describe...", comment: "Placeholder for the note field")
         static let whatHappened = String(localized: "What happened?", comment: "Label above category selection")
         static let more = String(localized: "More", comment: "Button to show more categories")
         static let severity = String(localized: "Severity", comment: "Label for the severity slider")
