@@ -61,7 +61,7 @@ struct MessageBubbleView: View {
     var coachBubble: some View {
         HStack(alignment: .top, spacing: 8) {
             // Coach Avatar
-            Text("🐶")
+            Text("🧑‍⚕️")
                 .font(.system(size: 18))
                 .padding(.top, 4)
             
