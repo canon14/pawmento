@@ -11,12 +11,14 @@ import SwiftUI
 struct PawMentoApp: App {
     @StateObject private var petStore = PetStore()
     @StateObject private var authManager = AuthManager()
+    @StateObject private var coachViewModel = CoachViewModel()
     
     var body: some Scene {
         WindowGroup {
             RootView()
                 .environmentObject(petStore)
                 .environmentObject(authManager)
+                .environmentObject(coachViewModel)
         }
     }
 }

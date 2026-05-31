@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct CoachChatView: View {
-    @StateObject private var viewModel = CoachViewModel()
+    @EnvironmentObject var viewModel: CoachViewModel
     @State private var inputText = ""
     @Environment(\.dismiss) var dismiss
     @EnvironmentObject var petStore: PetStore
@@ -40,6 +40,7 @@ struct CoachChatView: View {
                         }
                     }
                 }
+                .scrollDismissesKeyboard(.interactively)
             }
             .background(Color.background)
             
@@ -122,7 +123,16 @@ struct CoachChatView: View {
                     .font(.headlineSM)
                 HStack(spacing: 4) {
                     let petName = petStore.activePet?.name ?? "your pet"
-                    Text("🐶 \(petName)")
+                    let emoji: String = {
+                        guard let pet = petStore.activePet else { return "🐾" }
+                        switch pet.species {
+                        case .dog: return "🐶"
+                        case .cat: return "🐱"
+                        case .rabbit: return "🐰"
+                        case .other: return "🐾"
+                        }
+                    }()
+                    Text("\(emoji) \(petName)")
                         .font(.labelSM)
                         .foregroundColor(.secondaryText)
                     Image(systemName: "chevron.down")
@@ -133,7 +143,15 @@ struct CoachChatView: View {
             
             Spacer()
             
-            Button(action: {}) {
+            Menu {
+                Button(role: .destructive, action: {
+                    withAnimation {
+                        viewModel.messages.removeAll()
+                    }
+                }) {
+                    Label("New Conversation", systemImage: "trash")
+                }
+            } label: {
                 Image(systemName: "ellipsis")
                     .font(.system(size: 20))
                     .foregroundColor(.primaryText)
