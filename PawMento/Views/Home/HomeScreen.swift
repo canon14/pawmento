@@ -43,29 +43,6 @@ struct HomeScreen: View {
             .background(Color.background)
             .edgesIgnoringSafeArea(.bottom) // Let content scroll behind nav bar
             
-            // FAB (Floating Action Button)
-            VStack {
-                Spacer()
-                HStack {
-                    Spacer()
-                    Button(action: {
-                        showQuickLog = true
-                        let generator = UIImpactFeedbackGenerator(style: .light)
-                        generator.impactOccurred()
-                    }) {
-                        Image(systemName: "plus")
-                            .font(.system(size: 24, weight: .semibold))
-                            .foregroundColor(.white)
-                            .frame(width: 56, height: 56)
-                            .background(Color.warmTan)
-                            .clipShape(Circle())
-                            .shadow(color: Color.warmTan.opacity(0.4), radius: 8, x: 0, y: 4)
-                    }
-                    .padding(.trailing, 20)
-                    .padding(.bottom, 100) // Float above bottom nav bar
-                }
-            }
-            
             // Bottom Navigation
             VStack {
                 Spacer()
@@ -76,6 +53,8 @@ struct HomeScreen: View {
         .onChange(of: selectedTab) { newValue in
             if newValue == .coach {
                 showCoachChat = true
+            } else if newValue == .log {
+                showQuickLog = true
             }
         }
         .fullScreenCover(isPresented: $showCoachChat, onDismiss: {
@@ -85,7 +64,11 @@ struct HomeScreen: View {
         }) {
             CoachChatView()
         }
-        .sheet(isPresented: $showQuickLog) {
+        .sheet(isPresented: $showQuickLog, onDismiss: {
+            if selectedTab == .log {
+                selectedTab = .home
+            }
+        }) {
             QuickLogSheetView()
                 .presentationDetents([.fraction(0.75), .large])
                 .presentationCornerRadius(28)
