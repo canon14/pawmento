@@ -12,6 +12,7 @@ struct PawMentoApp: App {
     @StateObject private var petStore = PetStore()
     @StateObject private var authManager = AuthManager()
     @StateObject private var coachViewModel = CoachViewModel()
+    @StateObject private var logStore = LogStore()
     
     var body: some Scene {
         WindowGroup {
@@ -19,6 +20,7 @@ struct PawMentoApp: App {
                 .environmentObject(petStore)
                 .environmentObject(authManager)
                 .environmentObject(coachViewModel)
+                .environmentObject(logStore)
         }
     }
 }
