@@ -1,6 +1,9 @@
 import SwiftUI
 
 struct RecentActivityTimeline: View {
+    @EnvironmentObject var logStore: LogStore
+    @State private var showFullTimeline = false
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
             HStack {
@@ -11,7 +14,7 @@ struct RecentActivityTimeline: View {
                 Spacer()
                 
                 Button(action: {
-                    // See full timeline action
+                    showFullTimeline = true
                 }) {
                     Text("See full timeline ›")
                         .font(.labelSM)
@@ -20,17 +23,28 @@ struct RecentActivityTimeline: View {
             }
             
             ZStack(alignment: .topLeading) {
-                // Vertical Line
-                Rectangle()
-                    .fill(Color.surfaceContainerHighest)
-                    .frame(width: 2)
-                    .padding(.leading, 19)
-                    .padding(.vertical, 8)
-                
-                VStack(spacing: 20) {
-                    TimelineItem(icon: "fork.knife", title: "Breakfast logged", time: "Today, 7:32am")
-                    TimelineItem(icon: "pawprint.fill", title: "Walk logged", time: "Yesterday, 6:15pm")
-                    TimelineItem(icon: "pill.fill", title: "Apoquel logged", time: "Yesterday, 7:30am")
+                if logStore.logs.isEmpty {
+                    Text("No logs yet. Tap the + button to log your first activity!")
+                        .font(.bodyMD)
+                        .foregroundColor(.secondaryText)
+                        .padding(.vertical, 20)
+                } else {
+                    // Vertical Line
+                    Rectangle()
+                        .fill(Color.surfaceContainerHighest)
+                        .frame(width: 2)
+                        .padding(.leading, 19)
+                        .padding(.vertical, 8)
+                    
+                    VStack(spacing: 20) {
+                        ForEach(logStore.logs.prefix(3)) { log in
+                            TimelineItem(
+                                iconText: log.category.emoji,
+                                title: "\(log.category.rawValue) logged",
+                                time: formatTime(log.recordedAt)
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -38,19 +52,33 @@ struct RecentActivityTimeline: View {
         .background(Color.surfaceContainerLowest)
         .cornerRadius(24)
         .warmShadow()
+        .sheet(isPresented: $showFullTimeline) {
+            FullTimelineView()
+        }
+    }
+    
+    private func formatTime(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        if Calendar.current.isDateInToday(date) {
+            formatter.dateFormat = "'Today,' h:mma"
+        } else if Calendar.current.isDateInYesterday(date) {
+            formatter.dateFormat = "'Yesterday,' h:mma"
+        } else {
+            formatter.dateFormat = "MMM d, h:mma"
+        }
+        return formatter.string(from: date).lowercased()
     }
 }
 
 struct TimelineItem: View {
-    let icon: String
+    let iconText: String
     let title: String
     let time: String
     
     var body: some View {
         HStack(alignment: .top, spacing: 20) {
-            Image(systemName: icon)
+            Text(iconText)
                 .font(.system(size: 18))
-                .foregroundColor(.onPrimaryContainer)
                 .frame(width: 40, height: 40)
                 .background(Color.primaryContainer)
                 .clipShape(Circle())

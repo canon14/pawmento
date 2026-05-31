@@ -1,4 +1,5 @@
 import Foundation
+import Combine
 
 struct LogEntry: Identifiable, Codable {
     let id: UUID
