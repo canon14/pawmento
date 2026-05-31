@@ -40,6 +40,7 @@ class AuthManager: ObservableObject {
             _ = try await SupabaseManager.shared.client.auth.signUp(email: email, password: password)
             // Note: If email confirmation is enabled in Supabase, they might not be authenticated yet.
             // For MVP, we assume we log them in immediately or handle it smoothly.
+            UserDefaults.standard.set(false, forKey: "hasCompletedOnboarding")
             isAuthenticated = true
         } catch {
             authError = error.localizedDescription
@@ -63,9 +64,15 @@ class AuthManager: ObservableObject {
         isLoading = true
         authError = nil
         do {
-            _ = try await SupabaseManager.shared.client.auth.signInWithIdToken(
+            let response = try await SupabaseManager.shared.client.auth.signInWithIdToken(
                 credentials: .init(provider: .apple, idToken: idToken, nonce: nonce)
             )
+            // If the user was just created within the last 15 seconds, treat them as a brand new user
+            if let createdAt = response.user.createdAt {
+                if abs(createdAt.timeIntervalSinceNow) < 15 {
+                    UserDefaults.standard.set(false, forKey: "hasCompletedOnboarding")
+                }
+            }
             isAuthenticated = true
         } catch {
             authError = error.localizedDescription
