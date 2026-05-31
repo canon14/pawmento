@@ -5,6 +5,7 @@ struct FullTimelineView: View {
     @EnvironmentObject var logStore: LogStore
     
     @State private var displayCount = 10
+    @State private var expandedImage: UIImage?
     
     var body: some View {
         NavigationView {
@@ -29,7 +30,7 @@ struct FullTimelineView: View {
                     ScrollView {
                         LazyVStack(spacing: 24) {
                             ForEach(logStore.logs.prefix(displayCount)) { log in
-                                TimelineItemRow(log: log)
+                                TimelineItemRow(log: log, expandedImage: $expandedImage)
                             }
                             
                             if displayCount < logStore.logs.count {
@@ -70,11 +71,33 @@ struct FullTimelineView: View {
                 }
             }
         }
+        .overlay(
+            Group {
+                if let image = expandedImage {
+                    ZStack {
+                        Color.black.ignoresSafeArea()
+                        
+                        Image(uiImage: image)
+                            .resizable()
+                            .scaledToFit()
+                            .ignoresSafeArea()
+                    }
+                    .ignoresSafeArea()
+                    .onTapGesture {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            expandedImage = nil
+                        }
+                    }
+                    .transition(.opacity)
+                }
+            }
+        )
     }
 }
 
 struct TimelineItemRow: View {
     let log: LogEntry
+    @Binding var expandedImage: UIImage?
     
     var body: some View {
         HStack(alignment: .top, spacing: 16) {
@@ -112,13 +135,20 @@ struct TimelineItemRow: View {
                 }
                 
                 if let photo = log.photoImage {
-                    Image(uiImage: photo)
-                        .resizable()
-                        .scaledToFill()
-                        .frame(height: 120)
-                        .frame(maxWidth: .infinity)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                        .padding(.top, 8)
+                    Button(action: {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            expandedImage = photo
+                        }
+                    }) {
+                        Image(uiImage: photo)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(height: 120)
+                            .frame(maxWidth: .infinity)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                            .padding(.top, 8)
+                    }
+                    .buttonStyle(PlainButtonStyle())
                 }
             }
             .padding(.top, 4)
