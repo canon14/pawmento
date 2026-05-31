@@ -87,7 +87,7 @@ struct HomeScreen: View {
         }
         .sheet(isPresented: $showQuickLog) {
             QuickLogSheetView()
-                .presentationDetents([.medium, .large])
+                .presentationDetents([.fraction(0.75), .large])
                 .presentationCornerRadius(28)
                 .presentationDragIndicator(.visible)
         }
