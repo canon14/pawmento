@@ -13,10 +13,9 @@ class PetStore: ObservableObject {
             name: "Buddy",
             species: .dog,
             breed: "Golden Retriever",
-            ageYears: 3,
-            ageMonths: 2,
-            weightLbs: 65,
-            photoURL: nil
+            birthday: DateComponents(year: 2021, month: 3),
+            weightKg: 29.5,
+            photoLocalURL: nil
         )
         pets = [mockPet]
         activePet = mockPet

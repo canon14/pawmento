@@ -22,6 +22,8 @@
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		66A0808E2FC2413E00C5D6D2 /* PawMento */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
 			path = PawMento;
 			sourceTree = "<group>";
 		};
@@ -290,6 +292,8 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "PawMento/Custom-Info.plist";
+				INFOPLIST_KEY_NSCameraUsageDescription = "PawMento needs camera access to log photos of your pet's health.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "PawMento needs library access so you can upload existing photos of your pet.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -324,6 +328,8 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "PawMento/Custom-Info.plist";
+				INFOPLIST_KEY_NSCameraUsageDescription = "PawMento needs camera access to log photos of your pet's health.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "PawMento needs library access so you can upload existing photos of your pet.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

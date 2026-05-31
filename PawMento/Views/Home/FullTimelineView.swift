@@ -110,6 +110,16 @@ struct TimelineItemRow: View {
                         .padding(.top, 2)
                         .lineLimit(3)
                 }
+                
+                if let photo = log.photoImage {
+                    Image(uiImage: photo)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(height: 120)
+                        .frame(maxWidth: .infinity)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .padding(.top, 8)
+                }
             }
             .padding(.top, 4)
         }

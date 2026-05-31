@@ -104,17 +104,12 @@ struct QuickLogSheetView: View {
                             SeveritySliderView(severity: $severity)
                                 .padding(.horizontal, 20)
                         }
-                        
-                        Spacer(minLength: 120) // Room for floating CTA
                     }
+                    .padding(.bottom, 24) // Spacing before the sticky footer
                 }
                 .scrollDismissesKeyboard(.interactively)
-            }
-            
-            // Floating CTA (Rides above keyboard automatically in SwiftUI)
-            VStack {
-                Spacer()
                 
+                // Sticky CTA Footer
                 VStack(spacing: 12) {
                     Button(action: saveLog) {
                         HStack {
@@ -148,22 +143,18 @@ struct QuickLogSheetView: View {
                             "carries_photo": photo != nil,
                             "has_note": !note.isEmpty
                         ])
-                        dismiss()
+                        toastManager.show("Detailed logging coming soon!")
                     }
                     .font(.labelMD)
                     .foregroundColor(.warmTan)
                     .padding(.bottom, 8)
                 }
                 .padding(.horizontal, 20)
+                .padding(.top, 16)
                 .padding(.bottom, 16)
-                .background(
-                    LinearGradient(
-                        gradient: Gradient(colors: [Color.warmCream.opacity(0), Color.warmCream]),
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
+                .background(Color.warmCream)
             }
+            
         }
         .onAppear {
             if let data = UserDefaults.standard.data(forKey: draftKey),
@@ -227,12 +218,18 @@ struct QuickLogSheetView: View {
         generator.impactOccurred()
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            var compressedPhoto: UIImage? = nil
+            if let img = photo, let compressedData = img.jpegData(compressionQuality: 0.5) {
+                compressedPhoto = UIImage(data: compressedData)
+            }
+            
             let log = LogEntry(
                 petId: petId,
                 category: category,
                 severity: category == .symptom ? severity : nil,
                 note: note.isEmpty ? nil : note,
-                photoLocalURL: nil
+                photoLocalURL: nil,
+                photoImage: compressedPhoto
             )
             
             logStore.saveLog(log)
