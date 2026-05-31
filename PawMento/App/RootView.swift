@@ -5,21 +5,25 @@ struct RootView: View {
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding: Bool = false
     
     var body: some View {
-        Group {
-            if authManager.isAuthenticated {
-                if hasCompletedOnboarding {
-                    HomeScreen()
+        ZStack {
+            Group {
+                if authManager.isAuthenticated {
+                    if hasCompletedOnboarding {
+                        HomeScreen()
+                    } else {
+                        OnboardingCarouselView()
+                    }
                 } else {
-                    OnboardingCarouselView()
+                    LoginScreen()
                 }
-            } else {
-                LoginScreen()
             }
-        }
-        .animation(.default, value: authManager.isAuthenticated)
-        .animation(.default, value: hasCompletedOnboarding)
-        .task {
-            await authManager.checkSession()
+            .animation(.default, value: authManager.isAuthenticated)
+            .animation(.default, value: hasCompletedOnboarding)
+            .task {
+                await authManager.checkSession()
+            }
+            
+            ToastView()
         }
     }
 }

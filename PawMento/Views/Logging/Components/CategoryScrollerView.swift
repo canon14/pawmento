@@ -6,7 +6,7 @@ struct CategoryScrollerView: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("What happened?")
+            Text(AppStrings.QuickLog.whatHappened)
                 .font(.labelSemibold)
                 .foregroundColor(.primaryText)
             
@@ -55,6 +55,10 @@ struct CategoryScrollerView: View {
             }
             let generator = UISelectionFeedbackGenerator()
             generator.selectionChanged()
+            TelemetryEngine.shared.track(event: .quick_log_category_selected, properties: [
+                "category": category.rawValue,
+                "was_preselected": false
+            ])
         }) {
             VStack(spacing: 8) {
                 Text(category.emoji)
@@ -74,8 +78,10 @@ struct CategoryScrollerView: View {
                     .stroke(isSelected ? Color.warmTan : Color.warmSand, lineWidth: 1)
             )
             .foregroundColor(isSelected ? .white : .primaryText)
-            .shadow(color: isSelected ? Color.warmTan.opacity(0.3) : .clear, radius: 4, x: 0, y: 2)
             .scaleEffect(isSelected ? 1.0 : 0.98)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(category.rawValue)
+            .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
         }
     }
 }

@@ -9,6 +9,7 @@ struct PhotoNoteRowView: View {
     @State private var pickerSourceType: UIImagePickerController.SourceType = .camera
     
     @FocusState private var isNoteFocused: Bool
+    @State private var noteFocusStartTime: Date?
     
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
@@ -17,6 +18,7 @@ struct PhotoNoteRowView: View {
                 if photo == nil {
                     pickerSourceType = .camera
                     showingImagePicker = true
+                    TelemetryEngine.shared.track(event: .quick_log_photo_added, properties: ["method": "tap_camera"])
                 }
             }) {
                 ZStack {
@@ -65,6 +67,7 @@ struct PhotoNoteRowView: View {
             .buttonStyle(PlainButtonStyle())
             .simultaneousGesture(LongPressGesture().onEnded { _ in
                 showingActionSheet = true
+                TelemetryEngine.shared.track(event: .quick_log_photo_added, properties: ["method": "longpress_library"])
             })
             
             // Note Field
@@ -74,7 +77,7 @@ struct PhotoNoteRowView: View {
                     .background(Color.clear)
                 
                 if note.isEmpty {
-                    Text("Tap to describe... (optional)")
+                    Text(AppStrings.QuickLog.tapToDescribe)
                         .font(.labelMD)
                         .italic()
                         .foregroundColor(.tertiaryText)
@@ -91,6 +94,18 @@ struct PhotoNoteRowView: View {
                     .frame(height: 72)
                     .scrollContentBackground(.hidden)
                     .background(Color.clear)
+                    .onChange(of: isNoteFocused) { focused in
+                        if focused {
+                            noteFocusStartTime = Date()
+                        } else if let start = noteFocusStartTime {
+                            let tookMs = Date().timeIntervalSince(start) * 1000
+                            TelemetryEngine.shared.track(event: .quick_log_note_typed, properties: [
+                                "length": note.count,
+                                "took_ms": Int(tookMs)
+                            ])
+                            noteFocusStartTime = nil
+                        }
+                    }
                     .onChange(of: note) { newValue in
                         if newValue.count > 280 {
                             note = String(newValue.prefix(280))

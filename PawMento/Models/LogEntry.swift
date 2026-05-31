@@ -31,3 +31,11 @@ struct LogEntry: Identifiable, Codable {
         self.syncedAt = syncedAt
     }
 }
+
+struct QuickLogDraft: Codable {
+    let petId: UUID
+    let categoryRawValue: String?
+    let note: String?
+    let severity: Int?
+    let savedAt: Date
+}

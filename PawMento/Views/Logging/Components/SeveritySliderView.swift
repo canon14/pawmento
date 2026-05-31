@@ -8,7 +8,7 @@ struct SeveritySliderView: View {
     var body: some View {
         VStack(spacing: 12) {
             HStack {
-                Text("Severity")
+                Text(AppStrings.QuickLog.severity)
                     .font(.labelSemibold)
                     .foregroundColor(.primaryText)
                 
@@ -27,6 +27,7 @@ struct SeveritySliderView: View {
                         severity = newValue
                         let generator = UISelectionFeedbackGenerator()
                         generator.selectionChanged()
+                        TelemetryEngine.shared.track(event: .quick_log_severity_changed, properties: ["value": newValue])
                     }
                 }
             ), in: 1...5, step: 1)
