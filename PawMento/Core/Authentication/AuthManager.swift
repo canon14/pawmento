@@ -68,10 +68,9 @@ class AuthManager: ObservableObject {
                 credentials: .init(provider: .apple, idToken: idToken, nonce: nonce)
             )
             // If the user was just created within the last 15 seconds, treat them as a brand new user
-            if let createdAt = response.user.createdAt {
-                if abs(createdAt.timeIntervalSinceNow) < 15 {
-                    UserDefaults.standard.set(false, forKey: "hasCompletedOnboarding")
-                }
+            let createdAt = response.user.createdAt
+            if abs(createdAt.timeIntervalSinceNow) < 15 {
+                UserDefaults.standard.set(false, forKey: "hasCompletedOnboarding")
             }
             isAuthenticated = true
         } catch {
