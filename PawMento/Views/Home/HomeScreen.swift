@@ -74,6 +74,13 @@ struct HomeScreen: View {
                 .presentationCornerRadius(28)
                 .presentationDragIndicator(.visible)
         }
+        .onChange(of: petStore.activePet?.id) { _, newPetId in
+            if let petId = newPetId {
+                Task {
+                    await logStore.fetchLogs(for: petId)
+                }
+            }
+        }
     }
 }
 

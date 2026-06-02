@@ -44,6 +44,7 @@ CREATE TABLE public.logs (
     log_type TEXT NOT NULL,
     title TEXT NOT NULL,
     description TEXT,
+    photo_url TEXT,
     timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     created_by UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE
 );

@@ -1,22 +1,67 @@
 import Foundation
 import Combine
 import SwiftUI
+import Supabase
 
 @MainActor
 class LogStore: ObservableObject {
     @Published var logs: [LogEntry] = []
     
-    // Local-first save logic
-    func saveLog(_ log: LogEntry) {
-        // 1. Insert locally
+    // Local-first save logic with Supabase Sync
+    @MainActor
+    func saveLog(_ log: LogEntry, userId: UUID) async {
+        // 1. Insert locally for immediate UI update
         logs.insert(log, at: 0)
         
         // 2. Remember last used category for this pet
         let key = "lastUsedCategory_\(log.petId.uuidString)"
         UserDefaults.standard.set(log.category.rawValue, forKey: key)
         
-        // 3. Mock sync to backend
-        print("Mock: Saved log \(log.id) locally. SyncEngine queued for upload.")
+        // 3. Sync to Supabase
+        var finalLog = log
+        do {
+            if let image = log.photoImage {
+                let path = "logs/\(userId.uuidString)/\(log.id.uuidString).jpg"
+                let urlString = try await StorageManager.shared.uploadImage(image, path: path)
+                finalLog.photoLocalURL = URL(string: urlString)
+                
+                // Update local model with the URL
+                if let index = logs.firstIndex(where: { $0.id == finalLog.id }) {
+                    logs[index].photoLocalURL = finalLog.photoLocalURL
+                }
+            }
+            
+            let dto = finalLog.toDTO(userId: userId)
+            try await SupabaseManager.shared.client
+                .from("logs")
+                .insert(dto)
+                .execute()
+                
+            // Mark synced
+            if let index = logs.firstIndex(where: { $0.id == finalLog.id }) {
+                logs[index].syncedAt = Date()
+            }
+        } catch {
+            print("Failed to sync log to Supabase: \(error)")
+            // It remains local-only for now
+        }
+    }
+    
+    @MainActor
+    func fetchLogs(for petId: UUID) async {
+        do {
+            let dtos: [LogDTO] = try await SupabaseManager.shared.client
+                .from("logs")
+                .select()
+                .eq("pet_id", value: petId.uuidString)
+                .order("timestamp", ascending: false)
+                .execute()
+                .value
+            
+            self.logs = dtos.map { $0.toLogEntry() }
+        } catch {
+            print("Failed to fetch logs: \(error)")
+        }
     }
     
     func getLastUsedCategory(for petId: UUID) -> LogCategory? {

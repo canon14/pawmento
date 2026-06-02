@@ -24,6 +24,24 @@ struct PetSelectorCard: View {
                                 .stroke(Color.primaryContainer, lineWidth: 2)
                         )
                         .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
+                } else if let pet = petStore.activePet, let photoURL = pet.photoLocalURL {
+                    AsyncImage(url: photoURL) { image in
+                        image
+                            .resizable()
+                            .aspectRatio(contentMode: .fill)
+                            .frame(width: 56, height: 56)
+                            .clipShape(Circle())
+                            .overlay(
+                                Circle()
+                                    .stroke(Color.primaryContainer, lineWidth: 2)
+                            )
+                            .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
+                    } placeholder: {
+                        Circle()
+                            .fill(Color.primaryContainer)
+                            .frame(width: 56, height: 56)
+                            .overlay(ProgressView())
+                    }
                 } else {
                     Circle()
                         .fill(Color.primaryContainer)

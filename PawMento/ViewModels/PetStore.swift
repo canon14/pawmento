@@ -29,8 +29,17 @@ class PetStore: ObservableObject {
     
     @MainActor
     func addPet(_ pet: Pet, ownerId: UUID) async {
+        var finalPet = pet
+        
         do {
-            let dto = pet.toDTO(ownerId: ownerId)
+            // Upload photo if exists
+            if let image = pet.photoImage {
+                let path = "pets/\(ownerId.uuidString)/\(pet.id.uuidString).jpg"
+                let urlString = try await StorageManager.shared.uploadImage(image, path: path)
+                finalPet.photoLocalURL = URL(string: urlString)
+            }
+            
+            let dto = finalPet.toDTO(ownerId: ownerId)
             let insertedDTO: PetDTO = try await SupabaseManager.shared.client
                 .from("pets")
                 .insert(dto)
