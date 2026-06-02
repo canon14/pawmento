@@ -2,6 +2,7 @@ import SwiftUI
 
 struct RootView: View {
     @EnvironmentObject var authManager: AuthManager
+    @EnvironmentObject var petStore: PetStore
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding: Bool = false
     
     var body: some View {
@@ -21,6 +22,16 @@ struct RootView: View {
             .animation(.default, value: hasCompletedOnboarding)
             .task {
                 await authManager.checkSession()
+            }
+            .onChange(of: authManager.isAuthenticated) { isAuthenticated in
+                if isAuthenticated {
+                    Task {
+                        await petStore.fetchPets()
+                        if !petStore.pets.isEmpty {
+                            hasCompletedOnboarding = true
+                        }
+                    }
+                }
             }
             
             ToastView()

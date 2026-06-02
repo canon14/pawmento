@@ -7,22 +7,45 @@ class PetStore: ObservableObject {
     @Published var activePet: Pet? = nil
     
     init() {
-        // Mock pet for development to ensure Quick Log has an active pet
-        let mockPet = Pet(
-            id: UUID(),
-            name: "Buddy",
-            species: .dog,
-            breed: "Golden Retriever",
-            birthday: DateComponents(year: 2021, month: 3),
-            weightKg: 29.5,
-            photoLocalURL: nil
-        )
-        pets = [mockPet]
-        activePet = mockPet
+        // Mock data removed. Pets will be fetched upon authentication.
     }
     
-    func addPet(_ pet: Pet) {
-        pets.append(pet)
-        activePet = pet
+    @MainActor
+    func fetchPets() async {
+        do {
+            let dtos: [PetDTO] = try await SupabaseManager.shared.client
+                .from("pets")
+                .select()
+                .execute()
+                .value
+            
+            self.pets = dtos.map { $0.toPet() }
+            self.activePet = self.pets.first
+        } catch {
+            print("Failed to fetch pets: \(error)")
+        }
+    }
+    
+    @MainActor
+    func addPet(_ pet: Pet, ownerId: UUID) async {
+        do {
+            let dto = pet.toDTO(ownerId: ownerId)
+            let insertedDTO: PetDTO = try await SupabaseManager.shared.client
+                .from("pets")
+                .insert(dto)
+                .select()
+                .single()
+                .execute()
+                .value
+            
+            let insertedPet = insertedDTO.toPet()
+            self.pets.append(insertedPet)
+            self.activePet = insertedPet
+        } catch {
+            print("Failed to insert pet: \(error)")
+            // Fallback for UI if offline/error
+            self.pets.append(pet)
+            self.activePet = pet
+        }
     }
 }

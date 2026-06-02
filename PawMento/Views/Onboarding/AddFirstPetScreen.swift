@@ -9,6 +9,7 @@ extension View {
 struct AddFirstPetScreen: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject var petStore: PetStore
+    @EnvironmentObject var authManager: AuthManager
     var onComplete: () -> Void
     
     // Form State
@@ -231,6 +232,13 @@ struct AddFirstPetScreen: View {
             showError = true
             return
         }
+        
+        guard let ownerId = authManager.currentUserId else {
+            print("Cannot add pet: No authenticated user.")
+            showError = true
+            return
+        }
+        
         isSubmitting = true
         
         let newPet = Pet(
@@ -242,12 +250,14 @@ struct AddFirstPetScreen: View {
             photoImage: petImage
         )
         
-        // Simulate local db insert
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-            petStore.addPet(newPet)
-            isSubmitting = false
-            dismiss()
-            onComplete()
+        Task {
+            await petStore.addPet(newPet, ownerId: ownerId)
+            
+            await MainActor.run {
+                isSubmitting = false
+                dismiss()
+                onComplete()
+            }
         }
     }
 }

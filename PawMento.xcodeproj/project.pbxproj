@@ -22,8 +22,6 @@
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		66A0808E2FC2413E00C5D6D2 /* PawMento */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-			);
 			path = PawMento;
 			sourceTree = "<group>";
 		};

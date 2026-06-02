@@ -8,6 +8,10 @@ class AuthManager: ObservableObject {
     @Published var isLoading: Bool = false
     @Published var authError: String? = nil
     
+    var currentUserId: UUID? {
+        try? SupabaseManager.shared.client.auth.session.user.id
+    }
+    
     // Check if there is an existing session
     func checkSession() async {
         do {
