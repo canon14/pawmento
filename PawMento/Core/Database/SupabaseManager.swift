@@ -10,6 +10,14 @@ class SupabaseManager {
         let supabaseURL = URL(string: Secrets.supabaseURL)!
         let supabaseKey = Secrets.supabaseAnonKey
         
-        self.client = SupabaseClient(supabaseURL: supabaseURL, supabaseKey: supabaseKey)
+        self.client = SupabaseClient(
+            supabaseURL: supabaseURL,
+            supabaseKey: supabaseKey,
+            options: SupabaseClientOptions(
+                auth: SupabaseClientOptions.AuthOptions(
+                    emitLocalSessionAsInitialSession: true
+                )
+            )
+        )
     }
 }

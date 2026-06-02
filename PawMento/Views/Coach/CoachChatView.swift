@@ -33,7 +33,7 @@ struct CoachChatView: View {
                     }
                     .padding(.vertical, 16)
                 }
-                .onChange(of: viewModel.messages) { _ in
+                .onChange(of: viewModel.messages) { _, _ in
                     if let last = viewModel.messages.last {
                         withAnimation {
                             proxy.scrollTo(last.id, anchor: .bottom)

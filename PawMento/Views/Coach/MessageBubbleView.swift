@@ -55,7 +55,7 @@ struct MessageBubbleView: View {
                 .font(.labelSM)
                 .foregroundColor(.tertiaryText)
         }
-        .frame(maxWidth: UIScreen.main.bounds.width * 0.78, alignment: .trailing)
+        .frame(maxWidth: 300, alignment: .trailing)
     }
     
     var coachBubble: some View {
@@ -86,6 +86,6 @@ struct MessageBubbleView: View {
                     .stroke(message.isEmergency ? Color.warmCoral : Color.outline.opacity(0.08), lineWidth: message.isEmergency ? 3 : 1)
             )
         }
-        .frame(maxWidth: UIScreen.main.bounds.width * 0.78, alignment: .leading)
+        .frame(maxWidth: 300, alignment: .leading)
     }
 }

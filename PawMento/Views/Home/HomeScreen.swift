@@ -50,7 +50,7 @@ struct HomeScreen: View {
             }
             .edgesIgnoringSafeArea(.bottom)
         }
-        .onChange(of: selectedTab) { newValue in
+        .onChange(of: selectedTab) { _, newValue in
             if newValue == .coach {
                 showCoachChat = true
             } else if newValue == .log {

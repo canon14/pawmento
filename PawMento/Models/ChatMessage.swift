@@ -10,7 +10,7 @@ struct ChatMessage: Identifiable, Codable, Equatable {
     var id: UUID = UUID()
     let role: ChatRole
     var content: String
-    let timestamp: Date = Date()
+    var timestamp: Date = Date()
     var isEmergency: Bool = false
     
     // For Supabase

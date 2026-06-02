@@ -233,12 +233,6 @@ struct AddFirstPetScreen: View {
             return
         }
         
-        guard let ownerId = authManager.currentUserId else {
-            print("Cannot add pet: No authenticated user.")
-            showError = true
-            return
-        }
-        
         isSubmitting = true
         
         let newPet = Pet(
@@ -251,6 +245,15 @@ struct AddFirstPetScreen: View {
         )
         
         Task {
+            guard let ownerId = await authManager.getCurrentUserId() else {
+                print("Cannot add pet: No authenticated user.")
+                await MainActor.run {
+                    showError = true
+                    isSubmitting = false
+                }
+                return
+            }
+            
             await petStore.addPet(newPet, ownerId: ownerId)
             
             await MainActor.run {

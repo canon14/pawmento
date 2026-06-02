@@ -88,7 +88,7 @@ struct PhotoNoteRowView: View {
                     .frame(height: 72)
                     .scrollContentBackground(.hidden)
                     .background(Color.clear)
-                    .onChange(of: isNoteFocused) { focused in
+                    .onChange(of: isNoteFocused) { _, focused in
                         if focused {
                             noteFocusStartTime = Date()
                         } else if let start = noteFocusStartTime {
@@ -100,7 +100,7 @@ struct PhotoNoteRowView: View {
                             noteFocusStartTime = nil
                         }
                     }
-                    .onChange(of: note) { newValue in
+                    .onChange(of: note) { _, newValue in
                         if newValue.count > 280 {
                             note = String(newValue.prefix(280))
                         }

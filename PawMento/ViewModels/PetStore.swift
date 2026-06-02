@@ -1,6 +1,7 @@
 import Foundation
 import SwiftUI
 import Combine
+import Supabase
 
 class PetStore: ObservableObject {
     @Published var pets: [Pet] = []
