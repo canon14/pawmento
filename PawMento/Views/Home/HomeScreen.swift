@@ -5,6 +5,9 @@ struct HomeScreen: View {
     @State private var showCoachChat = false
     @State private var showQuickLog = false
     
+    @EnvironmentObject var petStore: PetStore
+    @EnvironmentObject var logStore: LogStore
+    
     var body: some View {
         ZStack(alignment: .bottom) {
             // Main Content ScrollView
