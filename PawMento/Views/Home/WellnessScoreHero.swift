@@ -2,7 +2,10 @@ import SwiftUI
 
 struct WellnessScoreHero: View {
     @EnvironmentObject var petStore: PetStore
+    @EnvironmentObject var logStore: LogStore
+    @EnvironmentObject var medicationStore: MedicationStore
     @State private var progress: CGFloat = 0.0
+    @State private var score: Int = 0
     
     var body: some View {
         let petName = petStore.activePet?.name ?? "Your pet"
@@ -35,7 +38,7 @@ struct WellnessScoreHero: View {
                         
                         // Score Text
                         HStack(alignment: .firstTextBaseline, spacing: 0) {
-                            Text("78")
+                            Text("\(score)")
                                 .font(.headlineXL)
                                 .foregroundColor(.primary)
                             Text("/100")
@@ -99,8 +102,27 @@ struct WellnessScoreHero: View {
         .cornerRadius(24)
         .warmShadow()
         .onAppear {
-            progress = 0.78
+            calculateDynamicScore()
         }
+        .onChange(of: logStore.logs.count) { _ in
+            calculateDynamicScore()
+        }
+        .onChange(of: medicationStore.medications.count) { _ in
+            calculateDynamicScore()
+        }
+        .onChange(of: petStore.activePet?.id) { _ in
+            calculateDynamicScore()
+        }
+    }
+    
+    private func calculateDynamicScore() {
+        // If we want household vs active pet, for now we will calculate for the active pet's logs if selected,
+        // or just household average. The PRD says HomeScreen shows household score, but PetSelector sets an active pet.
+        // Assuming we filter by active pet if it exists, or just use all logs if not.
+        let relevantLogs = logStore.logs // In MVP, LogStore fetches logs for the household/pet
+        let computedScore = WellnessCalculator.calculateScore(logs: relevantLogs, medications: medicationStore.medications)
+        self.score = computedScore
+        self.progress = CGFloat(computedScore) / 100.0
     }
 }
 

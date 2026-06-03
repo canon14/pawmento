@@ -24,38 +24,10 @@ class PetProfileViewModel: ObservableObject {
         
         self.medications = fetchedMedications
         
-        let now = Date()
-        let last14DaysLogs = logs.filter { $0.recordedAt > now.addingTimeInterval(-14*24*3600) }
-        
-        // 1. Symptom Burden (Max 40)
-        let symptomLogs = last14DaysLogs.filter { $0.category == .symptom }
-        var symptomScore = 40
-        for s in symptomLogs {
-            symptomScore -= (s.severity ?? 1) * 3
-        }
-        symptomScore = max(0, symptomScore)
-        
-        // 2. Routine Adherence (Max 25)
-        let routineLogs = last14DaysLogs.filter { $0.category == .meal || $0.category == .potty || $0.category == .sleep }
-        let routineScore = min(25, routineLogs.count * 2)
-        
-        // 3. Activity Level (Max 20)
-        let activityLogs = last14DaysLogs.filter { $0.category == .walk || $0.category == .training }
-        let activityScore = min(20, activityLogs.count * 3)
-        
-        // 4. Medication Compliance (Max 15)
-        var medScore = 15
-        for med in fetchedMedications {
-            if let due = med.nextDueDate, due < now {
-                medScore -= 5 // Penalty for overdue
-            }
-        }
-        medScore = max(0, medScore)
-        
-        let score = symptomScore + routineScore + activityScore + medScore
+        let score = WellnessCalculator.calculateScore(logs: logs, medications: fetchedMedications)
         
         let oldScore = self.wellnessScore
-        self.wellnessScore = max(0, min(100, score))
+        self.wellnessScore = score
         
         if self.wellnessScore > oldScore {
             scoreTrend = "Trending ↗"
