@@ -14,9 +14,10 @@ class PetProfileViewModel: ObservableObject {
     
     @Published var medications: [Medication] = []
     
-    @Published var wellnessScore: Int = 87
-    @Published var scoreTrend: String = "Trending ↗"
-    @Published var scoreDelta: String = "+4 this week"
+    @Published var wellnessScore: Int = 0
+    @Published var scoreTrend: String = "Trending →"
+    @Published var scoreDelta: String = "Calculating..."
+    private var hasCalculatedInitialScore: Bool = false
     
     func refreshProfile(for pet: Pet, logs: [LogEntry], fetchedMedications: [Medication]) async {
         isLoading = true
@@ -26,18 +27,35 @@ class PetProfileViewModel: ObservableObject {
         
         let score = WellnessCalculator.calculateScore(logs: logs, medications: fetchedMedications)
         
-        let oldScore = self.wellnessScore
-        self.wellnessScore = score
-        
-        if self.wellnessScore > oldScore {
-            scoreTrend = "Trending ↗"
-            scoreDelta = "+\(self.wellnessScore - oldScore) this week"
-        } else if self.wellnessScore < oldScore {
-            scoreTrend = "Trending ↘"
-            scoreDelta = "-\(oldScore - self.wellnessScore) this week"
+        if !hasCalculatedInitialScore {
+            self.wellnessScore = score
+            self.hasCalculatedInitialScore = true
+            
+            // Mock a delta for MVP demo purposes based on current score
+            if score >= 80 {
+                scoreTrend = "Trending ↗"
+                scoreDelta = "+4 this week"
+            } else if score >= 60 {
+                scoreTrend = "Trending →"
+                scoreDelta = "Stable"
+            } else {
+                scoreTrend = "Trending ↘"
+                scoreDelta = "-5 this week"
+            }
         } else {
-            scoreTrend = "Trending →"
-            scoreDelta = "Stable"
+            let oldScore = self.wellnessScore
+            self.wellnessScore = score
+            
+            if self.wellnessScore > oldScore {
+                scoreTrend = "Trending ↗"
+                scoreDelta = "+\(self.wellnessScore - oldScore) this week"
+            } else if self.wellnessScore < oldScore {
+                scoreTrend = "Trending ↘"
+                scoreDelta = "-\(oldScore - self.wellnessScore) this week"
+            } else {
+                scoreTrend = "Trending →"
+                scoreDelta = "Stable"
+            }
         }
         
         // Generate AI Insight using actual LLM if needed
