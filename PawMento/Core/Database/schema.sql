@@ -148,3 +148,23 @@ CREATE POLICY "Users can manage chat messages for their pets" ON public.chat_mes
     FOR ALL USING (
         EXISTS (SELECT 1 FROM public.pets WHERE id = public.chat_messages.pet_id AND owner_id = auth.uid())
     );
+
+-- ==========================================
+-- 8. Medications Table
+-- ==========================================
+CREATE TABLE public.medications (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    pet_id UUID NOT NULL REFERENCES public.pets(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    frequency TEXT NOT NULL,
+    next_due_date TIMESTAMP WITH TIME ZONE,
+    streak_count INTEGER DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+ALTER TABLE public.medications ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can manage medications for their pets" ON public.medications 
+    FOR ALL USING (
+        EXISTS (SELECT 1 FROM public.pets WHERE id = public.medications.pet_id AND owner_id = auth.uid())
+    );

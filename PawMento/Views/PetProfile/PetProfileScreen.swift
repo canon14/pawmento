@@ -3,6 +3,7 @@ import SwiftUI
 struct PetProfileScreen: View {
     @EnvironmentObject var petStore: PetStore
     @EnvironmentObject var logStore: LogStore
+    @EnvironmentObject var medicationStore: MedicationStore
     @StateObject private var viewModel = PetProfileViewModel()
     
     // Top app bar components
@@ -31,7 +32,7 @@ struct PetProfileScreen: View {
                         
                         VitalRecordsList()
                         
-                        ArchiveButton(petName: pet.name)
+                        ArchiveButton(pet: pet)
                     } else {
                         Text("No pet selected")
                             .padding(.top, 40)
@@ -43,7 +44,8 @@ struct PetProfileScreen: View {
             }
             .refreshable {
                 if let pet = petStore.activePet {
-                    await viewModel.refreshProfile(for: pet, logs: logStore.logs)
+                    await medicationStore.fetchMedications(for: pet.id)
+                    await viewModel.refreshProfile(for: pet, logs: logStore.logs, fetchedMedications: medicationStore.medications)
                 }
             }
         }
@@ -51,7 +53,8 @@ struct PetProfileScreen: View {
         .onAppear {
             if let pet = petStore.activePet {
                 Task {
-                    await viewModel.refreshProfile(for: pet, logs: logStore.logs)
+                    await medicationStore.fetchMedications(for: pet.id)
+                    await viewModel.refreshProfile(for: pet, logs: logStore.logs, fetchedMedications: medicationStore.medications)
                 }
             }
         }

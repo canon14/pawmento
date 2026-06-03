@@ -13,6 +13,7 @@ struct PawMentoApp: App {
     @StateObject private var authManager = AuthManager()
     @StateObject private var coachViewModel = CoachViewModel()
     @StateObject private var logStore = LogStore()
+    @StateObject private var medicationStore = MedicationStore()
     @StateObject private var toastManager = ToastManager()
     
     var body: some Scene {
@@ -22,6 +23,7 @@ struct PawMentoApp: App {
                 .environmentObject(authManager)
                 .environmentObject(coachViewModel)
                 .environmentObject(logStore)
+                .environmentObject(medicationStore)
                 .environmentObject(toastManager)
         }
     }

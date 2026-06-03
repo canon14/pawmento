@@ -2,6 +2,8 @@ import SwiftUI
 
 struct PetProfileTopBar: View {
     let petName: String
+    @State private var showSwitcher: Bool = false
+    
     var body: some View {
         HStack {
             Button(action: {}) {
@@ -15,7 +17,7 @@ struct PetProfileTopBar: View {
             
             Spacer()
             
-            Button(action: {}) {
+            Button(action: { showSwitcher = true }) {
                 HStack(spacing: 4) {
                     Text(petName)
                         .font(.headlineSM)
@@ -24,6 +26,9 @@ struct PetProfileTopBar: View {
                         .font(.system(size: 12))
                         .foregroundColor(.warmTan)
                 }
+            }
+            .sheet(isPresented: $showSwitcher) {
+                PetSwitcherSheet(isPresented: $showSwitcher)
             }
             
             Spacer()
@@ -49,6 +54,7 @@ struct PetProfileTopBar: View {
 struct HeroCardView: View {
     let pet: Pet
     @ObservedObject var viewModel: PetProfileViewModel
+    @EnvironmentObject var petStore: PetStore
     
     var body: some View {
         VStack {
@@ -142,6 +148,23 @@ struct HeroCardView: View {
         .background(Color.white)
         .cornerRadius(20)
         .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 2)
+        .contentShape(Rectangle())
+        .gesture(
+            DragGesture()
+                .onEnded { value in
+                    // Simple swipe logic: Left or Right to switch pets
+                    let pets = petStore.pets
+                    guard pets.count > 1, let currentIndex = pets.firstIndex(where: { $0.id == pet.id }) else { return }
+                    
+                    if value.translation.width < -50 { // Swipe Left (Next)
+                        let nextIndex = (currentIndex + 1) % pets.count
+                        petStore.activePet = pets[nextIndex]
+                    } else if value.translation.width > 50 { // Swipe Right (Previous)
+                        let prevIndex = (currentIndex - 1 + pets.count) % pets.count
+                        petStore.activePet = pets[prevIndex]
+                    }
+                }
+        )
     }
     
     private var ringColor: Color {
@@ -413,7 +436,7 @@ struct VetPDFCTACard: View {
 }
 
 struct MedicationsCard: View {
-    let medications: [MockMedication]
+    let medications: [Medication]
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -428,9 +451,20 @@ struct MedicationsCard: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(med.name)
                                 .font(.system(size: 15, weight: .medium))
-                            Text("Logged today · \(med.streak)")
-                                .font(.system(size: 12))
-                                .foregroundColor(med.streak.contains("✓") ? .sage : .secondaryText)
+                            
+                            if med.streakCount > 0 {
+                                Text("Logged today · \(med.streakCount) day streak ✓")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.sage)
+                            } else if let nextDue = med.nextDueDate {
+                                Text("Next: \(nextDue, formatter: shortDateFormatter)")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.secondaryText)
+                            } else {
+                                Text("No streak")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.secondaryText)
+                            }
                         }
                         Spacer()
                         Text(med.frequency)
@@ -450,6 +484,11 @@ struct MedicationsCard: View {
     }
 }
 
+let shortDateFormatter: DateFormatter = {
+    let formatter = DateFormatter()
+    formatter.dateFormat = "MMM d"
+    return formatter
+}()
 struct VitalRecordsList: View {
     let records = [
         "Vaccinations · Up to date · Next Aug 14",
@@ -486,16 +525,113 @@ struct VitalRecordsList: View {
 }
 
 struct ArchiveButton: View {
-    let petName: String
+    let pet: Pet
+    @State private var showingFirstAlert = false
+    @State private var showingSecondAlert = false
+    @EnvironmentObject var petStore: PetStore
     
     var body: some View {
-        Button(action: {}) {
-            Text("Archive \(petName)'s profile")
+        Button(action: {
+            showingFirstAlert = true
+        }) {
+            Text("Archive \(pet.name)'s profile")
                 .font(.system(size: 15))
                 .foregroundColor(.warmCoral)
                 .frame(maxWidth: .infinity)
                 .frame(height: 52)
                 .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.warmCoral, lineWidth: 1))
         }
+        .alert("Archive \(pet.name)?", isPresented: $showingFirstAlert) {
+            Button("Cancel", role: .cancel) { }
+            Button("Yes, Archive", role: .destructive) {
+                showingSecondAlert = true
+            }
+        } message: {
+            Text("This will hide \(pet.name) from your dashboard. You can restore them within 90 days from Settings.")
+        }
+        .alert("Are you absolutely sure?", isPresented: $showingSecondAlert) {
+            Button("Cancel", role: .cancel) { }
+            Button("Archive", role: .destructive) {
+                // Update in store
+                if let index = petStore.pets.firstIndex(where: { $0.id == pet.id }) {
+                    petStore.pets[index].isActive = false
+                    // Ideally we sync to Supabase here
+                    
+                    // Switch to another pet if available
+                    if let nextPet = petStore.pets.first(where: { $0.isActive && $0.id != pet.id }) {
+                        petStore.activePet = nextPet
+                    } else {
+                        petStore.activePet = nil
+                    }
+                }
+            }
+        } message: {
+            Text("This action will immediately remove \(pet.name) from your active pets.")
+        }
+    }
+}
+
+struct PetSwitcherSheet: View {
+    @Binding var isPresented: Bool
+    @EnvironmentObject var petStore: PetStore
+    
+    var body: some View {
+        VStack(spacing: 24) {
+            HStack {
+                Text("Switch Pet")
+                    .font(.system(size: 20, weight: .bold, design: .rounded))
+                Spacer()
+                Button(action: { isPresented = false }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 24))
+                        .foregroundColor(.warmSand)
+                }
+            }
+            .padding(.top, 24)
+            .padding(.horizontal, 24)
+            
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 16) {
+                    ForEach(petStore.pets) { pet in
+                        Button(action: {
+                            petStore.activePet = pet
+                            isPresented = false
+                        }) {
+                            VStack {
+                                ZStack {
+                                    if let url = pet.photoLocalURL {
+                                        AsyncImage(url: url) { image in
+                                            image.resizable().aspectRatio(contentMode: .fill)
+                                        } placeholder: {
+                                            Color.warmSand
+                                        }
+                                    } else if let image = pet.photoImage {
+                                        Image(uiImage: image)
+                                            .resizable()
+                                            .aspectRatio(contentMode: .fill)
+                                    } else {
+                                        Color.warmSand
+                                    }
+                                }
+                                .frame(width: 80, height: 80)
+                                .clipShape(Circle())
+                                .overlay(
+                                    Circle().stroke(petStore.activePet?.id == pet.id ? Color.sage : Color.clear, lineWidth: 3)
+                                )
+                                
+                                Text(pet.name)
+                                    .font(.system(size: 14, weight: petStore.activePet?.id == pet.id ? .semibold : .medium))
+                                    .foregroundColor(.primaryText)
+                            }
+                        }
+                    }
+                }
+                .padding(.horizontal, 24)
+            }
+            Spacer()
+        }
+        .presentationDetents([.height(220)])
+        .presentationDragIndicator(.visible)
+        .background(Color.cream.ignoresSafeArea())
     }
 }

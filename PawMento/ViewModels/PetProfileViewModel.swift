@@ -12,35 +12,61 @@ class PetProfileViewModel: ObservableObject {
         MockCareProvider(name: "Dr. Sarah Chen", role: "Primary vet", clinic: "Westside Animal Hospital", phone: "(555) 123-4567", distance: "0.8 mi away")
     ]
     
-    @Published var medications: [MockMedication] = [
-        MockMedication(name: "Apoquel 16mg", frequency: "Daily, 8am", streak: "14 day streak ✓"),
-        MockMedication(name: "Heartgard", frequency: "Monthly", streak: "Next: Jun 12 · 12 days")
-    ]
+    @Published var medications: [Medication] = []
     
     @Published var wellnessScore: Int = 87
     @Published var scoreTrend: String = "Trending ↗"
     @Published var scoreDelta: String = "+4 this week"
     
-    func refreshProfile(for pet: Pet, logs: [LogEntry]) async {
+    func refreshProfile(for pet: Pet, logs: [LogEntry], fetchedMedications: [Medication]) async {
         isLoading = true
         defer { isLoading = false }
         
-        // Compute Wellness Score purely based on recent logs (stub logic for MVP)
-        let recentLogs = logs.filter { $0.recordedAt > Date().addingTimeInterval(-7*24*3600) }
-        var score = 80
-        if recentLogs.contains(where: { $0.category == .symptom }) {
-            score -= 10
-            scoreTrend = "Trending ↘"
-            scoreDelta = "-10 this week"
-        } else if !recentLogs.isEmpty {
-            score += 7
+        self.medications = fetchedMedications
+        
+        let now = Date()
+        let last14DaysLogs = logs.filter { $0.recordedAt > now.addingTimeInterval(-14*24*3600) }
+        
+        // 1. Symptom Burden (Max 40)
+        let symptomLogs = last14DaysLogs.filter { $0.category == .symptom }
+        var symptomScore = 40
+        for s in symptomLogs {
+            symptomScore -= (s.severity ?? 1) * 3
+        }
+        symptomScore = max(0, symptomScore)
+        
+        // 2. Routine Adherence (Max 25)
+        let routineLogs = last14DaysLogs.filter { $0.category == .meal || $0.category == .potty || $0.category == .sleep }
+        let routineScore = min(25, routineLogs.count * 2)
+        
+        // 3. Activity Level (Max 20)
+        let activityLogs = last14DaysLogs.filter { $0.category == .walk || $0.category == .training }
+        let activityScore = min(20, activityLogs.count * 3)
+        
+        // 4. Medication Compliance (Max 15)
+        var medScore = 15
+        for med in fetchedMedications {
+            if let due = med.nextDueDate, due < now {
+                medScore -= 5 // Penalty for overdue
+            }
+        }
+        medScore = max(0, medScore)
+        
+        let score = symptomScore + routineScore + activityScore + medScore
+        
+        let oldScore = self.wellnessScore
+        self.wellnessScore = max(0, min(100, score))
+        
+        if self.wellnessScore > oldScore {
             scoreTrend = "Trending ↗"
-            scoreDelta = "+7 this week"
+            scoreDelta = "+\(self.wellnessScore - oldScore) this week"
+        } else if self.wellnessScore < oldScore {
+            scoreTrend = "Trending ↘"
+            scoreDelta = "-\(oldScore - self.wellnessScore) this week"
         } else {
             scoreTrend = "Trending →"
             scoreDelta = "Stable"
         }
-        self.wellnessScore = max(0, min(100, score))
         
         // Generate AI Insight using actual LLM if needed
         if aiInsight == nil {
@@ -49,14 +75,35 @@ class PetProfileViewModel: ObservableObject {
     }
     
     func generateInsight(for pet: Pet, logs: [LogEntry]) async {
+        let cacheKey = "ai_insight_\(pet.id.uuidString)"
+        let cacheDateKey = "ai_insight_date_\(pet.id.uuidString)"
+        
+        // 1. Check cache (24 hours)
+        if let lastDate = UserDefaults.standard.object(forKey: cacheDateKey) as? Date,
+           let lastInsight = UserDefaults.standard.string(forKey: cacheKey),
+           Date().timeIntervalSince(lastDate) < 24 * 3600 {
+            self.aiInsight = lastInsight
+            return
+        }
+        
+        // 2. Pattern Detector Pre-filter
+        let recent24hLogs = logs.filter { $0.recordedAt > Date().addingTimeInterval(-24 * 3600) }
+        let hasSymptoms = recent24hLogs.contains { $0.category == .symptom }
+        
+        if recent24hLogs.isEmpty || (!hasSymptoms && recent24hLogs.count < 3) {
+            // No significant patterns to analyze today
+            self.aiInsight = "\(pet.name) is having a steady day. Log more activities or symptoms to trigger an AI pattern analysis!"
+            return
+        }
+        
         isGeneratingInsight = true
         defer { isGeneratingInsight = false }
         
         // Prepare context
-        let recentLogs = logs.prefix(10).map { "\($0.category.rawValue): \($0.note ?? "")" }.joined(separator: ", ")
+        let recentLogsString = logs.prefix(10).map { "\($0.category.rawValue): \($0.note ?? "")" }.joined(separator: ", ")
         let prompt = """
         You are an expert AI vet coach. Briefly analyze the recent logs for \(pet.name) and provide a 1-2 sentence reassuring or observational insight. Do not prescribe.
-        Recent logs: \(recentLogs.isEmpty ? "None" : recentLogs)
+        Recent logs: \(recentLogsString.isEmpty ? "None" : recentLogsString)
         """
         
         let messages = [["role": "user", "content": prompt]]
@@ -68,6 +115,11 @@ class PetProfileViewModel: ObservableObject {
                 fullInsight += token
                 self.aiInsight = fullInsight // Update UI incrementally
             }
+            
+            // Cache successful result
+            UserDefaults.standard.set(fullInsight, forKey: cacheKey)
+            UserDefaults.standard.set(Date(), forKey: cacheDateKey)
+            
         } catch {
             self.aiInsight = "I lost connection while trying to analyze Buddy's data. Tap to retry."
         }
@@ -84,9 +136,4 @@ struct MockCareProvider: Identifiable {
     let distance: String
 }
 
-struct MockMedication: Identifiable {
-    let id = UUID()
-    let name: String
-    let frequency: String
-    let streak: String
-}
+
