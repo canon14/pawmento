@@ -1,6 +1,63 @@
 import SwiftUI
 
+struct TodayLogGridItem: Identifiable {
+    let id = UUID()
+    let icon: String
+    let title: String
+    let subtitle: String
+    let subtitleIcon: String
+    let isLogged: Bool
+}
+
 struct TodayLogGrid: View {
+    @EnvironmentObject var logStore: LogStore
+    @EnvironmentObject var medicationStore: MedicationStore
+    var onLogAction: () -> Void = {}
+    
+    private var gridItems: [TodayLogGridItem] {
+        var items: [TodayLogGridItem] = []
+        let formatter = DateFormatter()
+        formatter.dateFormat = "h:mma"
+        
+        let todayLogs = logStore.logs.filter { Calendar.current.isDateInToday($0.recordedAt) }
+        
+        // 1. Add recent logs from today
+        for log in todayLogs.prefix(3) {
+            let title = log.note?.isEmpty == false ? log.note! : log.category.rawValue
+            items.append(TodayLogGridItem(
+                icon: log.category.emoji,
+                title: title,
+                subtitle: formatter.string(from: log.recordedAt).lowercased(),
+                subtitleIcon: "checkmark.circle.fill",
+                isLogged: true
+            ))
+        }
+        
+        // 2. Add due medications if we don't have 3 items
+        if items.count < 3 {
+            for med in medicationStore.medications {
+                if let due = med.nextDueDate, Calendar.current.isDateInToday(due) {
+                    items.append(TodayLogGridItem(
+                        icon: "💊",
+                        title: med.name,
+                        subtitle: "Due \(formatter.string(from: due).lowercased())",
+                        subtitleIcon: "clock",
+                        isLogged: false
+                    ))
+                    if items.count >= 3 { break }
+                }
+            }
+        }
+        
+        // 3. Fallbacks if completely empty
+        if items.isEmpty {
+            items.append(TodayLogGridItem(icon: "🥣", title: "Breakfast", subtitle: "Log me!", subtitleIcon: "plus.circle", isLogged: false))
+            items.append(TodayLogGridItem(icon: "🚶", title: "Walk", subtitle: "Log me!", subtitleIcon: "plus.circle", isLogged: false))
+        }
+        
+        return Array(items.prefix(3))
+    }
+    
     var body: some View {
         VStack(spacing: 12) {
             HStack {
@@ -10,9 +67,7 @@ struct TodayLogGrid: View {
                 
                 Spacer()
                 
-                Button(action: {
-                    // Log action
-                }) {
+                Button(action: onLogAction) {
                     HStack(spacing: 4) {
                         Image(systemName: "plus")
                             .font(.system(size: 16, weight: .bold))
@@ -33,32 +88,15 @@ struct TodayLogGrid: View {
             }
             
             HStack(spacing: 12) {
-                // Logged Item 1
-                LogItemCard(
-                    icon: "🥣",
-                    title: "Breakfast",
-                    subtitle: "7:32am",
-                    subtitleIcon: "checkmark.circle.fill",
-                    isLogged: true
-                )
-                
-                // Logged Item 2
-                LogItemCard(
-                    icon: "💊",
-                    title: "Apoquel",
-                    subtitle: "7:35am",
-                    subtitleIcon: "checkmark.circle.fill",
-                    isLogged: true
-                )
-                
-                // Due Item 3
-                LogItemCard(
-                    icon: "🚶",
-                    title: "Walk",
-                    subtitle: "Due 5pm",
-                    subtitleIcon: "clock",
-                    isLogged: false
-                )
+                ForEach(gridItems) { item in
+                    LogItemCard(
+                        icon: item.icon,
+                        title: item.title,
+                        subtitle: item.subtitle,
+                        subtitleIcon: item.subtitleIcon,
+                        isLogged: item.isLogged
+                    )
+                }
             }
         }
     }

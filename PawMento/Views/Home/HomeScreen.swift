@@ -32,7 +32,9 @@ struct HomeScreen: View {
                             
                             PatternAlertCard()
                             
-                            TodayLogGrid()
+                            TodayLogGrid(onLogAction: {
+                                showQuickLog = true
+                            })
                             
                             RecentActivityTimeline()
                             
