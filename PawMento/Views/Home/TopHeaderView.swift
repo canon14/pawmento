@@ -36,12 +36,12 @@ struct TopHeaderView: View {
                 }
                 
                 VStack(alignment: .leading, spacing: 0) {
-                    Text("Good morning, Jordan ☀️")
+                    Text("\(greetingTimeOfDay) ☀️")
                         .font(.headlineSM)
                         .foregroundColor(.primary)
                         .tracking(-0.5) // tracking-tight
                     
-                    Text("Tuesday, May 26")
+                    Text(formattedDate)
                         .font(.labelMD)
                         .foregroundColor(.onSurfaceVariant)
                 }
@@ -65,6 +65,19 @@ struct TopHeaderView: View {
         .sheet(isPresented: $showSettings) {
             SettingsView()
         }
+    }
+    
+    private var greetingTimeOfDay: String {
+        let hour = Calendar.current.component(.hour, from: Date())
+        if hour < 12 { return "Good morning" }
+        if hour < 18 { return "Good afternoon" }
+        return "Good evening"
+    }
+    
+    private var formattedDate: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEEE, MMM d"
+        return formatter.string(from: Date())
     }
 }
 

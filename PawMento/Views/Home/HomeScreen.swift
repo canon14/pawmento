@@ -4,6 +4,7 @@ struct HomeScreen: View {
     @State private var selectedTab: BottomNavBar.Tab = .home
     @State private var showCoachChat = false
     @State private var showQuickLog = false
+    @State private var showAddPetSheet = false
     
     @EnvironmentObject var petStore: PetStore
     @EnvironmentObject var logStore: LogStore
@@ -22,7 +23,7 @@ struct HomeScreen: View {
                         TopHeaderView()
                         
                         VStack(spacing: 32) {
-                            PetSelectorCard()
+                            PetSelectorCard(onAddPet: { showAddPetSheet = true })
                             
                             WellnessScoreHero()
                             
@@ -84,6 +85,9 @@ struct HomeScreen: View {
                 .presentationDetents([.fraction(0.75), .large])
                 .presentationCornerRadius(28)
                 .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $showAddPetSheet) {
+            AddPetSheet()
         }
         .onChange(of: petStore.activePet?.id) { _, newPetId in
             if let petId = newPetId {

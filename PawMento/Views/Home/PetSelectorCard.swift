@@ -2,6 +2,7 @@ import SwiftUI
 
 struct PetSelectorCard: View {
     @EnvironmentObject var petStore: PetStore
+    var onAddPet: () -> Void = {}
     
     var petAgeString: String {
         guard let pet = petStore.activePet, let bday = pet.birthday, let year = bday.year else { return "" }
@@ -66,13 +67,15 @@ struct PetSelectorCard: View {
             
             Spacer()
             
-            HStack(spacing: 4) {
-                Image(systemName: "lock.fill")
-                    .font(.system(size: 14))
-                Text("+ Add another pet")
-                    .font(.labelSM)
+            Button(action: onAddPet) {
+                HStack(spacing: 4) {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.system(size: 14))
+                    Text("Add another pet")
+                        .font(.labelSM)
+                }
+                .foregroundColor(Color.secondary.opacity(0.7))
             }
-            .foregroundColor(Color.secondary.opacity(0.7))
         }
         .padding(20)
         .background(Color.surfaceContainerLowest)
