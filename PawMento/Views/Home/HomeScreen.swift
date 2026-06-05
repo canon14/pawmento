@@ -27,15 +27,15 @@ struct HomeScreen: View {
                             
                             WellnessScoreHero()
                             
+                            TodayLogGrid(onLogAction: {
+                                showQuickLog = true
+                            })
+                            
                             AskCoachCard(action: {
                                 showCoachChat = true
                             })
                             
                             PatternAlertCard()
-                            
-                            TodayLogGrid(onLogAction: {
-                                showQuickLog = true
-                            })
                             
                             RecentActivityTimeline()
                             

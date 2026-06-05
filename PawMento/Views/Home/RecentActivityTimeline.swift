@@ -6,21 +6,9 @@ struct RecentActivityTimeline: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
-            HStack {
-                Text("Recent activity")
-                    .font(.headlineSM)
-                    .foregroundColor(.onBackground)
-                
-                Spacer()
-                
-                Button(action: {
-                    showFullTimeline = true
-                }) {
-                    Text("See full timeline ›")
-                        .font(.labelSM)
-                        .foregroundColor(.secondary)
-                }
-            }
+            Text("Recent activity")
+                .font(.headlineSM)
+                .foregroundColor(.onBackground)
             
             ZStack(alignment: .topLeading) {
                 if logStore.logs.isEmpty {
@@ -47,13 +35,39 @@ struct RecentActivityTimeline: View {
                     }
                 }
             }
+            
+            if !logStore.logs.isEmpty {
+                Button(action: {
+                    showFullTimeline = true
+                }) {
+                    HStack {
+                        Text("See full timeline")
+                            .font(.labelMD)
+                        Spacer()
+                        Image(systemName: "arrow.right")
+                    }
+                    .foregroundColor(.warmTan)
+                    .padding()
+                    .frame(maxWidth: .infinity)
+                    .background(Color.warmCream)
+                    .cornerRadius(12)
+                }
+                .accessibilityLabel("See full timeline")
+                .accessibilityHint("Opens your complete logging history")
+            }
         }
         .padding(20)
         .background(Color.surfaceContainerLowest)
         .cornerRadius(24)
         .warmShadow()
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Recent activity. \(logStore.logs.count) logs available. Double tap to see full timeline.")
+        .accessibilityAction {
+            showFullTimeline = true
+        }
         .sheet(isPresented: $showFullTimeline) {
             FullTimelineView()
+                .presentationDragIndicator(.visible)
         }
     }
     
