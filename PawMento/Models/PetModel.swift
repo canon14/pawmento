@@ -1,14 +1,14 @@
 import Foundation
 import UIKit
 
-enum Species: Equatable {
+enum Species: Equatable, Codable {
     case dog
     case cat
     case rabbit
     case other(String)
 }
 
-struct Pet: Identifiable {
+struct Pet: Identifiable, Codable {
     let id: UUID
     var name: String
     var species: Species
@@ -40,5 +40,9 @@ struct Pet: Identifiable {
         self.photoImage = photoImage
         self.createdAt = createdAt
         self.isActive = isActive
+    }
+    
+    enum CodingKeys: String, CodingKey {
+        case id, name, species, breed, birthday, weightKg, photoLocalURL, createdAt, isActive
     }
 }

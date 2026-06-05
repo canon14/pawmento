@@ -25,4 +25,23 @@ class StorageManager {
         
         return publicURL.absoluteString
     }
+    
+    func saveImageToDisk(_ image: UIImage, fileName: String) -> URL? {
+        guard let data = image.jpegData(compressionQuality: 0.5) else { return nil }
+        let directory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        // Ensure "OfflineImages" folder exists
+        let folderURL = directory.appendingPathComponent("OfflineImages")
+        if !FileManager.default.fileExists(atPath: folderURL.path) {
+            try? FileManager.default.createDirectory(at: folderURL, withIntermediateDirectories: true)
+        }
+        
+        let fileURL = folderURL.appendingPathComponent(fileName)
+        do {
+            try data.write(to: fileURL)
+            return fileURL
+        } catch {
+            print("Failed to save image to disk: \(error)")
+            return nil
+        }
+    }
 }

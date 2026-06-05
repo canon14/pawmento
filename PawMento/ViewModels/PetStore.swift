@@ -54,8 +54,17 @@ class PetStore: ObservableObject {
         } catch {
             print("Failed to insert pet: \(error)")
             // Fallback for UI if offline/error
-            self.pets.append(pet)
-            self.activePet = pet
+            var offlinePet = finalPet
+            if let image = pet.photoImage,
+               let localURL = StorageManager.shared.saveImageToDisk(image, fileName: "\(offlinePet.id.uuidString).jpg") {
+                offlinePet.photoLocalURL = localURL
+            }
+            
+            self.pets.append(offlinePet)
+            self.activePet = offlinePet
+            
+            // Queue for later
+            OfflineSyncManager.shared.enqueueTask(.createPet(offlinePet, ownerId))
         }
     }
 }

@@ -16,6 +16,8 @@ struct PawMentoApp: App {
     @StateObject private var medicationStore = MedicationStore()
     @StateObject private var toastManager = ToastManager()
     
+    @Environment(\.scenePhase) private var scenePhase
+    
     var body: some Scene {
         WindowGroup {
             RootView()
@@ -25,6 +27,11 @@ struct PawMentoApp: App {
                 .environmentObject(logStore)
                 .environmentObject(medicationStore)
                 .environmentObject(toastManager)
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active {
+                OfflineSyncManager.shared.flushQueue()
+            }
         }
     }
 }

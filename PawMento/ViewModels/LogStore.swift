@@ -43,7 +43,20 @@ class LogStore: ObservableObject {
             }
         } catch {
             print("Failed to sync log to Supabase: \(error)")
-            // It remains local-only for now
+            // Save image locally for offline queue
+            var offlineLog = finalLog
+            if let image = log.photoImage, 
+               let localURL = StorageManager.shared.saveImageToDisk(image, fileName: "\(offlineLog.id.uuidString).jpg") {
+                offlineLog.photoLocalURL = localURL
+                
+                // Update local model with the local disk URL
+                if let index = logs.firstIndex(where: { $0.id == finalLog.id }) {
+                    logs[index].photoLocalURL = localURL
+                }
+            }
+            
+            // It remains local-only for now, but we queue it for later!
+            OfflineSyncManager.shared.enqueueTask(.createLog(offlineLog, userId))
         }
     }
     
