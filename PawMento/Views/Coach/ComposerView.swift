@@ -3,13 +3,14 @@ import SwiftUI
 struct ComposerView: View {
     @Binding var text: String
     @Binding var freeQuestionsRemaining: Int
+    let onCameraTap: () -> Void
     let onSend: () -> Void
     
     var body: some View {
         VStack(alignment: .trailing, spacing: 4) {
             HStack(alignment: .bottom, spacing: 12) {
                 // Attachments
-                Button(action: {}) {
+                Button(action: onCameraTap) {
                     Image(systemName: "camera")
                         .font(.system(size: 20))
                         .foregroundColor(.tertiaryText)

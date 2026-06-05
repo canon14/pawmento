@@ -65,6 +65,10 @@ class CoachViewModel: ObservableObject {
             
         } catch {
             isTyping = false
+            
+            // Refund the question quota if we failed
+            freeQuestionsRemaining += 1
+            
             if let index = messages.firstIndex(where: { $0.id == assistantMessageId }) {
                 if error.localizedDescription.contains("API Error") {
                     messages[index].content = "\(error.localizedDescription)\n\n(Tip: Your $5 deposit may take a little longer to unlock Claude 3 access on Anthropic's servers.)"

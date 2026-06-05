@@ -75,7 +75,10 @@ struct CoachChatView: View {
             // Composer
             ComposerView(
                 text: $inputText,
-                freeQuestionsRemaining: $viewModel.freeQuestionsRemaining
+                freeQuestionsRemaining: $viewModel.freeQuestionsRemaining,
+                onCameraTap: {
+                    viewModel.showPremiumWall = true
+                }
             ) {
                 send(inputText)
             }
@@ -105,6 +108,11 @@ struct CoachChatView: View {
             }
             .padding(32)
             .presentationDetents([.medium])
+        }
+        .onAppear {
+            if viewModel.messages.isEmpty {
+                setInitialQuickReplies()
+            }
         }
     }
     
@@ -147,6 +155,7 @@ struct CoachChatView: View {
                 Button(role: .destructive, action: {
                     withAnimation {
                         viewModel.messages.removeAll()
+                        setInitialQuickReplies()
                     }
                 }) {
                     Label("New Conversation", systemImage: "trash")
@@ -171,10 +180,19 @@ struct CoachChatView: View {
     private func send(_ text: String) {
         let textToSend = text
         inputText = ""
+        let activePetId = petStore.activePet?.id
         Task {
-            // In production, pass the active pet's UUID
-            await viewModel.sendMessage(textToSend, petId: nil)
+            await viewModel.sendMessage(textToSend, petId: activePetId)
         }
+    }
+    
+    private func setInitialQuickReplies() {
+        let petName = petStore.activePet?.name ?? "my pet"
+        viewModel.quickReplies = [
+            "Is \(petName)'s weight healthy?",
+            "What should I feed \(petName)?",
+            "How often should I walk them?"
+        ]
     }
 }
 

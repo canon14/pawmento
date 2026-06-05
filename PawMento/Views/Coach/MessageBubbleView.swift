@@ -56,6 +56,7 @@ struct MessageBubbleView: View {
                 .foregroundColor(.tertiaryText)
         }
         .frame(maxWidth: 300, alignment: .trailing)
+        .textSelection(.enabled)
     }
     
     var coachBubble: some View {
@@ -87,5 +88,6 @@ struct MessageBubbleView: View {
             )
         }
         .frame(maxWidth: 300, alignment: .leading)
+        .textSelection(.enabled)
     }
 }
