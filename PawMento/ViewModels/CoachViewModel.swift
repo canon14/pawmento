@@ -34,19 +34,19 @@ class CoachViewModel: ObservableObject {
     }
     
     // Send a message and stream the response
-    func sendMessage(_ text: String, petId: UUID?, ownerId: UUID?) async {
+    func sendMessage(_ text: String, pet: Pet?, ownerId: UUID?) async {
         guard freeQuestionsRemaining > 0 else {
             showPremiumWall = true
             return
         }
         
-        let userMessage = ChatMessage(role: .user, content: text, petId: petId)
+        let userMessage = ChatMessage(role: .user, content: text, petId: pet?.id)
         messages.append(userMessage)
         quickReplies.removeAll()
         
         // 1. Safety Check (Regex before LLM runs in <50ms)
         if SafetyClassifier.isEmergency(message: text) {
-            let emergencyResponse = ChatMessage(role: .assistant, content: "This sounds urgent.\nGet to an emergency vet now.", isEmergency: true, petId: petId)
+            let emergencyResponse = ChatMessage(role: .assistant, content: "This sounds urgent.\nGet to an emergency vet now.", isEmergency: true, petId: pet?.id)
             messages.append(emergencyResponse)
             return
         }
@@ -60,11 +60,13 @@ class CoachViewModel: ObservableObject {
         // 4. Stream LLM Response
         isTyping = true
         let assistantMessageId = UUID()
-        let initialAssistantMessage = ChatMessage(id: assistantMessageId, role: .assistant, content: "", petId: petId)
+        let initialAssistantMessage = ChatMessage(id: assistantMessageId, role: .assistant, content: "", petId: pet?.id)
         messages.append(initialAssistantMessage)
         
+        let systemPrompt = AICoachPrompt.buildPrompt(for: pet)
+        
         do {
-            let stream = AICoachClient.shared.streamAdvice(messages: recentMessages)
+            let stream = AICoachClient.shared.streamAdvice(messages: recentMessages, systemPrompt: systemPrompt)
             for try await token in stream {
                 isTyping = false
                 if let index = messages.firstIndex(where: { $0.id == assistantMessageId }) {

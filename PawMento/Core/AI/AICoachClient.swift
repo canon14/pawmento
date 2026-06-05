@@ -17,17 +17,17 @@ class AICoachClient {
     private init() {}
     
     /// Generates advice from the AI Coach using SSE streaming
-    func streamAdvice(messages: [[String: String]]) -> AsyncThrowingStream<String, Error> {
+    func streamAdvice(messages: [[String: String]], systemPrompt: String = AICoachPrompt.systemPrompt) -> AsyncThrowingStream<String, Error> {
         switch provider {
         case .anthropic:
-            return streamAnthropic(messages: messages)
+            return streamAnthropic(messages: messages, systemPrompt: systemPrompt)
         case .openai:
-            return streamOpenAI(messages: messages)
+            return streamOpenAI(messages: messages, systemPrompt: systemPrompt)
         }
     }
     
     // MARK: - OpenAI Streaming
-    private func streamOpenAI(messages: [[String: String]]) -> AsyncThrowingStream<String, Error> {
+    private func streamOpenAI(messages: [[String: String]], systemPrompt: String) -> AsyncThrowingStream<String, Error> {
         AsyncThrowingStream { continuation in
             Task {
                 do {
@@ -37,7 +37,7 @@ class AICoachClient {
                     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
                     request.setValue("Bearer \(openaiApiKey)", forHTTPHeaderField: "Authorization")
                     
-                    var payloadMessages = [["role": "system", "content": AICoachPrompt.systemPrompt]]
+                    var payloadMessages = [["role": "system", "content": systemPrompt]]
                     payloadMessages.append(contentsOf: messages)
                     
                     let body: [String: Any] = [
@@ -78,7 +78,7 @@ class AICoachClient {
     }
     
     // MARK: - Anthropic Streaming
-    private func streamAnthropic(messages: [[String: String]]) -> AsyncThrowingStream<String, Error> {
+    private func streamAnthropic(messages: [[String: String]], systemPrompt: String) -> AsyncThrowingStream<String, Error> {
         AsyncThrowingStream { continuation in
             Task {
                 do {
@@ -92,7 +92,7 @@ class AICoachClient {
                     let body: [String: Any] = [
                         "model": "claude-haiku-4-5-20251001", // Cost management
                         "max_tokens": 1024,
-                        "system": AICoachPrompt.systemPrompt,
+                        "system": systemPrompt,
                         "messages": messages,
                         "stream": true
                     ]

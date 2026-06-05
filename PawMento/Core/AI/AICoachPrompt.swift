@@ -31,4 +31,41 @@ struct AICoachPrompt {
     - **Vet Footer:** For minor health questions (e.g., slight limp, drinking more water, ambiguous "seems off"), ask 2-3 clarifying questions or suggest a non-urgent vet check. Always include a standard "When to call a vet" footer detailing when the symptoms would escalate. 
     - Do NOT use the vet footer for completely healthy, casual, or behavioral topics.
     """
+    
+    static func buildPrompt(for pet: Pet?) -> String {
+        var base = systemPrompt
+        if let pet = pet {
+            base += "\n\n# Active Pet Context\n"
+            base += "You are currently advising the owner of \(pet.name).\n"
+            
+            let speciesStr: String
+            switch pet.species {
+            case .dog: speciesStr = "Dog"
+            case .cat: speciesStr = "Cat"
+            case .rabbit: speciesStr = "Rabbit"
+            case .other(let name): speciesStr = name
+            }
+            base += "- Species: \(speciesStr)\n"
+            
+            if let breed = pet.breed, !breed.isEmpty {
+                base += "- Breed: \(breed)\n"
+            }
+            if let weight = pet.weightKg {
+                base += "- Weight: \(weight)kg\n"
+            }
+            if let bday = pet.birthday, let year = bday.year, let month = bday.month {
+                let currentYear = Calendar.current.component(.year, from: Date())
+                let currentMonth = Calendar.current.component(.month, from: Date())
+                
+                var ageYears = currentYear - year
+                var ageMonths = currentMonth - month
+                if ageMonths < 0 {
+                    ageYears -= 1
+                    ageMonths += 12
+                }
+                base += "- Age: \(ageYears) years and \(ageMonths) months\n"
+            }
+        }
+        return base
+    }
 }

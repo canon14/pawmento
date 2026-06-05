@@ -189,10 +189,10 @@ struct CoachChatView: View {
     private func send(_ text: String) {
         let textToSend = text
         inputText = ""
-        let activePetId = petStore.activePet?.id
+        let activePet = petStore.activePet
         Task {
             let ownerId = await authManager.getCurrentUserId()
-            await viewModel.sendMessage(textToSend, petId: activePetId, ownerId: ownerId)
+            await viewModel.sendMessage(textToSend, pet: activePet, ownerId: ownerId)
         }
     }
     
