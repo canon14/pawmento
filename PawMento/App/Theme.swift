@@ -93,6 +93,26 @@ extension Color {
     static let warmSand = Color(hex: "#D4C4B0")
     static let warmCoral = Color(hex: "#E47A6B")
     static let cream = Color(hex: "#F5EFE4")
+    
+    // Timeline v2 Colors
+    static let sage50 = Color(hex: "#E8F1EF")
+    static let sage200 = Color(hex: "#B3D1C9")
+    static let sage700 = Color(hex: "#4A7369")
+    
+    static let ink900 = Color(hex: "#1B1C1A")
+    static let ink700 = Color(hex: "#444842")
+    static let ink600 = Color(hex: "#757871")
+    static let ink500 = Color(hex: "#8D908A")
+    static let ink300 = Color(hex: "#C5C7BF")
+    static let ink200 = Color(hex: "#E4E2DE")
+    static let ink100 = Color(hex: "#EAE8E4")
+    
+    static let amber = Color(hex: "#E8A547")
+    static let red500 = Color(hex: "#C8412B")
+    static let coral500 = Color(hex: "#E07856")
+    
+    static let surface0 = Color(hex: "#FFFFFF")
+    static let surface1 = Color(hex: "#F5F3EF")
 }
 
 // Helper to initialize Color from Hex
@@ -146,6 +166,15 @@ extension Font {
     static let labelSemibold = Font.custom("PlusJakartaSans-SemiBold", size: 13)
     static let labelRegular = Font.custom("PlusJakartaSans-Regular", size: 13)
     static let labelLarge = Font.custom("PlusJakartaSans-Medium", size: 15)
+    
+    // Timeline v2 Fonts
+    static let displayM = Font.custom("PlusJakartaSans-SemiBold", size: 28)
+    static let caption = Font.custom("PlusJakartaSans-Regular", size: 13)
+    static let captionSemibold = Font.custom("PlusJakartaSans-SemiBold", size: 12)
+    static let captionTabular = Font.custom("PlusJakartaSans-Regular", size: 12) // Tabular spacing is usually a modifier on standard font, but we'll use this
+    static let bodyS = Font.custom("PlusJakartaSans-Regular", size: 14)
+    static let bodySMedium = Font.custom("PlusJakartaSans-Medium", size: 14)
+    static let bodySSemibold = Font.custom("PlusJakartaSans-SemiBold", size: 14)
 }
 
 // MARK: - Modifiers
