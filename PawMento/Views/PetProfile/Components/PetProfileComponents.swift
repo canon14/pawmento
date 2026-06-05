@@ -2,18 +2,17 @@ import SwiftUI
 
 struct PetProfileTopBar: View {
     let petName: String
+    @EnvironmentObject var petStore: PetStore
+    
     @State private var showSwitcher: Bool = false
+    @State private var showEditSheet: Bool = false
+    @State private var showActionMenu: Bool = false
     
     var body: some View {
         HStack {
-            Button(action: {}) {
-                HStack(spacing: 4) {
-                    Image(systemName: "chevron.left")
-                    Text("Pets")
-                }
-                .font(.system(size: 17))
-                .foregroundColor(.warmTan)
-            }
+            // Spacer to keep title centered since we removed the back button
+            Spacer()
+                .frame(width: 44)
             
             Spacer()
             
@@ -34,12 +33,23 @@ struct PetProfileTopBar: View {
             Spacer()
             
             HStack(spacing: 16) {
-                Button(action: {}) {
+                Button(action: { showActionMenu = true }) {
                     Image(systemName: "ellipsis")
                         .font(.system(size: 17))
                         .foregroundColor(.secondaryText)
                 }
+                .confirmationDialog("Profile Actions", isPresented: $showActionMenu, titleVisibility: .hidden) {
+                    Button("Share Profile") {
+                        // Implement sharing
+                    }
+                    Button("Export Medical History") {
+                        // Implement export
+                    }
+                    Button("Cancel", role: .cancel) {}
+                }
+                
                 Button("Edit") {
+                    showEditSheet = true
                 }
                 .font(.system(size: 17))
                 .foregroundColor(.warmTan)
@@ -48,6 +58,11 @@ struct PetProfileTopBar: View {
         .padding(.horizontal, 16)
         .frame(height: 56)
         .background(Color.cream)
+        .sheet(isPresented: $showEditSheet) {
+            if let activePet = petStore.activePet {
+                EditPetSheet(editingPet: activePet)
+            }
+        }
     }
 }
 
@@ -189,6 +204,8 @@ struct HeroCardView: View {
 struct AICoachCardView: View {
     let pet: Pet
     @ObservedObject var viewModel: PetProfileViewModel
+    @State private var showPaywall = false
+    @State private var showCoach = false
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -214,7 +231,7 @@ struct AICoachCardView: View {
                     .lineSpacing(4)
             }
             
-            Button(action: {}) {
+            Button(action: { showPaywall = true }) {
                 HStack {
                     Spacer()
                     Text("See Full Pattern Analysis")
@@ -230,11 +247,20 @@ struct AICoachCardView: View {
                 .cornerRadius(12)
                 .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.warmTan, lineWidth: 1))
             }
+            .alert("PawMento Premium", isPresented: $showPaywall) {
+                Button("Maybe Later", role: .cancel) {}
+                Button("Upgrade") {}
+            } message: {
+                Text("Deep pattern analysis and predictive alerts are available with a Premium subscription.")
+            }
             
-            Button(action: {}) {
+            Button(action: { showCoach = true }) {
                 Text("Ask the Coach about \(pet.name) →")
                     .font(.system(size: 14))
                     .foregroundColor(.warmTan)
+            }
+            .fullScreenCover(isPresented: $showCoach) {
+                CoachChatView()
             }
         }
         .padding(20)
@@ -497,15 +523,19 @@ struct VitalRecordsList: View {
         "Conditions · Atopic dermatitis"
     ]
     
+    @State private var showManageRecords = false
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
                 Text("Vital Records")
                     .font(.system(size: 17, weight: .semibold, design: .rounded))
                 Spacer()
-                Text("Manage →")
-                    .font(.system(size: 14))
-                    .foregroundColor(.warmTan)
+                Button(action: { showManageRecords = true }) {
+                    Text("Manage →")
+                        .font(.system(size: 14))
+                        .foregroundColor(.warmTan)
+                }
             }
             
             VStack(alignment: .leading, spacing: 12) {
@@ -521,6 +551,9 @@ struct VitalRecordsList: View {
                 }
             }
         }
+        .sheet(isPresented: $showManageRecords) {
+            ManageRecordsSheet()
+        }
     }
 }
 
@@ -529,6 +562,7 @@ struct ArchiveButton: View {
     @State private var showingFirstAlert = false
     @State private var showingSecondAlert = false
     @EnvironmentObject var petStore: PetStore
+    @EnvironmentObject var authManager: AuthManager
     
     var body: some View {
         Button(action: {
@@ -552,16 +586,9 @@ struct ArchiveButton: View {
         .alert("Are you absolutely sure?", isPresented: $showingSecondAlert) {
             Button("Cancel", role: .cancel) { }
             Button("Archive", role: .destructive) {
-                // Update in store
-                if let index = petStore.pets.firstIndex(where: { $0.id == pet.id }) {
-                    petStore.pets[index].isActive = false
-                    // Ideally we sync to Supabase here
-                    
-                    // Switch to another pet if available
-                    if let nextPet = petStore.pets.first(where: { $0.isActive && $0.id != pet.id }) {
-                        petStore.activePet = nextPet
-                    } else {
-                        petStore.activePet = nil
+                Task {
+                    if let ownerId = await authManager.getCurrentUserId() {
+                        await petStore.archivePet(pet, ownerId: ownerId)
                     }
                 }
             }

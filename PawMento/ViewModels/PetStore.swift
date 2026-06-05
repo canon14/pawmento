@@ -67,4 +67,48 @@ class PetStore: ObservableObject {
             OfflineSyncManager.shared.enqueueTask(.createPet(offlinePet, ownerId))
         }
     }
+    
+    @MainActor
+    func updatePet(_ pet: Pet, ownerId: UUID) async {
+        // Update local first
+        if let index = pets.firstIndex(where: { $0.id == pet.id }) {
+            pets[index] = pet
+            if activePet?.id == pet.id {
+                activePet = pet
+            }
+        }
+        
+        do {
+            let dto = pet.toDTO(ownerId: ownerId)
+            try await SupabaseManager.shared.client
+                .from("pets")
+                .update(dto)
+                .eq("id", value: pet.id.uuidString)
+                .execute()
+        } catch {
+            print("Failed to update pet on server: \(error)")
+        }
+    }
+    
+    @MainActor
+    func archivePet(_ pet: Pet, ownerId: UUID) async {
+        if let index = pets.firstIndex(where: { $0.id == pet.id }) {
+            pets[index].isActive = false
+            
+            // Switch to next active pet
+            if activePet?.id == pet.id {
+                activePet = pets.first(where: { $0.isActive && $0.id != pet.id })
+            }
+        }
+        
+        do {
+            try await SupabaseManager.shared.client
+                .from("pets")
+                .update(["is_active": false])
+                .eq("id", value: pet.id.uuidString)
+                .execute()
+        } catch {
+            print("Failed to archive pet on server: \(error)")
+        }
+    }
 }
