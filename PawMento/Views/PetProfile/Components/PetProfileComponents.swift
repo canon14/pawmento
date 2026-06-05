@@ -62,7 +62,7 @@ struct HeroCardView: View {
                 // Photo Well
                 ZStack {
                     if let photoURL = pet.photoLocalURL {
-                        AsyncImage(url: photoURL) { image in
+                        CachedAsyncImage(url: photoURL) { image in
                             image
                                 .resizable()
                                 .aspectRatio(contentMode: .fill)
@@ -600,7 +600,7 @@ struct PetSwitcherSheet: View {
                             VStack {
                                 ZStack {
                                     if let url = pet.photoLocalURL {
-                                        AsyncImage(url: url) { image in
+                                        CachedAsyncImage(url: url) { image in
                                             image.resizable().aspectRatio(contentMode: .fill)
                                         } placeholder: {
                                             Color.warmSand

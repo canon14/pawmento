@@ -26,7 +26,7 @@ struct PetSelectorCard: View {
                         )
                         .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
                 } else if let pet = petStore.activePet, let photoURL = pet.photoLocalURL {
-                    AsyncImage(url: photoURL) { image in
+                    CachedAsyncImage(url: photoURL) { image in
                         image
                             .resizable()
                             .aspectRatio(contentMode: .fill)
