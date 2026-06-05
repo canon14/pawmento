@@ -5,6 +5,7 @@ struct CoachChatView: View {
     @State private var inputText = ""
     @Environment(\.dismiss) var dismiss
     @EnvironmentObject var petStore: PetStore
+    @EnvironmentObject var authManager: AuthManager
     
     var body: some View {
         VStack(spacing: 0) {
@@ -110,8 +111,16 @@ struct CoachChatView: View {
             .presentationDetents([.medium])
         }
         .onAppear {
-            if viewModel.messages.isEmpty {
-                setInitialQuickReplies()
+            Task {
+                if let ownerId = await authManager.getCurrentUserId() {
+                    await viewModel.fetchMessages(for: petStore.activePet?.id, ownerId: ownerId)
+                    
+                    await MainActor.run {
+                        if viewModel.messages.isEmpty {
+                            setInitialQuickReplies()
+                        }
+                    }
+                }
             }
         }
     }
@@ -182,7 +191,8 @@ struct CoachChatView: View {
         inputText = ""
         let activePetId = petStore.activePet?.id
         Task {
-            await viewModel.sendMessage(textToSend, petId: activePetId)
+            let ownerId = await authManager.getCurrentUserId()
+            await viewModel.sendMessage(textToSend, petId: activePetId, ownerId: ownerId)
         }
     }
     

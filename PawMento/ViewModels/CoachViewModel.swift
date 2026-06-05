@@ -1,6 +1,7 @@
 import Foundation
 import Combine
 import SwiftUI
+import Supabase
 
 @MainActor
 class CoachViewModel: ObservableObject {
@@ -12,8 +13,28 @@ class CoachViewModel: ObservableObject {
     // Quick Replies context
     @Published var quickReplies: [String] = []
     
+    // Fetch previous messages for a pet
+    func fetchMessages(for petId: UUID?, ownerId: UUID) async {
+        guard let petId = petId else { return }
+        
+        do {
+            let dtos: [ChatMessageDTO] = try await SupabaseManager.shared.client
+                .from("chat_messages")
+                .select()
+                .eq("owner_id", value: ownerId.uuidString)
+                .eq("pet_id", value: petId.uuidString)
+                .order("created_at", ascending: true)
+                .execute()
+                .value
+            
+            self.messages = dtos.map { $0.toMessage() }
+        } catch {
+            print("Failed to fetch chat history: \(error)")
+        }
+    }
+    
     // Send a message and stream the response
-    func sendMessage(_ text: String, petId: UUID?) async {
+    func sendMessage(_ text: String, petId: UUID?, ownerId: UUID?) async {
         guard freeQuestionsRemaining > 0 else {
             showPremiumWall = true
             return
@@ -51,7 +72,7 @@ class CoachViewModel: ObservableObject {
                 }
             }
             
-            // 5. Post-Stream Premium Gating (Gate 2: Coach Warning)
+            // Post-Stream Premium Gating (Gate 2: Coach Warning)
             if freeQuestionsRemaining == 2 {
                 let warningMessage = ChatMessage(
                     role: .assistant,
@@ -61,7 +82,17 @@ class CoachViewModel: ObservableObject {
                 quickReplies = ["See Premium", "Got it"]
             }
             
-            // TODO: Step 4 Supabase saving. Here we would insert `userMessage` and `messages[index]` into `public.chat_messages`
+            // Supabase saving
+            if let ownerId = ownerId {
+                let userDTO = userMessage.toDTO(ownerId: ownerId)
+                let assistantDTO = messages[messages.firstIndex(where: { $0.id == assistantMessageId })!].toDTO(ownerId: ownerId)
+                let dtos: [ChatMessageDTO] = [userDTO, assistantDTO]
+                
+                try await SupabaseManager.shared.client
+                    .from("chat_messages")
+                    .insert(dtos)
+                    .execute()
+            }
             
         } catch {
             isTyping = false
