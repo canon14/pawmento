@@ -21,12 +21,12 @@ struct PetProfileScreen: View {
                         
                         HealthStatsSection()
                         
-                        RecentActivityPreview(logs: logStore.logs)
+                        RecentActivityPreview(logs: logStore.logs, petName: pet.name)
                         
                         CareTeamCard(providers: viewModel.careTeam)
                         
                         // Vet PDF CTA
-                        VetPDFCTACard()
+                        VetPDFCTACard(logCount: logStore.logs.count)
                         
                         MedicationsCard(medications: viewModel.medications)
                         

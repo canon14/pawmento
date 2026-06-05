@@ -113,10 +113,6 @@ struct HeroCardView: View {
                     Text("\(ageString) · \(Int(pet.weightKg ?? 0)) lbs")
                         .font(.system(size: 13))
                         .foregroundColor(.tertiaryText)
-                    
-                    Text("Neutered male") // Mock
-                        .font(.system(size: 13))
-                        .foregroundColor(.tertiaryText)
                 }
                 
                 Spacer()
@@ -333,6 +329,9 @@ struct StatTileView: View {
 
 struct RecentActivityPreview: View {
     let logs: [LogEntry]
+    let petName: String
+    
+    @State private var showTimeline = false
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -340,14 +339,16 @@ struct RecentActivityPreview: View {
                 Text("Recent Activity")
                     .font(.system(size: 17, weight: .semibold, design: .rounded))
                 Spacer()
-                Text("See all \(max(logs.count, 247)) →")
-                    .font(.system(size: 14))
-                    .foregroundColor(.warmTan)
+                Button(action: { showTimeline = true }) {
+                    Text("See all \(logs.count) →")
+                        .font(.system(size: 14))
+                        .foregroundColor(.warmTan)
+                }
             }
             
             VStack(spacing: 0) {
                 if logs.isEmpty {
-                    Text("Log Buddy's first activity to see it here.")
+                    Text("Log \(petName)'s first activity to see it here.")
                         .font(.system(size: 14))
                         .foregroundColor(.secondaryText)
                         .padding()
@@ -379,6 +380,9 @@ struct RecentActivityPreview: View {
             .background(Color.white)
             .cornerRadius(16)
         }
+        .sheet(isPresented: $showTimeline) {
+            FullTimelineView()
+        }
     }
 }
 
@@ -401,8 +405,13 @@ struct CareTeamCard: View {
                                 .foregroundColor(.tertiaryText)
                             
                             HStack {
-                                Text("📞 \(vet.phone)")
-                                    .foregroundColor(.warmTan)
+                                if let url = URL(string: "tel://\(vet.phone.filter { "0123456789".contains($0) })") {
+                                    Link("📞 \(vet.phone)", destination: url)
+                                        .foregroundColor(.warmTan)
+                                } else {
+                                    Text("📞 \(vet.phone)")
+                                        .foregroundColor(.warmTan)
+                                }
                                 Text("📍 \(vet.distance)")
                                     .foregroundColor(.primaryText)
                             }
@@ -414,14 +423,14 @@ struct CareTeamCard: View {
                             .font(.system(size: 14, weight: .medium))
                     }
                     
-                    Divider().background(Color.warmSand.opacity(0.3)).padding(.vertical, 4)
-                    
-                    Text("Emergency: BluePearl 24/7 · (555) 999-0000")
-                        .font(.system(size: 14))
-                    Text("Insurance: Trupanion · Policy #TR-449821")
-                        .font(.system(size: 14))
-                    Text("Microchip: 985 113 003 882 471")
-                        .font(.system(size: 14))
+                    // Hidden mock strings for now to keep UI clean
+                    // Divider().background(Color.warmSand.opacity(0.3)).padding(.vertical, 4)
+                    // Text("Emergency: BluePearl 24/7 · (555) 999-0000")
+                    //     .font(.system(size: 14))
+                    // Text("Insurance: Trupanion · Policy #TR-449821")
+                    //     .font(.system(size: 14))
+                    // Text("Microchip: 985 113 003 882 471")
+                    //     .font(.system(size: 14))
                 }
             }
             .padding(20)
@@ -433,31 +442,43 @@ struct CareTeamCard: View {
 }
 
 struct VetPDFCTACard: View {
+    let logCount: Int
+    @State private var showPaywall = false
+    
     var body: some View {
-        HStack(spacing: 12) {
-            Text("📄")
-                .font(.system(size: 28))
-            
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Generate Vet PDF for Buddy")
-                    .font(.system(size: 16, weight: .semibold))
-                Text("Last 30 days · 47 entries")
-                    .font(.system(size: 13))
-                    .foregroundColor(.secondaryText)
+        Button(action: { showPaywall = true }) {
+            HStack(spacing: 12) {
+                Text("📄")
+                    .font(.system(size: 28))
+                
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Generate Vet PDF")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.primaryText)
+                    Text("Last 30 days · \(logCount) entries")
+                        .font(.system(size: 13))
+                        .foregroundColor(.secondaryText)
+                }
+                
+                Spacer()
+                
+                Text("Pro")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundColor(.warmTan)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .overlay(Capsule().stroke(Color.warmTan, lineWidth: 1))
             }
-            
-            Spacer()
-            
-            Text("Pro")
-                .font(.system(size: 11, weight: .bold))
-                .foregroundColor(.warmTan)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .overlay(Capsule().stroke(Color.warmTan, lineWidth: 1))
+            .padding(18)
+            .background(Color.cream)
+            .cornerRadius(20)
         }
-        .padding(18)
-        .background(Color.cream)
-        .cornerRadius(20)
+        .alert("PawMento Premium", isPresented: $showPaywall) {
+            Button("Maybe Later", role: .cancel) {}
+            Button("Upgrade") {}
+        } message: {
+            Text("Generate professional PDF reports to share with your vet, available with a Premium subscription.")
+        }
     }
 }
 

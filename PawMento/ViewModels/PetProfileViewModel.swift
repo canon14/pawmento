@@ -31,8 +31,10 @@ class PetProfileViewModel: ObservableObject {
             self.wellnessScore = score
             self.hasCalculatedInitialScore = true
             
-            // Mock a delta for MVP demo purposes based on current score
-            if score >= 80 {
+            if logs.count < 3 {
+                scoreTrend = "Need more logs"
+                scoreDelta = "Gathering data"
+            } else if score >= 80 {
                 scoreTrend = "Trending ↗"
                 scoreDelta = "+4 this week"
             } else if score >= 60 {
@@ -46,7 +48,10 @@ class PetProfileViewModel: ObservableObject {
             let oldScore = self.wellnessScore
             self.wellnessScore = score
             
-            if self.wellnessScore > oldScore {
+            if logs.count < 3 {
+                scoreTrend = "Need more logs"
+                scoreDelta = "Gathering data"
+            } else if self.wellnessScore > oldScore {
                 scoreTrend = "Trending ↗"
                 scoreDelta = "+\(self.wellnessScore - oldScore) this week"
             } else if self.wellnessScore < oldScore {
