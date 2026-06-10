@@ -91,17 +91,21 @@ struct InsightsScreen: View {
     private var mainContent: some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 24) {
-                if viewModel.isAnalyzing {
-                    // Simple loading shimmer representation
+                switch viewModel.viewState {
+                case .loading:
                     ProgressView()
                         .padding(.top, 40)
-                } else {
+                case .success:
                     heroSection
-                    
                     patternsSection
-                    
                     benchmarkSection
-                    
+                    askCoachSection
+                default:
+                    // All other states (noData, offline, error)
+                    InsightEmptyStateView(state: viewModel.viewState) {
+                        handleEmptyStateAction(viewModel.viewState)
+                    }
+                    benchmarkSection
                     askCoachSection
                 }
             }
@@ -118,6 +122,22 @@ struct InsightsScreen: View {
             if let insight = selectedInsight {
                 PaywallSheet(insight: insight)
             }
+        }
+    }
+    
+    private func handleEmptyStateAction(_ state: InsightsViewModel.ViewState) {
+        switch state {
+        case .noDataForRange:
+            Task { await viewModel.changeTimeRange(to: .all, for: petStore.activePet) }
+        case .offline, .error:
+            Task { await viewModel.refreshInsights(for: petStore.activePet) }
+        case .noData:
+            dismiss() // Let them go back to Home to log
+        case .noPatterns:
+            // Could pop open the Coach sheet, for now just print
+            print("Open Coach Sheet")
+        default:
+            break
         }
     }
     
