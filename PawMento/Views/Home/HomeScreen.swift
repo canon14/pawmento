@@ -26,6 +26,10 @@ struct HomeScreen: View {
                         VStack(spacing: 32) {
                             PetSelectorCard(onAddPet: { showAddPetSheet = true })
                             
+                            PatternAlertCard(action: {
+                                showInsights = true
+                            })
+                            
                             WellnessScoreHero()
                             
                             TodayLogGrid(onLogAction: {
@@ -34,10 +38,6 @@ struct HomeScreen: View {
                             
                             AskCoachCard(action: {
                                 showCoachChat = true
-                            })
-                            
-                            PatternAlertCard(action: {
-                                showInsights = true
                             })
                             
                             RecentActivityTimeline()
