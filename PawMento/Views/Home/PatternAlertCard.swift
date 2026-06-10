@@ -3,6 +3,7 @@ import SwiftUI
 struct PatternAlertCard: View {
     @EnvironmentObject var petStore: PetStore
     var hasAlert: Bool = false // Mocked state for now
+    var action: (() -> Void)?
     
     var body: some View {
         let petName = petStore.activePet?.name ?? "your pet"
@@ -36,7 +37,7 @@ struct PatternAlertCard: View {
                 HStack {
                     Spacer()
                     Button(action: {
-                        // See full analysis action
+                        action?()
                     }) {
                         HStack(spacing: 4) {
                             if hasAlert {

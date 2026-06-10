@@ -5,6 +5,7 @@ struct HomeScreen: View {
     @State private var showCoachChat = false
     @State private var showQuickLog = false
     @State private var showAddPetSheet = false
+    @State private var showInsights = false
     
     @EnvironmentObject var petStore: PetStore
     @EnvironmentObject var logStore: LogStore
@@ -35,7 +36,9 @@ struct HomeScreen: View {
                                 showCoachChat = true
                             })
                             
-                            PatternAlertCard()
+                            PatternAlertCard(action: {
+                                showInsights = true
+                            })
                             
                             RecentActivityTimeline()
                             
@@ -85,6 +88,9 @@ struct HomeScreen: View {
                 .presentationDetents([.fraction(0.75), .large])
                 .presentationCornerRadius(28)
                 .presentationDragIndicator(.visible)
+        }
+        .fullScreenCover(isPresented: $showInsights) {
+            InsightsScreen()
         }
         .sheet(isPresented: $showAddPetSheet) {
             AddPetSheet()
