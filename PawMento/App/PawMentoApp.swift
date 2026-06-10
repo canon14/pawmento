@@ -18,6 +18,11 @@ struct PawMentoApp: App {
     
     @Environment(\.scenePhase) private var scenePhase
     
+    init() {
+        // Initialize early to ensure UNUserNotificationCenter delegate is registered
+        _ = NotificationManager.shared
+    }
+    
     var body: some Scene {
         WindowGroup {
             RootView()

@@ -20,6 +20,8 @@ struct QuickLogSheetView: View {
     @State private var showDraftBanner = false
     @State private var draftToRestore: QuickLogDraft?
     
+    @State private var showDetailedLog = false
+    
     @State private var sheetOpenedAt: Date?
     
     private var draftKey: String {
@@ -144,7 +146,7 @@ struct QuickLogSheetView: View {
                             "carries_photo": photo != nil,
                             "has_note": !note.isEmpty
                         ])
-                        toastManager.show("Detailed logging coming soon!")
+                        showDetailedLog = true
                     }
                     .font(.labelMD)
                     .foregroundColor(.warmTan)
@@ -156,6 +158,14 @@ struct QuickLogSheetView: View {
                 .background(Color.warmCream)
             }
             
+        }
+        .fullScreenCover(isPresented: $showDetailedLog) {
+            LogDetailSheet(
+                initialCategory: selectedCategory,
+                initialSeverity: severity,
+                initialNote: note,
+                initialPhoto: photo
+            )
         }
         .onAppear {
             if let data = UserDefaults.standard.data(forKey: draftKey),

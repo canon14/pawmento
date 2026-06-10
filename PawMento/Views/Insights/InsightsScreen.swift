@@ -6,6 +6,10 @@ struct InsightsScreen: View {
     @StateObject private var viewModel = InsightsViewModel()
     @State private var selectedInsight: Insight?
     @State private var showPaywall = false
+    @State private var showCoachChat = false
+    
+    @EnvironmentObject var coachViewModel: CoachViewModel
+    @EnvironmentObject var authManager: AuthManager
     
     var body: some View {
         NavigationStack {
@@ -139,12 +143,25 @@ struct InsightsScreen: View {
             await viewModel.refreshInsights(for: petStore.activePet)
         }
         .navigationDestination(item: $selectedInsight) { insight in
-            InsightDetailScreen(insight: insight)
+            InsightDetailScreen(insight: insight, onActionTapped: { action in
+                if action.title.lowercased().contains("coach") || action.title.lowercased().contains("ask") {
+                    showCoachChat = true
+                    Task {
+                        let ownerId = await authManager.getCurrentUserId()
+                        await coachViewModel.sendMessage("I'm looking at the insight: '\(insight.headline)'. Can you give me more advice on this?", pet: petStore.activePet, ownerId: ownerId)
+                    }
+                } else {
+                    print("Tapped \(action.title) in detail screen")
+                }
+            })
         }
         .sheet(isPresented: $showPaywall) {
             if let insight = selectedInsight {
                 PaywallSheet(insight: insight)
             }
+        }
+        .fullScreenCover(isPresented: $showCoachChat) {
+            CoachChatView()
         }
     }
     
@@ -157,8 +174,7 @@ struct InsightsScreen: View {
         case .noData:
             dismiss() // Let them go back to Home to log
         case .noPatterns:
-            // Could pop open the Coach sheet, for now just print
-            print("Open Coach Sheet")
+            showCoachChat = true
         default:
             break
         }
@@ -240,9 +256,13 @@ struct InsightsScreen: View {
                 .kerning(0.5)
             
             AskCoachInsightCard(suggestions: viewModel.coachSuggestions, onChatTapped: {
-                print("Open Chat from Insights")
+                showCoachChat = true
             }, onSuggestionTapped: { suggestion in
-                print("Send: \(suggestion)")
+                showCoachChat = true
+                Task {
+                    let ownerId = await authManager.getCurrentUserId()
+                    await coachViewModel.sendMessage(suggestion, pet: petStore.activePet, ownerId: ownerId)
+                }
             })
         }
     }

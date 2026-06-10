@@ -2,6 +2,8 @@ import SwiftUI
 
 struct InsightDetailScreen: View {
     let insight: Insight
+    var onActionTapped: ((InsightAction) -> Void)? = nil
+    
     @Environment(\.dismiss) var dismiss
     
     var body: some View {
@@ -63,7 +65,7 @@ struct InsightDetailScreen: View {
                 VStack(spacing: 12) {
                     ForEach(insight.actions) { action in
                         Button(action: {
-                            // Stub action
+                            onActionTapped?(action)
                         }) {
                             Text(action.title)
                                 .font(.system(size: 16, weight: .semibold))

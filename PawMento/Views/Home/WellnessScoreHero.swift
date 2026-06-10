@@ -4,8 +4,13 @@ struct WellnessScoreHero: View {
     @EnvironmentObject var petStore: PetStore
     @EnvironmentObject var logStore: LogStore
     @EnvironmentObject var medicationStore: MedicationStore
+    
+    var onViewTrendsTapped: (() -> Void)? = nil
+    
     @State private var progress: CGFloat = 0.0
     @State private var score: Int = 0
+    @State private var yesterdayScore: Int = 0
+    @State private var showDelta: Bool = false
     
     var body: some View {
         let petName = petStore.activePet?.name ?? "Your pet"
@@ -34,6 +39,7 @@ struct WellnessScoreHero: View {
                             .trim(from: 0, to: progress)
                             .stroke(ringColor, style: StrokeStyle(lineWidth: 12, lineCap: .round))
                             .rotationEffect(.degrees(-90))
+                            .shadow(color: ringColor.opacity(0.4), radius: 8, x: 0, y: 0)
                             .animation(.easeOut(duration: 1.0).delay(0.1), value: progress)
                         
                         // Score Text
@@ -67,9 +73,11 @@ struct WellnessScoreHero: View {
                     .background(deltaColor.opacity(0.15))
                     .clipShape(Capsule())
                     .padding(.bottom, 20)
+                    .opacity(showDelta ? 1 : 0)
+                    .scaleEffect(showDelta ? 1 : 0.8)
                     
                     Button(action: {
-                        // View trends action
+                        onViewTrendsTapped?()
                     }) {
                         HStack(spacing: 4) {
                             Text("View trends")
@@ -82,20 +90,6 @@ struct WellnessScoreHero: View {
                     .padding(.bottom, 20)
                 }
                 .frame(maxWidth: .infinity)
-                
-                // Premium Badge
-                HStack(spacing: 4) {
-                    Image(systemName: "lock.fill")
-                        .font(.system(size: 10))
-                    Text("Premium")
-                        .font(.labelSM)
-                }
-                .foregroundColor(.secondary)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 4)
-                .background(Color.secondaryContainer.opacity(0.5))
-                .clipShape(Capsule())
-                .padding(20)
             }
         }
         .background(Color.surfaceContainerLowest)
@@ -116,13 +110,19 @@ struct WellnessScoreHero: View {
     }
     
     private func calculateDynamicScore() {
-        // If we want household vs active pet, for now we will calculate for the active pet's logs if selected,
-        // or just household average. The PRD says HomeScreen shows household score, but PetSelector sets an active pet.
-        // Assuming we filter by active pet if it exists, or just use all logs if not.
         let relevantLogs = logStore.logs // In MVP, LogStore fetches logs for the household/pet
         let computedScore = WellnessCalculator.calculateScore(logs: relevantLogs, medications: medicationStore.medications)
+        
+        let yesterday = Date().addingTimeInterval(-24 * 3600)
+        let yesterdayComputedScore = WellnessCalculator.calculateScore(logs: relevantLogs, medications: medicationStore.medications, upTo: yesterday)
+        
         self.score = computedScore
+        self.yesterdayScore = yesterdayComputedScore
         self.progress = CGFloat(computedScore) / 100.0
+        
+        withAnimation(.spring(response: 0.5, dampingFraction: 0.7).delay(0.5)) {
+            self.showDelta = true
+        }
     }
     
     // Dynamic Properties
@@ -138,24 +138,26 @@ struct WellnessScoreHero: View {
         return "\(name) needs some attention ❤️"
     }
     
-    // For MVP, we will mock the delta based on score to avoid the initial load -32 bug,
-    // or calculate it statically relative to a fixed past score for demo purposes.
+    private var deltaValue: Int {
+        return score - yesterdayScore
+    }
+    
     private var deltaIcon: String {
-        if score >= 80 { return "arrow.up.right" }
-        if score >= 60 { return "arrow.right" }
-        return "arrow.down.right"
+        if deltaValue > 0 { return "arrow.up.right" }
+        if deltaValue < 0 { return "arrow.down.right" }
+        return "arrow.right"
     }
     
     private var deltaText: String {
-        if score >= 80 { return "Up 4 points from yesterday" }
-        if score >= 60 { return "Stable from yesterday" }
-        return "Down 5 points from yesterday"
+        if deltaValue > 0 { return "Up \(deltaValue) points from yesterday" }
+        if deltaValue < 0 { return "Down \(abs(deltaValue)) points from yesterday" }
+        return "Stable from yesterday"
     }
     
     private var deltaColor: Color {
-        if score >= 80 { return .sage }
-        if score >= 60 { return .warmTan }
-        return .warmCoral
+        if deltaValue > 0 { return .sage }
+        if deltaValue < 0 { return .warmCoral }
+        return .warmTan
     }
 }
 

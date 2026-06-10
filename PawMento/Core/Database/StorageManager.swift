@@ -26,6 +26,12 @@ class StorageManager {
         return publicURL.absoluteString
     }
     
+    func deleteImage(path: String) async throws {
+        try await SupabaseManager.shared.client.storage
+            .from(bucketName)
+            .remove(paths: [path])
+    }
+    
     func saveImageToDisk(_ image: UIImage, fileName: String) -> URL? {
         guard let data = image.jpegData(compressionQuality: 0.5) else { return nil }
         let directory = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]

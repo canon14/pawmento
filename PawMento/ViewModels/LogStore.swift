@@ -61,6 +61,77 @@ class LogStore: ObservableObject {
     }
     
     @MainActor
+    func updateLog(_ log: LogEntry, userId: UUID) async {
+        // 1. Update locally for immediate UI update
+        if let index = logs.firstIndex(where: { $0.id == log.id }) {
+            logs[index] = log
+        }
+        
+        // 2. Sync to Supabase
+        var finalLog = log
+        do {
+            if let image = log.photoImage {
+                let path = "logs/\(userId.uuidString)/\(log.id.uuidString).jpg"
+                let urlString = try await StorageManager.shared.uploadImage(image, path: path)
+                finalLog.photoLocalURL = URL(string: urlString)
+                
+                if let index = logs.firstIndex(where: { $0.id == finalLog.id }) {
+                    logs[index].photoLocalURL = finalLog.photoLocalURL
+                }
+            }
+            
+            let dto = finalLog.toDTO(userId: userId)
+            try await SupabaseManager.shared.client
+                .from("logs")
+                .update(dto)
+                .eq("id", value: log.id.uuidString)
+                .execute()
+                
+            // Mark synced
+            if let index = logs.firstIndex(where: { $0.id == finalLog.id }) {
+                logs[index].syncedAt = Date()
+            }
+        } catch {
+            print("Failed to sync updated log to Supabase: \(error)")
+            
+            var offlineLog = finalLog
+            if let image = log.photoImage, 
+               let localURL = StorageManager.shared.saveImageToDisk(image, fileName: "\(offlineLog.id.uuidString).jpg") {
+                offlineLog.photoLocalURL = localURL
+                if let index = logs.firstIndex(where: { $0.id == finalLog.id }) {
+                    logs[index].photoLocalURL = localURL
+                }
+            }
+            
+            OfflineSyncManager.shared.enqueueTask(.updateLog(offlineLog, userId))
+        }
+    }
+    
+    @MainActor
+    func deleteLog(_ log: LogEntry, userId: UUID) async {
+        // 1. Remove locally
+        logs.removeAll { $0.id == log.id }
+        
+        // 2. Delete from Supabase
+        do {
+            try await SupabaseManager.shared.client
+                .from("logs")
+                .delete()
+                .eq("id", value: log.id.uuidString)
+                .execute()
+                
+            // Clean up photo if exists
+            if log.photoLocalURL != nil {
+                let path = "logs/\(userId.uuidString)/\(log.id.uuidString).jpg"
+                try? await StorageManager.shared.deleteImage(path: path)
+            }
+        } catch {
+            print("Failed to delete log from Supabase: \(error)")
+            OfflineSyncManager.shared.enqueueTask(.deleteLog(log.id, userId))
+        }
+    }
+    
+    @MainActor
     func fetchLogs(for petId: UUID) async {
         do {
             let dtos: [LogDTO] = try await SupabaseManager.shared.client

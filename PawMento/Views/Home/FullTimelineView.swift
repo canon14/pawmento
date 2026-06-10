@@ -44,6 +44,7 @@ struct FullTimelineView: View {
     @State private var bannerPermanentlyDismissed: Bool = false
     
     @State private var expandedImage: UIImage? = nil
+    @State private var selectedLog: LogEntry? = nil
     
     let filterOptions = ["All", "Symptoms", "Meals", "Meds", "Walks", "Sleep", "Notes", "Vet visits"]
     
@@ -210,6 +211,9 @@ struct FullTimelineView: View {
             }
         }
         .navigationBarHidden(true)
+        .sheet(item: $selectedLog) { log in
+            LogDetailSheet(existingLog: log)
+        }
     }
     
     // MARK: - UI Components
@@ -407,7 +411,9 @@ struct FullTimelineView: View {
             let visibleLogs = shouldCollapse ? Array(group.logs.prefix(5)) : group.logs
             
             ForEach(visibleLogs) { log in
-                TimelineItemRowV2(log: log, expandedImage: $expandedImage)
+                TimelineItemRowV2(log: log, expandedImage: $expandedImage) {
+                    selectedLog = log
+                }
             }
             
             if shouldCollapse {
@@ -500,6 +506,7 @@ struct FullTimelineView: View {
 struct TimelineItemRowV2: View {
     let log: LogEntry
     @Binding var expandedImage: UIImage?
+    var onTap: (() -> Void)? = nil
     
     @State private var isPressed = false
     
@@ -582,8 +589,7 @@ struct TimelineItemRowV2: View {
         .cornerRadius(14)
         .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.ink100, lineWidth: 1))
         .onTapGesture {
-            // Open symptom detail or category sheet
-            print("Tapped log: \(log.category.rawValue)")
+            onTap?()
         }
         ._onButtonGesture { pressing in
             withAnimation(.easeIn(duration: 0.05)) { isPressed = pressing }

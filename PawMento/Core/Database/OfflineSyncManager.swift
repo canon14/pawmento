@@ -5,6 +5,8 @@ import Supabase
 
 enum SyncTask: Codable {
     case createLog(LogEntry, UUID) // LogEntry and owner userId
+    case updateLog(LogEntry, UUID)
+    case deleteLog(UUID, UUID) // logId, ownerId
     case createPet(Pet, UUID) // Pet and owner userId
 }
 
@@ -56,6 +58,8 @@ class OfflineSyncManager: ObservableObject {
                     if let index = newQueue.firstIndex(where: {
                         switch ($0, task) {
                         case (.createLog(let l1, _), .createLog(let l2, _)): return l1.id == l2.id
+                        case (.updateLog(let l1, _), .updateLog(let l2, _)): return l1.id == l2.id
+                        case (.deleteLog(let id1, _), .deleteLog(let id2, _)): return id1 == id2
                         case (.createPet(let p1, _), .createPet(let p2, _)): return p1.id == p2.id
                         default: return false
                         }
@@ -79,6 +83,10 @@ class OfflineSyncManager: ObservableObject {
         switch task {
         case .createLog(let log, let userId):
             return await syncLog(log, userId: userId)
+        case .updateLog(let log, let userId):
+            return await syncUpdateLog(log, userId: userId)
+        case .deleteLog(let logId, let userId):
+            return await syncDeleteLog(logId, userId: userId)
         case .createPet(let pet, let ownerId):
             return await syncPet(pet, ownerId: ownerId)
         }
@@ -108,6 +116,48 @@ class OfflineSyncManager: ObservableObject {
             return true
         } catch {
             print("Sync failed for log \(log.id): \(error)")
+            return false
+        }
+    }
+    
+    private func syncUpdateLog(_ log: LogEntry, userId: UUID) async -> Bool {
+        var finalLog = log
+        do {
+            // Check if there's a new local photo to upload
+            if let localURL = log.photoLocalURL, localURL.isFileURL {
+                if let data = try? Data(contentsOf: localURL), let image = UIImage(data: data) {
+                    let path = "logs/\(userId.uuidString)/\(log.id.uuidString).jpg"
+                    let urlString = try await StorageManager.shared.uploadImage(image, path: path)
+                    finalLog.photoLocalURL = URL(string: urlString)
+                    try? FileManager.default.removeItem(at: localURL)
+                }
+            }
+            
+            let dto = finalLog.toDTO(userId: userId)
+            try await SupabaseManager.shared.client
+                .from("logs")
+                .update(dto)
+                .eq("id", value: log.id.uuidString)
+                .execute()
+            
+            return true
+        } catch {
+            print("Update Sync failed for log \(log.id): \(error)")
+            return false
+        }
+    }
+    
+    private func syncDeleteLog(_ logId: UUID, userId: UUID) async -> Bool {
+        do {
+            try await SupabaseManager.shared.client
+                .from("logs")
+                .delete()
+                .eq("id", value: logId.uuidString)
+                .execute()
+            
+            return true
+        } catch {
+            print("Delete Sync failed for log \(logId): \(error)")
             return false
         }
     }
