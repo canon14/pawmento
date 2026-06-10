@@ -29,106 +29,53 @@ final class InsightsViewModel: ObservableObject {
     @Published var dataMaturity: DataMaturity = .mature
     
     init() {
-        // Load mock data on init for now
-        loadMockInsights()
+        // Data loading is now triggered by onAppear in the View
     }
     
-    func changeTimeRange(to range: TimeRange) {
-        guard timeRange != range else { return }
-        timeRange = range
+    func loadInsights(for pet: Pet?, forceRefresh: Bool = false) async {
+        guard let pet = pet else { return }
         
-        // Simulate network/compute delay
         isAnalyzing = true
-        Task {
-            try? await Task.sleep(nanoseconds: 600_000_000) // 600ms skeleton shimmer
-            loadMockInsights()
-            isAnalyzing = false
+        do {
+            let fetchedInsights = try await InsightEngine.shared.generateInsights(for: pet, window: timeRange, forceRefresh: forceRefresh)
+            
+            // Re-partition the insights for the UI
+            self.heroInsight = fetchedInsights.first(where: { $0.tier == .strong })
+            self.patternCards = fetchedInsights.filter { $0.id != self.heroInsight?.id }
+            self.patternCount = fetchedInsights.count
+            self.lastUpdated = Date()
+            
+            // Mock Benchmark since we don't have enough global users yet
+            self.breedBenchmark = BreedBenchmark(
+                breed: pet.breed ?? "Dog",
+                age: 6,
+                activityPercentile: 62,
+                symptomsPercentile: 78,
+                sleepPercentile: 51
+            )
+            
+            // Mock Coach Suggestions
+            self.coachSuggestions = [
+                "Why is \(pet.name) coughing?",
+                "Is his weight healthy?",
+                "What should I bring to the vet?"
+            ]
+        } catch {
+            print("Failed to load insights: \(error)")
         }
-    }
-    
-    func refreshInsights() async {
-        isAnalyzing = true
-        try? await Task.sleep(nanoseconds: 1_500_000_000)
-        loadMockInsights()
         isAnalyzing = false
     }
     
-    private func loadMockInsights() {
-        // Mock Hero (Strong)
-        heroInsight = Insight(
-            id: UUID(),
-            type: .correlation,
-            tier: .strong,
-            headline: "Coughing correlates with the new food",
-            narrative: "Buddy has coughed 6× in the 11 days since you switched to the salmon kibble. Pre-switch baseline: 0.3 events/week.",
-            confidence: 0.87,
-            evidenceCount: 6,
-            visualization: VisualizationData(dataPoints: [0, 0, 1, 0, 1, 0, 2, 0, 1, 3, 2], labels: ["Mar 1", "Mar 11", "Today"], chartType: "sparkline"),
-            actions: [
-                InsightAction(title: "Suggest action ›", isPrimary: true),
-                InsightAction(title: "Share with vet ›", isPrimary: false)
-            ],
-            generatedAt: Date()
-        )
+    func changeTimeRange(to range: TimeRange, for pet: Pet?) async {
+        guard timeRange != range else { return }
+        timeRange = range
         
-        // Mock Other Patterns
-        let moderate = Insight(
-            id: UUID(),
-            type: .temporal,
-            tier: .moderate,
-            headline: "Limping happens mostly on evenings",
-            narrative: "4 of 5 episodes occurred between 5–9pm.",
-            confidence: 0.76,
-            evidenceCount: 5,
-            visualization: VisualizationData(dataPoints: [0, 0, 1, 4, 0], labels: ["Morning", "Noon", "Aftn", "Eve", "Night"], chartType: "bar"),
-            actions: [InsightAction(title: "Share with vet ›", isPrimary: false)],
-            generatedAt: Date()
-        )
-        
-        let positive = Insight(
-            id: UUID(),
-            type: .positive,
-            tier: .positive,
-            headline: "Best walking streak this month",
-            narrative: "12 days in a row, averaging 38 min.",
-            confidence: 1.0,
-            evidenceCount: 12,
-            visualization: VisualizationData(dataPoints: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], labels: nil, chartType: "streak"),
-            actions: [InsightAction(title: "Share streak ›", isPrimary: true)],
-            generatedAt: Date()
-        )
-        
-        let emerging = Insight(
-            id: UUID(),
-            type: .trend,
-            tier: .emerging,
-            headline: "Possible sleep pattern shift",
-            narrative: "Bedtime drifted 45 min later over 14 days. Confidence: 62% — keep logging to confirm.",
-            confidence: 0.62,
-            evidenceCount: 14,
-            visualization: VisualizationData(dataPoints: [8.5, 8.4, 8.4, 8.2, 8.1, 8.1, 7.9, 7.8], labels: nil, chartType: "line"),
-            actions: [InsightAction(title: "Keep logging ›", isPrimary: false)],
-            generatedAt: Date()
-        )
-        
-        patternCards = [moderate, positive, emerging]
-        patternCount = 4
-        lastUpdated = Date()
-        
-        // Mock Benchmark
-        breedBenchmark = BreedBenchmark(
-            breed: "Golden Retrievers",
-            age: 6,
-            activityPercentile: 62,
-            symptomsPercentile: 78,
-            sleepPercentile: 51
-        )
-        
-        // Mock Coach Suggestions
-        coachSuggestions = [
-            "Why is Buddy coughing?",
-            "Is his weight healthy?",
-            "What should I bring to the vet?"
-        ]
+        await loadInsights(for: pet)
     }
+    
+    func refreshInsights(for pet: Pet?) async {
+        await loadInsights(for: pet, forceRefresh: true)
+    }
+    
+    // Mock method removed
 }

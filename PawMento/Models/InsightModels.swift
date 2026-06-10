@@ -14,9 +14,17 @@ enum ConfidenceTier: String, Codable, Comparable {
     case emerging
     
     // Custom sort order for priority: strong > moderate > positive > emerging
+    var sortOrder: Int {
+        switch self {
+        case .strong: return 0
+        case .moderate: return 1
+        case .positive: return 2
+        case .emerging: return 3
+        }
+    }
+    
     static func < (lhs: ConfidenceTier, rhs: ConfidenceTier) -> Bool {
-        let order: [ConfidenceTier: Int] = [.strong: 0, .moderate: 1, .positive: 2, .emerging: 3]
-        return order[lhs]! < order[rhs]!
+        return lhs.sortOrder < rhs.sortOrder
     }
 }
 

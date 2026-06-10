@@ -13,7 +13,7 @@ struct InsightsScreen: View {
                     HStack(spacing: 8) {
                         ForEach(TimeRange.allCases, id: \.self) { range in
                             Button(action: {
-                                viewModel.changeTimeRange(to: range)
+                                Task { await viewModel.changeTimeRange(to: range, for: petStore.activePet) }
                             }) {
                                 Text(range.rawValue)
                                     .font(.system(size: 14, weight: .medium))
@@ -108,11 +108,21 @@ struct InsightsScreen: View {
                     .padding(.bottom, 60)
                 }
                 .refreshable {
-                    await viewModel.refreshInsights()
+                    await viewModel.refreshInsights(for: petStore.activePet)
                 }
             }
             .background(Color.background)
             .navigationBarTitleDisplayMode(.inline)
+            .onAppear {
+                Task {
+                    await viewModel.loadInsights(for: petStore.activePet)
+                }
+            }
+            .onChange(of: petStore.activePet?.id) { _, _ in
+                Task {
+                    await viewModel.loadInsights(for: petStore.activePet, forceRefresh: true)
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button(action: { dismiss() }) {

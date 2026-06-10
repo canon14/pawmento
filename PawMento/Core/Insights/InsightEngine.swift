@@ -1,0 +1,84 @@
+import Foundation
+
+actor InsightEngine {
+    static let shared = InsightEngine()
+    
+    private var cache: [String: [Insight]] = [:]
+    
+    private init() {}
+    
+    private func cacheKey(petId: UUID, window: TimeRange) -> String {
+        return "\(petId.uuidString)_\(window.rawValue)"
+    }
+    
+    func clearCache(for petId: UUID) {
+        let prefix = "\(petId.uuidString)_"
+        cache = cache.filter { !$0.key.hasPrefix(prefix) }
+    }
+    
+    func generateInsights(for pet: Pet?, window: TimeRange, forceRefresh: Bool = false) async throws -> [Insight] {
+        guard let petId = pet?.id else { return [] }
+        let key = cacheKey(petId: petId, window: window)
+        
+        // 1. Cache check
+        if !forceRefresh, let cached = cache[key] {
+            return cached
+        }
+        
+        // 2. Load signals
+        let signals = try await SignalLoader.load(petId: petId, window: window)
+        
+        // 3. Run on-device detectors in parallel
+        async let correlations = CorrelationDetector.detect(signals)
+        async let temporal = TemporalPatternDetector.detect(signals)
+        async let trends = TrendDetector.detect(signals)
+        async let positives = MilestoneDetector.detect(signals)
+        
+        // 4. Collect & Deduplicate
+        let allCandidates = await [correlations, temporal, trends, positives].flatMap { $0 }
+        
+        // Separate rule-based (no LLM needed) from LLM-scored
+        let ruleBasedCandidates = allCandidates.filter { $0.isRuleBased }
+        let llmCandidates = allCandidates.filter { !$0.isRuleBased }
+        
+        var finalInsights: [Insight] = []
+        
+        // Convert rule-based directly
+        for rb in ruleBasedCandidates {
+            let insight = Insight(
+                id: UUID(),
+                type: rb.type,
+                tier: .positive,
+                headline: rb.precomputedHeadline ?? "Positive Update",
+                narrative: rb.precomputedNarrative ?? "",
+                confidence: 1.0,
+                evidenceCount: rb.evidenceCount,
+                visualization: rb.precomputedVisualization ?? VisualizationData(dataPoints: [1], labels: nil, chartType: "streak"),
+                actions: [InsightAction(title: "Share streak ›", isPrimary: true)],
+                generatedAt: Date()
+            )
+            finalInsights.append(insight)
+        }
+        
+        // 5. Score with LLM Narrator
+        if !llmCandidates.isEmpty {
+            let speciesStr = pet != nil ? String(describing: pet!.species) : "pet"
+            let petContext = "Pet is a \(speciesStr) named \(pet?.name ?? "Buddy")."
+            do {
+                let scored = try await InsightNarrator.scoreAndNarrate(candidates: llmCandidates, petContext: petContext)
+                finalInsights.append(contentsOf: scored)
+            } catch {
+                print("InsightNarrator failed: \(error)")
+                // Fallback gracefully: if LLM fails, we just don't show the advanced patterns
+            }
+        }
+        
+        // 6. Sort and Cache
+        finalInsights.sort { $0.tier < $1.tier }
+        let topInsights = Array(finalInsights.prefix(8))
+        
+        cache[key] = topInsights
+        
+        return topInsights
+    }
+}
