@@ -12,6 +12,10 @@ struct InsightsScreen: View {
             VStack(spacing: 0) {
                 timeRangeChips
                 
+                if petStore.pets.count > 1 {
+                    comparePetsChip
+                }
+                
                 mainContent
             }
             .background(Color.background)
@@ -88,6 +92,25 @@ struct InsightsScreen: View {
         .background(Color.white)
     }
     
+    private var comparePetsChip: some View {
+        Button(action: {
+            print("Compare pets tapped")
+        }) {
+            HStack(spacing: 6) {
+                Image(systemName: "square.split.2x1")
+                    .font(.system(size: 12, weight: .semibold))
+                Text("Compare with your other pets")
+                    .font(.system(size: 13, weight: .medium))
+            }
+            .foregroundColor(.ink900.opacity(0.7))
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .background(Color.ink900.opacity(0.05))
+            .cornerRadius(16)
+        }
+        .padding(.top, 12)
+    }
+    
     private var mainContent: some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 24) {
@@ -160,6 +183,9 @@ struct InsightsScreen: View {
                         selectedInsight = hero
                     }
                 })
+                .contextMenu {
+                    insightContextMenu(for: hero)
+                }
             }
         }
     }
@@ -182,6 +208,9 @@ struct InsightsScreen: View {
                             selectedInsight = insight
                         }
                     })
+                    .contextMenu {
+                        insightContextMenu(for: insight)
+                    }
                 }
             }
         }
@@ -215,6 +244,27 @@ struct InsightsScreen: View {
             }, onSuggestionTapped: { suggestion in
                 print("Send: \(suggestion)")
             })
+        }
+    }
+    
+    @ViewBuilder
+    private func insightContextMenu(for insight: Insight) -> some View {
+        Button(action: {
+            print("Share \(insight.id)")
+        }) {
+            Label("Share Insight", systemImage: "square.and.arrow.up")
+        }
+        
+        Button(action: {
+            viewModel.dismissInsight(insight, reason: .resolved)
+        }) {
+            Label("Mark as Resolved", systemImage: "checkmark.circle")
+        }
+        
+        Button(role: .destructive, action: {
+            viewModel.dismissInsight(insight, reason: .notRelevant)
+        }) {
+            Label("Not Relevant to \(petStore.activePet?.name ?? "Buddy")", systemImage: "xmark.circle")
         }
     }
 }

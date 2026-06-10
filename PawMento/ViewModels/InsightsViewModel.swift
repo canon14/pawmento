@@ -104,5 +104,22 @@ final class InsightsViewModel: ObservableObject {
         await loadInsights(for: pet, forceRefresh: true)
     }
     
-    // Mock method removed
+    enum DismissReason {
+        case resolved
+        case notRelevant
+    }
+    
+    func dismissInsight(_ insight: Insight, reason: DismissReason) {
+        // In a real app, we would log this to telemetry and update the database
+        // For now, we just remove it from the UI
+        if heroInsight?.id == insight.id {
+            heroInsight = nil
+        }
+        patternCards.removeAll { $0.id == insight.id }
+        
+        // If everything is dismissed, show empty state
+        if heroInsight == nil && patternCards.isEmpty {
+            viewState = .noPatterns
+        }
+    }
 }
