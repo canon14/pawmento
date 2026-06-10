@@ -6,22 +6,17 @@ struct PaywallSheet: View {
     
     var body: some View {
         VStack(spacing: 32) {
-            // Contextual Hero - Show the locked card unblurred briefly or at top
-            VStack {
+            // Contextual Hero - Show the locked card unblurred
+            VStack(spacing: 24) {
                 Text("Unlock this insight")
                     .font(.system(size: 24, weight: .bold))
                     .foregroundColor(.ink900)
                 
-                Text(insight.headline)
-                    .font(.system(size: 16, weight: .regular))
-                    .foregroundColor(.ink900.opacity(0.8))
-                    .multilineTextAlignment(.center)
+                PatternCard(insight: insight, isPremium: true, onCardTapped: {})
+                    .disabled(true) // Disable interactions inside the preview
+                    .shadow(color: .ink900.opacity(0.08), radius: 15, x: 0, y: 8)
             }
             .padding(.top, 40)
-            
-            Image(systemName: "lock.fill")
-                .font(.system(size: 64))
-                .foregroundColor(.sage)
             
             VStack(spacing: 16) {
                 Text("PawMento Premium")
