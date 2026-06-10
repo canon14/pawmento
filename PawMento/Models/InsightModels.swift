@@ -37,20 +37,20 @@ enum TimeRange: String, CaseIterable, Equatable {
     case all = "All"
 }
 
-struct InsightAction: Identifiable, Codable {
+struct InsightAction: Identifiable, Codable, Hashable {
     var id = UUID()
     let title: String
     let isPrimary: Bool
 }
 
-struct VisualizationData: Codable {
+struct VisualizationData: Codable, Hashable {
     // For mocked charts
     let dataPoints: [Double]
     let labels: [String]?
     let chartType: String // "sparkline", "bar", "streak"
 }
 
-struct Insight: Identifiable, Codable {
+struct Insight: Identifiable, Codable, Hashable {
     let id: UUID
     let type: InsightType
     let tier: ConfidenceTier

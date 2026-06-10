@@ -4,112 +4,15 @@ struct InsightsScreen: View {
     @Environment(\.dismiss) var dismiss
     @EnvironmentObject var petStore: PetStore
     @StateObject private var viewModel = InsightsViewModel()
+    @State private var selectedInsight: Insight?
+    @State private var showPaywall = false
     
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                // Time Range Chips Row
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(TimeRange.allCases, id: \.self) { range in
-                            Button(action: {
-                                Task { await viewModel.changeTimeRange(to: range, for: petStore.activePet) }
-                            }) {
-                                Text(range.rawValue)
-                                    .font(.system(size: 14, weight: .medium))
-                                    .padding(.horizontal, 14)
-                                    .frame(height: 32)
-                                    .background(viewModel.timeRange == range ? Color.ink900 : Color(hex: "F7F9F9")) // surface-1
-                                    .foregroundColor(viewModel.timeRange == range ? .white : Color.ink900.opacity(0.8)) // ink-700
-                                    .cornerRadius(16)
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 16)
-                                            .stroke(viewModel.timeRange == range ? Color.clear : Color.ink900.opacity(0.1), lineWidth: 1)
-                                    )
-                            }
-                        }
-                    }
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 6)
-                }
-                .frame(height: 44)
-                .background(Color.white)
+                timeRangeChips
                 
-                // Content
-                ScrollView(showsIndicators: false) {
-                    VStack(spacing: 24) {
-                        if viewModel.isAnalyzing {
-                            // Simple loading shimmer representation
-                            ProgressView()
-                                .padding(.top, 40)
-                        } else {
-                            // Hero Section
-                            if let hero = viewModel.heroInsight {
-                                VStack(alignment: .leading, spacing: 12) {
-                                    Text("─── THIS WEEK'S HEADLINE ───")
-                                        .font(.system(size: 12, weight: .semibold))
-                                        .foregroundColor(Color.ink900.opacity(0.6))
-                                        .kerning(0.5)
-                                    
-                                    HeroInsightCard(insight: hero, isPremium: viewModel.isPremium, onActionTapped: { action in
-                                        print("Tapped \(action.title)")
-                                    }, onCardTapped: {
-                                        print("Tapped Hero Card")
-                                    })
-                                }
-                            }
-                            
-                            // Other Patterns
-                            if !viewModel.patternCards.isEmpty {
-                                VStack(alignment: .leading, spacing: 12) {
-                                    Text("─── OTHER PATTERNS ───")
-                                        .font(.system(size: 12, weight: .semibold))
-                                        .foregroundColor(Color.ink900.opacity(0.6))
-                                        .kerning(0.5)
-                                    
-                                    ForEach(viewModel.patternCards) { insight in
-                                        PatternCard(insight: insight, isPremium: viewModel.isPremium, onCardTapped: {
-                                            print("Tapped Pattern Card")
-                                        })
-                                    }
-                                }
-                            }
-                            
-                            // Benchmark
-                            if let benchmark = viewModel.breedBenchmark {
-                                VStack(alignment: .leading, spacing: 12) {
-                                    Text("─── HEALTH BENCHMARKS ───")
-                                        .font(.system(size: 12, weight: .semibold))
-                                        .foregroundColor(Color.ink900.opacity(0.6))
-                                        .kerning(0.5)
-                                    
-                                    BreedBenchmarkCard(benchmark: benchmark, isPremium: viewModel.isPremium, onCardTapped: {
-                                        print("Tapped Benchmark Card")
-                                    })
-                                }
-                            }
-                            
-                            // Ask Coach
-                            VStack(alignment: .leading, spacing: 12) {
-                                Text("─── ASK \(petStore.activePet?.name.uppercased() ?? "BUDDY'S") AI COACH ───")
-                                    .font(.system(size: 12, weight: .semibold))
-                                    .foregroundColor(Color.ink900.opacity(0.6))
-                                    .kerning(0.5)
-                                
-                                AskCoachInsightCard(suggestions: viewModel.coachSuggestions, onChatTapped: {
-                                    print("Open Chat from Insights")
-                                }, onSuggestionTapped: { suggestion in
-                                    print("Send: \(suggestion)")
-                                })
-                            }
-                        }
-                    }
-                    .padding(20)
-                    .padding(.bottom, 60)
-                }
-                .refreshable {
-                    await viewModel.refreshInsights(for: petStore.activePet)
-                }
+                mainContent
             }
             .background(Color.background)
             .navigationBarTitleDisplayMode(.inline)
@@ -154,6 +57,144 @@ struct InsightsScreen: View {
                     }
                 }
             }
+        }
+    }
+    
+    private var timeRangeChips: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(TimeRange.allCases, id: \.self) { range in
+                    Button(action: {
+                        Task { await viewModel.changeTimeRange(to: range, for: petStore.activePet) }
+                    }) {
+                        Text(range.rawValue)
+                            .font(.system(size: 14, weight: .medium))
+                            .padding(.horizontal, 14)
+                            .frame(height: 32)
+                            .background(viewModel.timeRange == range ? Color.ink900 : Color(hex: "F7F9F9"))
+                            .foregroundColor(viewModel.timeRange == range ? .white : Color.ink900.opacity(0.8))
+                            .cornerRadius(16)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 16)
+                                    .stroke(viewModel.timeRange == range ? Color.clear : Color.ink900.opacity(0.1), lineWidth: 1)
+                            )
+                    }
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 6)
+        }
+        .frame(height: 44)
+        .background(Color.white)
+    }
+    
+    private var mainContent: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(spacing: 24) {
+                if viewModel.isAnalyzing {
+                    // Simple loading shimmer representation
+                    ProgressView()
+                        .padding(.top, 40)
+                } else {
+                    heroSection
+                    
+                    patternsSection
+                    
+                    benchmarkSection
+                    
+                    askCoachSection
+                }
+            }
+            .padding(20)
+            .padding(.bottom, 60)
+        }
+        .refreshable {
+            await viewModel.refreshInsights(for: petStore.activePet)
+        }
+        .navigationDestination(item: $selectedInsight) { insight in
+            InsightDetailScreen(insight: insight)
+        }
+        .sheet(isPresented: $showPaywall) {
+            if let insight = selectedInsight {
+                PaywallSheet(insight: insight)
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private var heroSection: some View {
+        if let hero = viewModel.heroInsight {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("─── THIS WEEK'S HEADLINE ───")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(Color.ink900.opacity(0.6))
+                    .kerning(0.5)
+                
+                HeroInsightCard(insight: hero, isPremium: viewModel.isPremium, onActionTapped: { action in
+                    print("Tapped \(action.title)")
+                }, onCardTapped: {
+                    if hero.isPremiumGated && !viewModel.isPremium {
+                        selectedInsight = hero
+                        showPaywall = true
+                    } else {
+                        selectedInsight = hero
+                    }
+                })
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private var patternsSection: some View {
+        if !viewModel.patternCards.isEmpty {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("─── OTHER PATTERNS ───")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(Color.ink900.opacity(0.6))
+                    .kerning(0.5)
+                
+                ForEach(viewModel.patternCards) { insight in
+                    PatternCard(insight: insight, isPremium: viewModel.isPremium, onCardTapped: {
+                        if insight.isPremiumGated && !viewModel.isPremium {
+                            selectedInsight = insight
+                            showPaywall = true
+                        } else {
+                            selectedInsight = insight
+                        }
+                    })
+                }
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private var benchmarkSection: some View {
+        if let benchmark = viewModel.breedBenchmark {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("─── HEALTH BENCHMARKS ───")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundColor(Color.ink900.opacity(0.6))
+                    .kerning(0.5)
+                
+                BreedBenchmarkCard(benchmark: benchmark, isPremium: viewModel.isPremium, onCardTapped: {
+                    print("Tapped Benchmark Card")
+                })
+            }
+        }
+    }
+    
+    private var askCoachSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("─── ASK \(petStore.activePet?.name.uppercased() ?? "BUDDY'S") AI COACH ───")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundColor(Color.ink900.opacity(0.6))
+                .kerning(0.5)
+            
+            AskCoachInsightCard(suggestions: viewModel.coachSuggestions, onChatTapped: {
+                print("Open Chat from Insights")
+            }, onSuggestionTapped: { suggestion in
+                print("Send: \(suggestion)")
+            })
         }
     }
 }

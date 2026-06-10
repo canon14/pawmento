@@ -23,14 +23,14 @@ struct HomeScreen: View {
                         // Header (Sticky on top conceptually, but scrolls here)
                         TopHeaderView()
                         
-                        VStack(spacing: 32) {
+                        VStack(spacing: 16) {
                             PetSelectorCard(onAddPet: { showAddPetSheet = true })
                             
+                            WellnessScoreHero()
+
                             PatternAlertCard(action: {
                                 showInsights = true
                             })
-                            
-                            WellnessScoreHero()
                             
                             TodayLogGrid(onLogAction: {
                                 showQuickLog = true

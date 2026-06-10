@@ -84,15 +84,9 @@ struct PatternCard: View {
                 .padding(.top, 12)
                 .padding(.horizontal, 16)
                 
-                // Mini Viz Placeholder
-                Rectangle()
-                    .fill(Color.background)
+                // Chart
+                InlineChartView(data: insight.visualization)
                     .frame(height: 60)
-                    .overlay(
-                        Text("[ \(insight.visualization.chartType.capitalized) Chart ]")
-                            .font(.caption)
-                            .foregroundColor(.ink900.opacity(0.5))
-                    )
                     .padding(.vertical, 12)
                     .padding(.horizontal, 16)
                     .blur(radius: isLocked ? 6 : 0)

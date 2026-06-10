@@ -65,15 +65,9 @@ struct HeroInsightCard: View {
                 .padding(.horizontal, 20)
                 .blur(radius: isLocked ? 4 : 0)
                 
-                // Chart Placeholder
-                Rectangle()
-                    .fill(Color.background)
+                // Chart
+                InlineChartView(data: insight.visualization)
                     .frame(height: 80)
-                    .overlay(
-                        Text("[ Sparkline Chart Rendering ]")
-                            .font(.caption)
-                            .foregroundColor(.ink900.opacity(0.5))
-                    )
                     .padding(.top, 12)
                     .padding(.horizontal, 20)
                     .blur(radius: isLocked ? 6 : 0)
