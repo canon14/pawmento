@@ -51,12 +51,6 @@ struct HomeScreen: View {
                             
                             RecentActivityTimeline()
                             
-                            Button("Reset Onboarding (Debug)") {
-                                UserDefaults.standard.set(false, forKey: "hasCompletedOnboarding")
-                            }
-                            .font(.labelMD)
-                            .foregroundColor(.red)
-                            .padding(.top, 20)
                         }
                         .padding(.horizontal, 20)
                         .padding(.top, 20)

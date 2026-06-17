@@ -180,6 +180,11 @@ struct AddPetSheet: View {
                     }
                 }
             }
+            .alert("Authentication Error", isPresented: $showError) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text("Your session expired. Please sign out and sign back in to save changes.")
+            }
         }
     }
     

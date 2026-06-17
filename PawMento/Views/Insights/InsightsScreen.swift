@@ -56,16 +56,6 @@ struct InsightsScreen: View {
                     }
                     .foregroundColor(.ink900)
                 }
-                
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: {
-                        // Toggle premium for dev testing
-                        viewModel.isPremium.toggle()
-                    }) {
-                        Image(systemName: "gearshape")
-                            .foregroundColor(.ink900)
-                    }
-                }
             }
         }
     }

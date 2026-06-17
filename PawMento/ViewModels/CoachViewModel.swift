@@ -17,6 +17,11 @@ class CoachViewModel: ObservableObject {
     func fetchMessages(for petId: UUID?, ownerId: UUID) async {
         guard let petId = petId else { return }
         
+        // Prevent overwriting active chat if we already loaded it for this pet
+        if !messages.isEmpty && messages.last?.petId == petId {
+            return
+        }
+        
         do {
             let dtos: [ChatMessageDTO] = try await SupabaseManager.shared.client
                 .from("chat_messages")
