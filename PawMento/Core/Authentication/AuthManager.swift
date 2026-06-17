@@ -12,6 +12,10 @@ class AuthManager: ObservableObject {
         try? await SupabaseManager.shared.client.auth.session.user.id
     }
     
+    func getCurrentUserEmail() async -> String? {
+        try? await SupabaseManager.shared.client.auth.session.user.email
+    }
+    
     // Check if there is an existing session
     func checkSession() async {
         do {
@@ -61,6 +65,24 @@ class AuthManager: ObservableObject {
             print("Error signing out: \(error)")
         }
         isAuthenticated = false
+    }
+    
+    // Delete Account
+    func deleteAccount() async {
+        isLoading = true
+        authError = nil
+        do {
+            // In a production Supabase setup, you need an RPC or Edge Function to self-delete 
+            // since the client anon key cannot delete users directly.
+            _ = try await SupabaseManager.shared.client.rpc("delete_user").execute()
+            await signOut()
+        } catch {
+            print("Failed to delete user via RPC: \(error.localizedDescription)")
+            authError = error.localizedDescription
+            // Fallback: Just sign them out if RPC doesn't exist
+            await signOut()
+        }
+        isLoading = false
     }
     
     // Apple Sign In (Stubbed logic for when token is retrieved)

@@ -6,7 +6,9 @@ struct InsightsScreen: View {
     @StateObject private var viewModel = InsightsViewModel()
     @State private var selectedInsight: Insight?
     @State private var showPaywall = false
+    @State private var paywallFeatureContext: String? = nil
     @State private var showCoachChat = false
+    @State private var showBreedBenchmarkDetail = false
     
     @EnvironmentObject var coachViewModel: CoachViewModel
     @EnvironmentObject var authManager: AuthManager
@@ -156,8 +158,25 @@ struct InsightsScreen: View {
             })
         }
         .sheet(isPresented: $showPaywall) {
-            if let insight = selectedInsight {
-                PaywallSheet(insight: insight)
+            PaywallSheet(insight: selectedInsight, featureContext: paywallFeatureContext)
+                .onDisappear {
+                    selectedInsight = nil
+                    paywallFeatureContext = nil
+                }
+        }
+        .sheet(isPresented: $showBreedBenchmarkDetail) {
+            if let benchmark = viewModel.breedBenchmark {
+                BreedBenchmarkDetailScreen(
+                    benchmark: benchmark,
+                    petName: petStore.activePet?.name ?? "Buddy",
+                    onAskCoach: {
+                        showCoachChat = true
+                        Task {
+                            let ownerId = await authManager.getCurrentUserId()
+                            await coachViewModel.sendMessage("Can we talk about my dog's breed benchmarks? They are in the \(benchmark.activityPercentile)th percentile for activity.", pet: petStore.activePet, ownerId: ownerId)
+                        }
+                    }
+                )
             }
         }
         .fullScreenCover(isPresented: $showCoachChat) {
@@ -242,7 +261,12 @@ struct InsightsScreen: View {
                     .kerning(0.5)
                 
                 BreedBenchmarkCard(benchmark: benchmark, isPremium: viewModel.isPremium, onCardTapped: {
-                    print("Tapped Benchmark Card")
+                    if !viewModel.isPremium {
+                        paywallFeatureContext = "Breed Benchmarks"
+                        showPaywall = true
+                    } else {
+                        showBreedBenchmarkDetail = true
+                    }
                 })
             }
         }
