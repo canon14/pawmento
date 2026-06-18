@@ -86,11 +86,11 @@ class AICoachClient {
                     var request = URLRequest(url: url)
                     request.httpMethod = "POST"
                     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-                    request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
+                    request.setValue(AIConfig.anthropicVersion, forHTTPHeaderField: "anthropic-version")
                     request.setValue(anthropicApiKey, forHTTPHeaderField: "x-api-key")
                     
                     let body: [String: Any] = [
-                        "model": "claude-haiku-4-5-20251001", // Cost management
+                        "model": AIConfig.haikuModel, // Cost management
                         "max_tokens": 1024,
                         "system": systemPrompt,
                         "messages": messages,

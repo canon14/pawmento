@@ -1,6 +1,7 @@
 import Foundation
 
 struct InsightCandidate {
+    let id: UUID
     let type: InsightType
     let internalDescription: String // Passed to LLM
     let evidenceCount: Int
@@ -72,6 +73,7 @@ class CorrelationDetector {
                 let desc = "Symptoms frequently follow '\(key)'. Found \(hits) hits out of \(totalExposures) exposures (\(percentStr)%). This is \(rrStr) the baseline risk within a 48h window."
                 
                 candidates.append(InsightCandidate(
+                    id: UUID(),
                     type: .correlation,
                     internalDescription: desc,
                     evidenceCount: hits,
@@ -136,6 +138,7 @@ class TemporalPatternDetector {
         )
         
         return [InsightCandidate(
+            id: UUID(),
             type: .temporal,
             internalDescription: internalDescription,
             evidenceCount: bestCount,
@@ -203,6 +206,7 @@ class TrendDetector {
         )
         
         return [InsightCandidate(
+            id: UUID(),
             type: .trend,
             internalDescription: internalDescription,
             evidenceCount: symptoms.count,
@@ -219,6 +223,7 @@ class MilestoneDetector {
         
         // Rule-based: just return a precomputed InsightCandidate
         return [InsightCandidate(
+            id: UUID(),
             type: .positive,
             internalDescription: "Great activity logging streak.",
             evidenceCount: activities.count,
