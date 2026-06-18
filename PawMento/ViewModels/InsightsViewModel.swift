@@ -53,16 +53,16 @@ final class InsightsViewModel: ObservableObject {
             let fetchedInsights = try await InsightEngine.shared.generateInsights(for: pet, window: timeRange, forceRefresh: forceRefresh)
             
             if fetchedInsights.isEmpty {
-                // Determine if it's noDataForRange vs noPatterns
-                // For now, assume if engine returns empty, no patterns were found.
-                // If we had 0 signals, we can call it noDataForRange.
+                // TODO: Distinguish between .noDataForRange and .noPatterns
+                // This requires a new InsightEngine API to return the signal count alongside the insights,
+                // e.g. `generateInsights(...) -> (insights: [Insight], signalCount: Int)`.
                 self.viewState = .noPatterns
             } else {
                 self.viewState = .success
             }
             
             // Re-partition the insights for the UI
-            self.heroInsight = fetchedInsights.first(where: { $0.tier == .strong })
+            self.heroInsight = bestInsight(from: fetchedInsights)
             self.patternCards = fetchedInsights.filter { $0.id != self.heroInsight?.id }
             self.patternCount = fetchedInsights.count
             self.lastUpdated = Date()
@@ -78,9 +78,9 @@ final class InsightsViewModel: ObservableObject {
             
             // Mock Coach Suggestions
             self.coachSuggestions = [
-                "Why is \(pet.name) coughing?",
-                "Is his weight healthy?",
-                "What should I bring to the vet?"
+                "Is \(pet.name)'s weight healthy?",
+                "What should I ask the vet about \(pet.name)?",
+                "How much daily activity does \(pet.name) need?"
             ]
         } catch {
             print("Failed to load insights: \(error)")
@@ -113,13 +113,28 @@ final class InsightsViewModel: ObservableObject {
         // In a real app, we would log this to telemetry and update the database
         // For now, we just remove it from the UI
         if heroInsight?.id == insight.id {
-            heroInsight = nil
+            heroInsight = bestInsight(from: patternCards)
+            if let newHero = heroInsight {
+                patternCards.removeAll { $0.id == newHero.id }
+            }
+        } else {
+            patternCards.removeAll { $0.id == insight.id }
         }
-        patternCards.removeAll { $0.id == insight.id }
+        
+        patternCount = patternCards.count + (heroInsight != nil ? 1 : 0)
         
         // If everything is dismissed, show empty state
         if heroInsight == nil && patternCards.isEmpty {
             viewState = .noPatterns
         }
+    }
+    
+    private func bestInsight(from insights: [Insight]) -> Insight? {
+        return insights.min(by: { 
+            if $0.tier == $1.tier {
+                return $0.confidence > $1.confidence
+            }
+            return $0.tier < $1.tier
+        })
     }
 }
