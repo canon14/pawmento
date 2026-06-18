@@ -20,10 +20,10 @@ struct HeroInsightCard: View {
                 HStack(alignment: .top) {
                     // Confidence Pill
                     HStack(spacing: 4) {
-                        Image(systemName: "bolt.fill")
+                        Image(systemName: insight.tier.iconName)
                             .font(.system(size: 10, weight: .bold))
-                            .foregroundColor(.yellow)
-                        Text("STRONG PATTERN")
+                            .foregroundColor(insight.tier.accentColor)
+                        Text(insight.tier.label)
                             .font(.system(size: 10, weight: .bold))
                     }
                     .padding(.horizontal, 8)

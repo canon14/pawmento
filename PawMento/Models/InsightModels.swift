@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 enum InsightType: String, Codable {
     case correlation
@@ -20,6 +21,33 @@ enum ConfidenceTier: String, Codable, Comparable {
         case .moderate: return 1
         case .positive: return 2
         case .emerging: return 3
+        }
+    }
+    
+    var label: String {
+        switch self {
+        case .strong: return "STRONG PATTERN"
+        case .moderate: return "MODERATE PATTERN"
+        case .emerging: return "EMERGING PATTERN"
+        case .positive: return "POSITIVE"
+        }
+    }
+    
+    var iconName: String {
+        switch self {
+        case .strong: return "bolt.fill"
+        case .moderate: return "chart.line.uptrend.xyaxis"
+        case .emerging: return "sparkles"
+        case .positive: return "checkmark.seal.fill"
+        }
+    }
+    
+    var accentColor: Color {
+        switch self {
+        case .strong: return .yellow
+        case .moderate: return .orange
+        case .emerging: return .gray
+        case .positive: return .green
         }
     }
     

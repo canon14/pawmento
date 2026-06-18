@@ -14,6 +14,8 @@ struct NarratedInsightDTO: Codable {
 }
 
 class InsightNarrator {
+    static var session: URLSession = .shared
+    
     private static func evidenceAnchor(for candidate: InsightCandidate) -> Double {
         if candidate.isRuleBased { return 0.90 }
         switch candidate.evidenceCount {
@@ -154,7 +156,7 @@ class InsightNarrator {
         
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await session.data(for: request)
         guard let httpResponse = response as? HTTPURLResponse else {
             throw URLError(.badServerResponse)
         }
