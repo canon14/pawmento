@@ -2,12 +2,25 @@ import Foundation
 import Combine
 import UIKit
 import Supabase
+import Network
 
 enum SyncTask: Codable {
     case createLog(LogEntry, UUID) // LogEntry and owner userId
     case updateLog(LogEntry, UUID)
     case deleteLog(UUID, UUID) // logId, ownerId
     case createPet(Pet, UUID) // Pet and owner userId
+}
+
+struct QueuedTask: Codable, Identifiable {
+    let id: UUID
+    let task: SyncTask
+    var retryCount: Int
+}
+
+enum SyncResult {
+    case success
+    case transientError
+    case permanentError
 }
 
 @MainActor
@@ -18,22 +31,57 @@ class OfflineSyncManager: ObservableObject {
     @Published var isSyncing = false
     @Published var queuedTaskCount = 0
     
-    private var queue: [SyncTask] = []
+    private var queue: [QueuedTask] = []
+    private let monitor = NWPathMonitor()
     
     private init() {
         loadQueue()
+        
+        // Start network monitor
+        monitor.pathUpdateHandler = { [weak self] path in
+            if path.status == .satisfied {
+                Task { @MainActor in
+                    self?.flushQueue()
+                }
+            }
+        }
+        monitor.start(queue: DispatchQueue.global())
+        
+        // Foreground observer
+        NotificationCenter.default.addObserver(
+            forName: UIApplication.didBecomeActiveNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.flushQueue()
+        }
     }
     
     func enqueueTask(_ task: SyncTask) {
-        queue.append(task)
+        let queuedTask = QueuedTask(id: UUID(), task: task, retryCount: 0)
+        queue.append(queuedTask)
         saveQueue()
+        
+        Task { @MainActor in
+            self.flushQueue()
+        }
     }
     
     private func loadQueue() {
-        if let data = UserDefaults.standard.data(forKey: queueKey),
-           let savedQueue = try? JSONDecoder().decode([SyncTask].self, from: data) {
+        guard let data = UserDefaults.standard.data(forKey: queueKey) else { return }
+        
+        // Try decoding new format first
+        if let savedQueue = try? JSONDecoder().decode([QueuedTask].self, from: data) {
             self.queue = savedQueue
             self.queuedTaskCount = savedQueue.count
+            return
+        }
+        
+        // Fallback to legacy format migration
+        if let oldQueue = try? JSONDecoder().decode([SyncTask].self, from: data) {
+            self.queue = oldQueue.map { QueuedTask(id: UUID(), task: $0, retryCount: 0) }
+            self.queuedTaskCount = self.queue.count
+            saveQueue() // Persist immediately in the new format
         }
     }
     
@@ -49,37 +97,43 @@ class OfflineSyncManager: ObservableObject {
         
         Task {
             isSyncing = true
-            var newQueue = queue // operate on a copy
             
-            for task in queue {
-                let success = await processTask(task)
-                if success {
-                    // Remove from queue
-                    if let index = newQueue.firstIndex(where: {
-                        switch ($0, task) {
-                        case (.createLog(let l1, _), .createLog(let l2, _)): return l1.id == l2.id
-                        case (.updateLog(let l1, _), .updateLog(let l2, _)): return l1.id == l2.id
-                        case (.deleteLog(let id1, _), .deleteLog(let id2, _)): return id1 == id2
-                        case (.createPet(let p1, _), .createPet(let p2, _)): return p1.id == p2.id
-                        default: return false
-                        }
-                    }) {
-                        newQueue.remove(at: index)
+            // Iterate via index so we can incrementally remove/modify tasks in place
+            var index = 0
+            while index < queue.count {
+                let queuedTask = queue[index]
+                let result = await processTask(queuedTask.task)
+                
+                switch result {
+                case .success:
+                    queue.remove(at: index)
+                    saveQueue() // Incremental save ensures progress isn't lost on crash
+                    
+                case .transientError:
+                    print("Transient error encountered. Halting queue flush to preserve order.")
+                    self.isSyncing = false
+                    return
+                    
+                case .permanentError:
+                    queue[index].retryCount += 1
+                    if queue[index].retryCount >= 5 {
+                        print("Deadlettering permanently failed task after 5 attempts: \(queuedTask.task)")
+                        queue.remove(at: index)
+                    } else {
+                        print("Permanent error on task. Retry count: \(queue[index].retryCount)/5. Halting to preserve order.")
+                        saveQueue() // Persist the incremented retry count
+                        self.isSyncing = false
+                        return
                     }
-                } else {
-                    // Stop flushing on first failure to maintain order, or just break
-                    print("Failed to sync a task, stopping queue flush.")
-                    break
+                    saveQueue()
                 }
             }
             
-            self.queue = newQueue
-            self.saveQueue()
             self.isSyncing = false
         }
     }
     
-    private func processTask(_ task: SyncTask) async -> Bool {
+    private func processTask(_ task: SyncTask) async -> SyncResult {
         switch task {
         case .createLog(let log, let userId):
             return await syncLog(log, userId: userId)
@@ -92,44 +146,51 @@ class OfflineSyncManager: ObservableObject {
         }
     }
     
-    private func syncLog(_ log: LogEntry, userId: UUID) async -> Bool {
+    private func categorizeError(_ error: Error) -> SyncResult {
+        if let urlError = error as? URLError {
+            return .transientError
+        }
+        // Assume anything else (like PostgRESTError or decoding failure) is permanent
+        return .permanentError
+    }
+    
+    private func syncLog(_ log: LogEntry, userId: UUID) async -> SyncResult {
         var finalLog = log
         do {
-            // Check if there's a local photo to upload
             if let localURL = log.photoLocalURL, localURL.isFileURL {
                 if let data = try? Data(contentsOf: localURL), let image = UIImage(data: data) {
                     let path = "logs/\(userId.uuidString)/\(log.id.uuidString).jpg"
                     let urlString = try await StorageManager.shared.uploadImage(image, path: path)
                     finalLog.photoLocalURL = URL(string: urlString)
-                    
-                    // Clean up local file after successful upload
-                    try? FileManager.default.removeItem(at: localURL)
                 }
             }
             
             let dto = finalLog.toDTO(userId: userId)
             try await SupabaseManager.shared.client
                 .from("logs")
-                .insert(dto)
+                .upsert(dto) // Upsert provides idempotency
                 .execute()
             
-            return true
+            // Cleanup local file ONLY after the entire DB insert is successful
+            if let localURL = log.photoLocalURL, localURL.isFileURL {
+                try? FileManager.default.removeItem(at: localURL)
+            }
+            
+            return .success
         } catch {
             print("Sync failed for log \(log.id): \(error)")
-            return false
+            return categorizeError(error)
         }
     }
     
-    private func syncUpdateLog(_ log: LogEntry, userId: UUID) async -> Bool {
+    private func syncUpdateLog(_ log: LogEntry, userId: UUID) async -> SyncResult {
         var finalLog = log
         do {
-            // Check if there's a new local photo to upload
             if let localURL = log.photoLocalURL, localURL.isFileURL {
                 if let data = try? Data(contentsOf: localURL), let image = UIImage(data: data) {
                     let path = "logs/\(userId.uuidString)/\(log.id.uuidString).jpg"
                     let urlString = try await StorageManager.shared.uploadImage(image, path: path)
                     finalLog.photoLocalURL = URL(string: urlString)
-                    try? FileManager.default.removeItem(at: localURL)
                 }
             }
             
@@ -140,14 +201,18 @@ class OfflineSyncManager: ObservableObject {
                 .eq("id", value: log.id.uuidString)
                 .execute()
             
-            return true
+            if let localURL = log.photoLocalURL, localURL.isFileURL {
+                try? FileManager.default.removeItem(at: localURL)
+            }
+            
+            return .success
         } catch {
             print("Update Sync failed for log \(log.id): \(error)")
-            return false
+            return categorizeError(error)
         }
     }
     
-    private func syncDeleteLog(_ logId: UUID, userId: UUID) async -> Bool {
+    private func syncDeleteLog(_ logId: UUID, userId: UUID) async -> SyncResult {
         do {
             try await SupabaseManager.shared.client
                 .from("logs")
@@ -155,38 +220,38 @@ class OfflineSyncManager: ObservableObject {
                 .eq("id", value: logId.uuidString)
                 .execute()
             
-            return true
+            return .success
         } catch {
             print("Delete Sync failed for log \(logId): \(error)")
-            return false
+            return categorizeError(error)
         }
     }
     
-    private func syncPet(_ pet: Pet, ownerId: UUID) async -> Bool {
+    private func syncPet(_ pet: Pet, ownerId: UUID) async -> SyncResult {
         var finalPet = pet
         do {
-            // Check if there's a local photo to upload
             if let localURL = pet.photoLocalURL, localURL.isFileURL {
                 if let data = try? Data(contentsOf: localURL), let image = UIImage(data: data) {
                     let path = "pets/\(ownerId.uuidString)/\(pet.id.uuidString).jpg"
                     let urlString = try await StorageManager.shared.uploadImage(image, path: path)
                     finalPet.photoLocalURL = URL(string: urlString)
-                    
-                    // Clean up local file
-                    try? FileManager.default.removeItem(at: localURL)
                 }
             }
             
             let dto = finalPet.toDTO(ownerId: ownerId)
             try await SupabaseManager.shared.client
                 .from("pets")
-                .insert(dto)
+                .upsert(dto) // Upsert provides idempotency
                 .execute()
             
-            return true
+            if let localURL = pet.photoLocalURL, localURL.isFileURL {
+                try? FileManager.default.removeItem(at: localURL)
+            }
+            
+            return .success
         } catch {
             print("Sync failed for pet \(pet.id): \(error)")
-            return false
+            return categorizeError(error)
         }
     }
 }
