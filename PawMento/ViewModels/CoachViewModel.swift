@@ -103,15 +103,16 @@ class CoachViewModel: ObservableObject {
             
         } catch {
             isTyping = false
+            print("Coach stream failed: \(error)") // Log raw technical error for devs
             
             // Refund the question quota if we failed
             freeQuestionsRemaining += 1
             
             if let index = messages.firstIndex(where: { $0.id == assistantMessageId }) {
-                if error.localizedDescription.contains("API Error") {
-                    messages[index].content = "\(error.localizedDescription)\n\n(Tip: Your $5 deposit may take a little longer to unlock Claude 3 access on Anthropic's servers.)"
+                if let urlError = error as? URLError, urlError.code == .notConnectedToInternet {
+                    messages[index].content = "I lost connection — tap to retry."
                 } else {
-                    messages[index].content = "I lost connection — please tap to retry."
+                    messages[index].content = "Something went wrong on my end. Please try again in a moment."
                 }
             }
         }
