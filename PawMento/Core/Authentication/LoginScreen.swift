@@ -39,30 +39,8 @@ struct LoginScreen: View {
                     request.requestedScopes = [.fullName, .email]
                     request.nonce = sha256(nonce)
                 } onCompletion: { result in
-                    switch result {
-                    case .success(let authResults):
-                        switch authResults.credential {
-                        case let appleIDCredential as ASAuthorizationAppleIDCredential:
-                            guard let nonce = currentNonce else {
-                                authManager.authError = "Invalid state: A login nonce was not found."
-                                return
-                            }
-                            guard let appleIDToken = appleIDCredential.identityToken else {
-                                authManager.authError = "Unable to fetch identity token"
-                                return
-                            }
-                            guard let idTokenString = String(data: appleIDToken, encoding: .utf8) else {
-                                authManager.authError = "Unable to serialize token string from data"
-                                return
-                            }
-                            Task {
-                                await authManager.signInWithApple(idToken: idTokenString, nonce: nonce)
-                            }
-                        default:
-                            break
-                        }
-                    case .failure(let error):
-                        authManager.authError = "Apple Sign In failed: \(error.localizedDescription)"
+                    Task {
+                        await authManager.handleAppleSignInCompletion(result: result, currentNonce: currentNonce)
                     }
                 }
                 .signInWithAppleButtonStyle(.black)
@@ -83,18 +61,14 @@ struct LoginScreen: View {
                 VStack(spacing: AppSpacing.sm) {
                     FormTextField(placeholder: "Email address", text: $email)
                         .keyboardType(.emailAddress)
+                        .textContentType(.emailAddress)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .onChange(of: email) { _ in authManager.authError = nil }
                         
-                    // Using standard SecureField matching our FormTextField style
-                    SecureField("Password", text: $password)
-                        .font(.bodyMD)
-                        .padding(.horizontal, 16)
-                        .frame(height: 56)
-                        .background(Color.surfaceContainerLowest)
-                        .cornerRadius(AppRadius.input)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: AppRadius.input)
-                                .stroke(Color.outlineVariant.opacity(0.5), lineWidth: 1)
-                        )
+                    FormSecureField(placeholder: "Password", text: $password)
+                        .textContentType(isSignUp ? .newPassword : .password)
+                        .onChange(of: password) { _ in authManager.authError = nil }
                 }
                 
                 if let error = authManager.authError {

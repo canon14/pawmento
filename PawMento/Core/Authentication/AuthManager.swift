@@ -1,6 +1,7 @@
 import Foundation
 import Combine
 import Supabase
+import AuthenticationServices
 
 @MainActor
 class AuthManager: ObservableObject {
@@ -166,5 +167,42 @@ class AuthManager: ObservableObject {
             isAuthenticated = false
         }
         isLoading = false
+    }
+    
+    // MARK: - Apple Sign In Result Handler
+    
+    /// Called from the View's ASAuthorizationControllerDelegate to encapsulate Apple errors
+    func handleAppleSignInCompletion(result: Result<ASAuthorization, Error>, currentNonce: String?) async {
+        switch result {
+        case .success(let authResults):
+            switch authResults.credential {
+            case let appleIDCredential as ASAuthorizationAppleIDCredential:
+                guard let nonce = currentNonce else {
+                    authError = "Authentication failed: missing security nonce."
+                    return
+                }
+                guard let appleIDToken = appleIDCredential.identityToken,
+                      let idTokenString = String(data: appleIDToken, encoding: .utf8) else {
+                    authError = "Unable to process Apple identity token."
+                    return
+                }
+                
+                await signInWithApple(idToken: idTokenString, nonce: nonce)
+                
+            default:
+                authError = "Unable to sign in with Apple at this time."
+            }
+            
+        case .failure(let error):
+            if let asError = error as? ASAuthorizationError {
+                if asError.code == .canceled || asError.code == .unknown {
+                    // Silently ignore user cancellations
+                    return
+                }
+            }
+            
+            authError = mapAuthError(error)
+            print("Apple Sign In failed: \(error)")
+        }
     }
 }
