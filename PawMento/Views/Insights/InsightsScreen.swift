@@ -49,7 +49,7 @@ struct InsightsScreen: View {
                     HStack(spacing: 4) {
                         Image(systemName: "pawprint.fill")
                             .font(.system(size: 12))
-                        Text(petStore.activePet?.name ?? "Buddy")
+                        Text(petStore.activePet?.name ?? PetStore.fallbackPetName)
                             .font(.system(size: 16, weight: .semibold))
                         Image(systemName: "chevron.down")
                             .font(.system(size: 10, weight: .bold))
@@ -158,7 +158,7 @@ struct InsightsScreen: View {
             if let benchmark = viewModel.breedBenchmark {
                 BreedBenchmarkDetailScreen(
                     benchmark: benchmark,
-                    petName: petStore.activePet?.name ?? "Buddy",
+                    petName: petStore.activePet?.name ?? PetStore.fallbackPetName,
                     onAskCoach: {
                         showCoachChat = true
                         Task {
@@ -198,7 +198,7 @@ struct InsightsScreen: View {
                     .foregroundColor(Color.ink900.opacity(0.6))
                     .kerning(0.5)
                 
-                HeroInsightCard(insight: hero, isPremium: viewModel.isPremium, onActionTapped: { action in
+                HeroInsightCard(insight: hero, isPremium: viewModel.isPremium, petName: petStore.activePet?.name ?? PetStore.fallbackPetName, onActionTapped: { action in
                     print("Tapped \(action.title)")
                 }, onCardTapped: {
                     if hero.isPremiumGated && !viewModel.isPremium {
@@ -264,7 +264,7 @@ struct InsightsScreen: View {
     
     private var askCoachSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("─── ASK \(petStore.activePet?.name.uppercased() ?? "BUDDY'S") AI COACH ───")
+            Text("─── ASK \(petStore.activePet?.name.uppercased() ?? PetStore.fallbackPetName.uppercased())'S AI COACH ───")
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundColor(Color.ink900.opacity(0.6))
                 .kerning(0.5)
@@ -298,7 +298,7 @@ struct InsightsScreen: View {
         Button(role: .destructive, action: {
             viewModel.dismissInsight(insight, reason: .notRelevant)
         }) {
-            Label("Not Relevant to \(petStore.activePet?.name ?? "Buddy")", systemImage: "xmark.circle")
+            Label("Not Relevant to \(petStore.activePet?.name ?? PetStore.fallbackPetName)", systemImage: "xmark.circle")
         }
     }
 }

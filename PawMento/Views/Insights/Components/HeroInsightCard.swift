@@ -3,6 +3,7 @@ import SwiftUI
 struct HeroInsightCard: View {
     let insight: Insight
     let isPremium: Bool
+    let petName: String
     var onActionTapped: ((InsightAction) -> Void)?
     var onCardTapped: (() -> Void)?
     
@@ -129,7 +130,7 @@ struct HeroInsightCard: View {
                             Image(systemName: "lock.fill")
                                 .font(.system(size: 24))
                                 .foregroundColor(.ink900)
-                            Text("Unlock this insight for Buddy")
+                            Text("Unlock this insight for \(petName)")
                                 .font(.system(size: 15, weight: .semibold))
                                 .foregroundColor(.ink900)
                         }

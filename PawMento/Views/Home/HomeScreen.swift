@@ -142,7 +142,7 @@ struct HomeScreen: View {
                     HStack {
                         Image(systemName: "bell.badge.plus")
                             .foregroundColor(.sage)
-                        Text("Add a reminder for \(petStore.activePet?.name ?? "Buddy")")
+                        Text("Add a reminder for \(petStore.activePet?.name ?? PetStore.fallbackPetName)")
                             .font(.system(size: 14, weight: .medium))
                             .foregroundColor(.ink900)
                         Spacer()

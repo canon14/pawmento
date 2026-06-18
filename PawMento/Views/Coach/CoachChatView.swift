@@ -7,6 +7,10 @@ struct CoachChatView: View {
     @EnvironmentObject var petStore: PetStore
     @EnvironmentObject var authManager: AuthManager
     
+    private var petName: String {
+        petStore.activePet?.name ?? PetStore.fallbackPetName
+    }
+    
     var body: some View {
         VStack(spacing: 0) {
             // Top Bar
@@ -38,6 +42,13 @@ struct CoachChatView: View {
                     if let last = viewModel.messages.last {
                         withAnimation {
                             proxy.scrollTo(last.id, anchor: .bottom)
+                        }
+                    }
+                }
+                .onChange(of: viewModel.isTyping) { _, typing in
+                    if typing {
+                        withAnimation {
+                            proxy.scrollTo("typingIndicator", anchor: .bottom)
                         }
                     }
                 }
@@ -88,7 +99,7 @@ struct CoachChatView: View {
         // Premium Wall
         .sheet(isPresented: $viewModel.showPremiumWall) {
             VStack(spacing: 24) {
-                Text("Buddy and I have so much more to talk about")
+                Text("\(petName) and I have so much more to talk about")
                     .font(.headlineMD)
                     .multilineTextAlignment(.center)
                 
@@ -139,7 +150,6 @@ struct CoachChatView: View {
                 Text("Coach")
                     .font(.headlineSM)
                 HStack(spacing: 4) {
-                    let petName = petStore.activePet?.name ?? "your pet"
                     let emoji: String = {
                         guard let pet = petStore.activePet else { return "🐾" }
                         switch pet.species {
@@ -197,7 +207,6 @@ struct CoachChatView: View {
     }
     
     private func setInitialQuickReplies() {
-        let petName = petStore.activePet?.name ?? "my pet"
         viewModel.quickReplies = [
             "Is \(petName)'s weight healthy?",
             "What should I feed \(petName)?",

@@ -4,6 +4,7 @@ import Combine
 import Supabase
 
 class PetStore: ObservableObject {
+    static let fallbackPetName = "your pet"
     @Published var pets: [Pet] = []
     @Published var activePet: Pet? = nil
     
