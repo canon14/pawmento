@@ -170,7 +170,11 @@ struct HomeScreen: View {
                                             note: "Logged from Reminder"
                                         )
                                         if let userId = try? await SupabaseManager.shared.client.auth.session.user.id {
-                                            await logStore.saveLog(newLog, userId: userId)
+                                            do {
+                                                try await logStore.saveLog(newLog, userId: userId)
+                                            } catch {
+                                                TelemetryEngine.shared.track(event: .error_occurred, properties: ["message": "Failed to log from reminder: \(error.localizedDescription)"])
+                                            }
                                         }
                                     }
                                 }

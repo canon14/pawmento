@@ -28,6 +28,9 @@ struct LogDetailSheet: View {
     @State private var showErrorShake = false
     @State private var showDeleteConfirmation = false
     
+    @State private var errorMessage = ""
+    @State private var showErrorAlert = false
+    
     var body: some View {
         ZStack {
             Color.warmCream.ignoresSafeArea()
@@ -142,6 +145,11 @@ struct LogDetailSheet: View {
                 .background(Color.warmCream)
             }
         }
+        .alert("Error", isPresented: $showErrorAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(errorMessage)
+        }
         .onAppear {
             if let log = existingLog {
                 selectedCategory = log.category
@@ -197,20 +205,30 @@ struct LogDetailSheet: View {
                 recordedAt: recordedAt
             )
             
-            if existingLog != nil {
-                await logStore.updateLog(log, userId: userId)
-            } else {
-                await logStore.saveLog(log, userId: userId)
-            }
             
-            await MainActor.run {
-                isSaving = false
-                showSuccess = true
-                UINotificationFeedbackGenerator().notificationOccurred(.success)
+            do {
+                if existingLog != nil {
+                    try await logStore.updateLog(log, userId: userId)
+                } else {
+                    try await logStore.saveLog(log, userId: userId)
+                }
                 
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                    toastManager.show(existingLog != nil ? "Log updated" : "Detailed log saved")
-                    dismiss()
+                await MainActor.run {
+                    isSaving = false
+                    showSuccess = true
+                    UINotificationFeedbackGenerator().notificationOccurred(.success)
+                    
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        toastManager.show(existingLog != nil ? "Log updated" : "Detailed log saved")
+                        dismiss()
+                    }
+                }
+            } catch {
+                TelemetryEngine.shared.track(event: .error_occurred, properties: ["message": "Failed to save detailed log: \(error.localizedDescription)"])
+                await MainActor.run {
+                    isSaving = false
+                    errorMessage = "Failed to save log: \(error.localizedDescription)"
+                    showErrorAlert = true
                 }
             }
         }
@@ -220,10 +238,18 @@ struct LogDetailSheet: View {
         guard let log = existingLog else { return }
         Task {
             if let userId = await authManager.getCurrentUserId() {
-                await logStore.deleteLog(log, userId: userId)
-                await MainActor.run {
-                    toastManager.show("Log deleted")
-                    dismiss()
+                do {
+                    try await logStore.deleteLog(log, userId: userId)
+                    await MainActor.run {
+                        toastManager.show("Log deleted")
+                        dismiss()
+                    }
+                } catch {
+                    TelemetryEngine.shared.track(event: .error_occurred, properties: ["message": "Failed to delete log: \(error.localizedDescription)"])
+                    await MainActor.run {
+                        errorMessage = "Failed to delete log: \(error.localizedDescription)"
+                        showErrorAlert = true
+                    }
                 }
             }
         }

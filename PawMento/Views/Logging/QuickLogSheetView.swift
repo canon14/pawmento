@@ -17,6 +17,9 @@ struct QuickLogSheetView: View {
     @State private var showSuccess = false
     @State private var showErrorShake = false
     
+    @State private var errorMessage = ""
+    @State private var showErrorAlert = false
+    
     @State private var showDraftBanner = false
     @State private var draftToRestore: QuickLogDraft?
     
@@ -159,6 +162,11 @@ struct QuickLogSheetView: View {
             }
             
         }
+        .alert("Error", isPresented: $showErrorAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(errorMessage)
+        }
         .fullScreenCover(isPresented: $showDetailedLog) {
             LogDetailSheet(
                 initialCategory: selectedCategory,
@@ -251,39 +259,47 @@ struct QuickLogSheetView: View {
                 photoImage: compressedPhoto
             )
             
-            await logStore.saveLog(log, userId: userId)
-            
-            await MainActor.run {
-                isSaving = false
-                showSuccess = true
-                let successGenerator = UINotificationFeedbackGenerator()
-                successGenerator.notificationOccurred(.success)
+            do {
+                try await logStore.saveLog(log, userId: userId)
                 
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                    let petName = petStore.activePet?.name ?? "your pet"
+                await MainActor.run {
+                    isSaving = false
+                    showSuccess = true
+                    let successGenerator = UINotificationFeedbackGenerator()
+                    successGenerator.notificationOccurred(.success)
                     
-                    var timeToSaveMs = 0
-                    if let opened = sheetOpenedAt {
-                        timeToSaveMs = Int(Date().timeIntervalSince(opened) * 1000)
-                    }
-                    
-                    TelemetryEngine.shared.track(event: .quick_log_saved, properties: [
-                        "time_to_save_ms": timeToSaveMs,
-                        "has_photo": photo != nil,
-                        "has_note": !note.isEmpty,
-                        "category": category.rawValue,
-                        "severity": category == .symptom ? severity : -1
-                    ])
-                    
-                    toastManager.show(AppStrings.QuickLog.loggedFor(petName), actionLabel: AppStrings.QuickLog.undo) {
-                        // Undo logic
-                        TelemetryEngine.shared.track(event: .quick_log_undo_tapped, properties: ["delete_log_id": log.id.uuidString])
-                        if let index = logStore.logs.firstIndex(where: { $0.id == log.id }) {
-                            logStore.logs.remove(at: index)
-                            // Note: Also need to delete from Supabase if we really want to undo, but for MVP local removal is fine or can add DB deletion later.
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                        let petName = petStore.activePet?.name ?? "your pet"
+                        
+                        var timeToSaveMs = 0
+                        if let opened = sheetOpenedAt {
+                            timeToSaveMs = Int(Date().timeIntervalSince(opened) * 1000)
                         }
+                        
+                        TelemetryEngine.shared.track(event: .quick_log_saved, properties: [
+                            "time_to_save_ms": timeToSaveMs,
+                            "has_photo": photo != nil,
+                            "has_note": !note.isEmpty,
+                            "category": category.rawValue,
+                            "severity": category == .symptom ? severity : -1
+                        ])
+                        
+                        toastManager.show(AppStrings.QuickLog.loggedFor(petName), actionLabel: AppStrings.QuickLog.undo) {
+                            // Undo logic
+                            TelemetryEngine.shared.track(event: .quick_log_undo_tapped, properties: ["delete_log_id": log.id.uuidString])
+                            if let index = logStore.logs.firstIndex(where: { $0.id == log.id }) {
+                                logStore.logs.remove(at: index)
+                            }
+                        }
+                        dismiss()
                     }
-                    dismiss()
+                }
+            } catch {
+                TelemetryEngine.shared.track(event: .error_occurred, properties: ["message": "Failed to save quick log: \(error.localizedDescription)"])
+                await MainActor.run {
+                    isSaving = false
+                    errorMessage = "Failed to save log: \(error.localizedDescription)"
+                    showErrorAlert = true
                 }
             }
         }
