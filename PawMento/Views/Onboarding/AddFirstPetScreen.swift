@@ -23,6 +23,7 @@ struct AddFirstPetScreen: View {
     
     @State private var isSubmitting: Bool = false
     @State private var showError: Bool = false
+    @State private var errorMessage: String = ""
     
     @State private var breedSuggestions: [String] = []
     @State private var isShowingBreedSuggestions = false
@@ -47,6 +48,7 @@ struct AddFirstPetScreen: View {
                 }
                 .font(.bodyMD)
                 .foregroundColor(.tertiaryText)
+                .disabled(isSubmitting)
                 
                 Spacer()
                 
@@ -56,6 +58,7 @@ struct AddFirstPetScreen: View {
                     }
                     .font(.labelLarge)
                     .foregroundColor(.warmTan)
+                    .disabled(isSubmitting)
                 }
             }
             .padding(.horizontal, 20)
@@ -122,12 +125,20 @@ struct AddFirstPetScreen: View {
                                     .foregroundColor(.secondaryText)
                             }
                             FormTextField(placeholder: "e.g. Golden Retriever", text: $breed)
-                                .onChange(of: breed) { newValue in
-                                    if let species = selectedSpecies {
-                                        breedSuggestions = BreedStore.shared.suggestBreeds(for: species, query: newValue)
-                                        isShowingBreedSuggestions = !breedSuggestions.isEmpty && !breedSuggestions.contains(newValue)
-                                    } else {
+                                .task(id: breed) {
+                                    guard let species = selectedSpecies else { return }
+                                    guard !breed.isEmpty else {
                                         isShowingBreedSuggestions = false
+                                        return
+                                    }
+                                    
+                                    try? await Task.sleep(nanoseconds: 300_000_000)
+                                    guard !Task.isCancelled else { return }
+                                    
+                                    let suggestions = BreedStore.shared.suggestBreeds(for: species, query: breed)
+                                    await MainActor.run {
+                                        self.breedSuggestions = suggestions
+                                        self.isShowingBreedSuggestions = !suggestions.isEmpty && !suggestions.contains(breed)
                                     }
                                 }
                                 .onChange(of: selectedSpecies) { _ in
@@ -155,7 +166,7 @@ struct AddFirstPetScreen: View {
                                         }
                                     }
                                 }
-                                .background(Color.white)
+                                .background(Color.surfaceContainerLow)
                                 .cornerRadius(12)
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 12)
@@ -204,6 +215,7 @@ struct AddFirstPetScreen: View {
             .scrollDismissesKeyboard(.interactively)
             .onTapGesture {
                 hideKeyboard()
+                isShowingBreedSuggestions = false
             }
             
             // Primary CTA
@@ -225,12 +237,37 @@ struct AddFirstPetScreen: View {
             .padding(.bottom, AppSpacing.gutter)
         }
         .background(Color.warmCream.ignoresSafeArea())
+        .alert("Error", isPresented: $showError) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(errorMessage)
+        }
     }
     
     private func submitForm() {
-        guard canSubmit, let species = selectedSpecies else {
-            showError = true
-            return
+        guard canSubmit, let species = selectedSpecies else { return }
+        
+        var finalWeightKg: Double? = nil
+        let trimmedWeight = weight.trimmingCharacters(in: .whitespaces)
+        
+        if !trimmedWeight.isEmpty {
+            let formatter = NumberFormatter()
+            formatter.numberStyle = .decimal
+            formatter.locale = Locale.current
+            
+            if let num = formatter.number(from: trimmedWeight) {
+                let w = num.doubleValue
+                if w <= 0 || w > 1000 {
+                    errorMessage = "Please enter a valid weight (between 0 and 1000)."
+                    showError = true
+                    return
+                }
+                finalWeightKg = isKg ? w : (w * 0.453592)
+            } else {
+                errorMessage = "Please enter a valid number for weight."
+                showError = true
+                return
+            }
         }
         
         isSubmitting = true
@@ -240,26 +277,35 @@ struct AddFirstPetScreen: View {
             species: species,
             breed: breed.isEmpty ? nil : breed,
             birthday: birthday,
-            weightKg: Double(weight), // basic parse for MVP
+            weightKg: finalWeightKg,
             photoImage: petImage
         )
         
         Task {
             guard let ownerId = await authManager.getCurrentUserId() else {
-                print("Cannot add pet: No authenticated user.")
+                TelemetryEngine.shared.track(event: .error_occurred, properties: ["message": "Cannot add pet: No authenticated user"])
                 await MainActor.run {
+                    errorMessage = "Your session expired. Please sign out and sign back in to save changes."
                     showError = true
                     isSubmitting = false
                 }
                 return
             }
             
-            await petStore.addPet(newPet, ownerId: ownerId)
-            
-            await MainActor.run {
-                isSubmitting = false
-                dismiss()
-                onComplete()
+            do {
+                try await petStore.addPet(newPet, ownerId: ownerId)
+                await MainActor.run {
+                    isSubmitting = false
+                    dismiss()
+                    onComplete()
+                }
+            } catch {
+                TelemetryEngine.shared.track(event: .error_occurred, properties: ["message": "Failed to add pet: \(error.localizedDescription)"])
+                await MainActor.run {
+                    errorMessage = "Failed to save pet: \(error.localizedDescription). Please try again."
+                    showError = true
+                    isSubmitting = false
+                }
             }
         }
     }

@@ -10,6 +10,7 @@ enum LogEvent: String {
     case quick_log_saved
     case quick_log_cancelled
     case quick_log_undo_tapped
+    case error_occurred
 }
 
 class TelemetryEngine {

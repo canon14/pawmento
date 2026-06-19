@@ -29,7 +29,7 @@ class PetStore: ObservableObject {
     }
     
     @MainActor
-    func addPet(_ pet: Pet, ownerId: UUID) async {
+    func addPet(_ pet: Pet, ownerId: UUID) async throws {
         var finalPet = pet
         
         do {
@@ -54,18 +54,7 @@ class PetStore: ObservableObject {
             self.activePet = insertedPet
         } catch {
             print("Failed to insert pet: \(error)")
-            // Fallback for UI if offline/error
-            var offlinePet = finalPet
-            if let image = pet.photoImage,
-               let localURL = StorageManager.shared.saveImageToDisk(image, fileName: "\(offlinePet.id.uuidString).jpg") {
-                offlinePet.photoLocalURL = localURL
-            }
-            
-            self.pets.append(offlinePet)
-            self.activePet = offlinePet
-            
-            // Queue for later
-            OfflineSyncManager.shared.enqueueTask(.createPet(offlinePet, ownerId))
+            throw error
         }
     }
     

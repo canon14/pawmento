@@ -7,8 +7,16 @@ struct BirthdayPickerField: View {
     @State private var selectedMonth: Int = Calendar.current.component(.month, from: Date())
     @State private var selectedYear: Int = Calendar.current.component(.year, from: Date())
     
-    let months = Array(1...12)
     let years = Array(1990...Calendar.current.component(.year, from: Date())).reversed()
+    
+    var availableMonths: [Int] {
+        let currentYear = Calendar.current.component(.year, from: Date())
+        if selectedYear == currentYear {
+            let currentMonth = Calendar.current.component(.month, from: Date())
+            return Array(1...currentMonth)
+        }
+        return Array(1...12)
+    }
     
     var displayString: String {
         if let comps = selectedDateComponents, let m = comps.month, let y = comps.year {
@@ -65,7 +73,7 @@ struct BirthdayPickerField: View {
                     
                     HStack(spacing: 0) {
                         Picker("Month", selection: $selectedMonth) {
-                            ForEach(months, id: \.self) { month in
+                            ForEach(availableMonths, id: \.self) { month in
                                 Text(String(format: "%02d", month)).tag(month)
                             }
                         }
@@ -79,6 +87,13 @@ struct BirthdayPickerField: View {
                         }
                         .pickerStyle(WheelPickerStyle())
                         .frame(maxWidth: .infinity)
+                        .onChange(of: selectedYear) { newValue in
+                            let currentYear = Calendar.current.component(.year, from: Date())
+                            let currentMonth = Calendar.current.component(.month, from: Date())
+                            if newValue == currentYear && selectedMonth > currentMonth {
+                                selectedMonth = currentMonth
+                            }
+                        }
                     }
                     .frame(height: 150)
                 }
