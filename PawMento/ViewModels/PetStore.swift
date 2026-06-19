@@ -3,29 +3,58 @@ import SwiftUI
 import Combine
 import Supabase
 
+struct ArchivePetDTO: Codable {
+    let is_active: Bool
+}
+
 class PetStore: ObservableObject {
     static let fallbackPetName = "your pet"
     @Published var pets: [Pet] = []
     @Published var activePet: Pet? = nil
     
-    init() {
-        // Mock data removed. Pets will be fetched upon authentication.
-    }
+    @Published var isFetching = false
+    @Published var fetchError: String? = nil
+    
+    init() { }
     
     @MainActor
     func fetchPets() async {
+        isFetching = true
+        fetchError = nil
         do {
+            guard let ownerId = try? await SupabaseManager.shared.client.auth.session.user.id else {
+                isFetching = false
+                return
+            }
+            
             let dtos: [PetDTO] = try await SupabaseManager.shared.client
                 .from("pets")
                 .select()
+                .eq("owner_id", value: ownerId.uuidString)
+                .order("created_at", ascending: true)
                 .execute()
                 .value
             
-            self.pets = dtos.map { $0.toPet() }
-            self.activePet = self.pets.first
+            let fetchedPets = dtos.map { $0.toPet() }.filter { $0.isActive }
+            self.pets = fetchedPets
+            
+            if activePet == nil || !fetchedPets.contains(where: { $0.id == activePet?.id }) {
+                self.activePet = fetchedPets.first
+            }
         } catch {
             print("Failed to fetch pets: \(error)")
+            fetchError = error.localizedDescription
         }
+        isFetching = false
+    }
+    
+    private func uploadPhoto(for pet: Pet, ownerId: UUID) async throws -> URL? {
+        if let image = pet.photoImage {
+            let path = "pets/\(ownerId.uuidString)/\(pet.id.uuidString).jpg"
+            let urlString = try await StorageManager.shared.uploadImage(image, path: path)
+            return URL(string: urlString)
+        }
+        return pet.photoLocalURL
     }
     
     @MainActor
@@ -33,12 +62,7 @@ class PetStore: ObservableObject {
         var finalPet = pet
         
         do {
-            // Upload photo if exists
-            if let image = pet.photoImage {
-                let path = "pets/\(ownerId.uuidString)/\(pet.id.uuidString).jpg"
-                let urlString = try await StorageManager.shared.uploadImage(image, path: path)
-                finalPet.photoLocalURL = URL(string: urlString)
-            }
+            finalPet.photoLocalURL = try await uploadPhoto(for: finalPet, ownerId: ownerId)
             
             let dto = finalPet.toDTO(ownerId: ownerId)
             let insertedDTO: PetDTO = try await SupabaseManager.shared.client
@@ -50,7 +74,9 @@ class PetStore: ObservableObject {
                 .value
             
             let insertedPet = insertedDTO.toPet()
-            self.pets.append(insertedPet)
+            if !pets.contains(where: { $0.id == insertedPet.id }) {
+                self.pets.append(insertedPet)
+            }
             self.activePet = insertedPet
         } catch {
             print("Failed to insert pet: \(error)")
@@ -59,46 +85,54 @@ class PetStore: ObservableObject {
     }
     
     @MainActor
-    func updatePet(_ pet: Pet, ownerId: UUID) async {
-        // Update local first
-        if let index = pets.firstIndex(where: { $0.id == pet.id }) {
-            pets[index] = pet
-            if activePet?.id == pet.id {
-                activePet = pet
-            }
-        }
+    func updatePet(_ pet: Pet, ownerId: UUID) async throws {
+        var finalPet = pet
         
         do {
-            let dto = pet.toDTO(ownerId: ownerId)
+            finalPet.photoLocalURL = try await uploadPhoto(for: finalPet, ownerId: ownerId)
+            
+            let dto = finalPet.toDTO(ownerId: ownerId)
             try await SupabaseManager.shared.client
                 .from("pets")
                 .update(dto)
                 .eq("id", value: pet.id.uuidString)
                 .execute()
+            
+            // Update local after success
+            if let index = pets.firstIndex(where: { $0.id == pet.id }) {
+                pets[index] = finalPet
+                if activePet?.id == pet.id {
+                    activePet = finalPet
+                }
+            }
         } catch {
             print("Failed to update pet on server: \(error)")
+            throw error
         }
     }
     
     @MainActor
-    func archivePet(_ pet: Pet, ownerId: UUID) async {
-        if let index = pets.firstIndex(where: { $0.id == pet.id }) {
-            pets[index].isActive = false
-            
-            // Switch to next active pet
-            if activePet?.id == pet.id {
-                activePet = pets.first(where: { $0.isActive && $0.id != pet.id })
-            }
-        }
-        
+    func archivePet(_ pet: Pet, ownerId: UUID) async throws {
         do {
+            let dto = ArchivePetDTO(is_active: false)
             try await SupabaseManager.shared.client
                 .from("pets")
-                .update(["is_active": false])
+                .update(dto)
                 .eq("id", value: pet.id.uuidString)
                 .execute()
+            
+            // Update local after success
+            if let index = pets.firstIndex(where: { $0.id == pet.id }) {
+                pets[index].isActive = false
+                
+                if activePet?.id == pet.id {
+                    activePet = pets.first(where: { $0.isActive && $0.id != pet.id })
+                }
+            }
+            pets.removeAll { $0.id == pet.id }
         } catch {
             print("Failed to archive pet on server: \(error)")
+            throw error
         }
     }
 }

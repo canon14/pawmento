@@ -582,6 +582,9 @@ struct ArchiveButton: View {
     let pet: Pet
     @State private var showingFirstAlert = false
     @State private var showingSecondAlert = false
+    @State private var isArchiving = false
+    @State private var showErrorAlert = false
+    @State private var errorMessage = ""
     @EnvironmentObject var petStore: PetStore
     @EnvironmentObject var authManager: AuthManager
     
@@ -589,13 +592,19 @@ struct ArchiveButton: View {
         Button(action: {
             showingFirstAlert = true
         }) {
-            Text("Archive \(pet.name)'s profile")
+            HStack {
+                if isArchiving {
+                    ProgressView().tint(.warmCoral).padding(.trailing, 8)
+                }
+                Text(isArchiving ? "Archiving..." : "Archive \(pet.name)'s profile")
+            }
                 .font(.system(size: 15))
                 .foregroundColor(.warmCoral)
                 .frame(maxWidth: .infinity)
                 .frame(height: 52)
                 .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.warmCoral, lineWidth: 1))
         }
+        .disabled(isArchiving)
         .alert("Archive \(pet.name)?", isPresented: $showingFirstAlert) {
             Button("Cancel", role: .cancel) { }
             Button("Yes, Archive", role: .destructive) {
@@ -607,14 +616,31 @@ struct ArchiveButton: View {
         .alert("Are you absolutely sure?", isPresented: $showingSecondAlert) {
             Button("Cancel", role: .cancel) { }
             Button("Archive", role: .destructive) {
+                isArchiving = true
                 Task {
                     if let ownerId = await authManager.getCurrentUserId() {
-                        await petStore.archivePet(pet, ownerId: ownerId)
+                        do {
+                            try await petStore.archivePet(pet, ownerId: ownerId)
+                        } catch {
+                            TelemetryEngine.shared.track(event: .error_occurred, properties: ["message": "Failed to archive pet: \(error.localizedDescription)"])
+                            await MainActor.run {
+                                errorMessage = "Failed to archive profile: \(error.localizedDescription)"
+                                showErrorAlert = true
+                                isArchiving = false
+                            }
+                        }
+                    } else {
+                        isArchiving = false
                     }
                 }
             }
         } message: {
             Text("This action will immediately remove \(pet.name) from your active pets.")
+        }
+        .alert("Error", isPresented: $showErrorAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(errorMessage)
         }
     }
 }

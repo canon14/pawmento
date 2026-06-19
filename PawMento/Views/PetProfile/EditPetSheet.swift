@@ -23,6 +23,7 @@ struct EditPetSheet: View {
     
     // Validation
     @State private var showError = false
+    @State private var errorMessage = ""
     @State private var isSubmitting = false
     
     var canSubmit: Bool {
@@ -185,10 +186,10 @@ struct EditPetSheet: View {
                     }
                 }
             }
-            .alert("Authentication Error", isPresented: $showError) {
+            .alert("Error", isPresented: $showError) {
                 Button("OK", role: .cancel) { }
             } message: {
-                Text("Your session expired. Please sign out and sign back in to save changes.")
+                Text(errorMessage)
             }
         }
     }
@@ -206,6 +207,7 @@ struct EditPetSheet: View {
     
     private func submitForm() {
         guard canSubmit, let species = selectedSpecies else {
+            errorMessage = "Please fill out the required fields."
             showError = true
             return
         }
@@ -228,17 +230,26 @@ struct EditPetSheet: View {
             guard let ownerId = await authManager.getCurrentUserId() else {
                 print("Cannot update pet: No authenticated user.")
                 await MainActor.run {
+                    errorMessage = "Your session expired. Please sign out and sign back in to save changes."
                     showError = true
                     isSubmitting = false
                 }
                 return
             }
             
-            await petStore.updatePet(updatedPet, ownerId: ownerId)
-            
-            await MainActor.run {
-                isSubmitting = false
-                dismiss()
+            do {
+                try await petStore.updatePet(updatedPet, ownerId: ownerId)
+                await MainActor.run {
+                    isSubmitting = false
+                    dismiss()
+                }
+            } catch {
+                TelemetryEngine.shared.track(event: .error_occurred, properties: ["message": "Failed to update pet: \(error.localizedDescription)"])
+                await MainActor.run {
+                    errorMessage = "Failed to update profile: \(error.localizedDescription)"
+                    showError = true
+                    isSubmitting = false
+                }
             }
         }
     }
