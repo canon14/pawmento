@@ -1,150 +1,23 @@
 import SwiftUI
 
-// MARK: - View Models & Helpers
-enum TimelineBucket: Equatable, Hashable {
-    case today
-    case yesterday
-    case thisWeek
-    case earlierThisMonth
-    case monthYear(String)
-    
-    var title: String {
-        switch self {
-        case .today: return "TODAY"
-        case .yesterday: return "YESTERDAY"
-        case .thisWeek: return "THIS WEEK"
-        case .earlierThisMonth: return "EARLIER THIS MONTH"
-        case .monthYear(let str): return str.uppercased()
-        }
-    }
-}
-
-struct BucketGroup: Identifiable {
-    let id = UUID()
-    let bucket: TimelineBucket
-    let headerSubtitle: String?
-    let logs: [LogEntry]
-}
-
 // MARK: - FullTimelineView
 struct FullTimelineView: View {
     @Environment(\.dismiss) var dismiss
     @EnvironmentObject var logStore: LogStore
     @EnvironmentObject var petStore: PetStore
     
+    @StateObject private var viewModel = FullTimelineViewModel()
+    @StateObject private var insightsVM = InsightsViewModel()
+    
     // State
-    @State private var selectedFilter: String = "All"
-    @State private var searchQuery: String = ""
     @State private var isSearching: Bool = false
     @State private var showFilterSheet: Bool = false
     @State private var expandedBuckets: Set<TimelineBucket> = []
-    
-    // AI Banner Mock State
-    @State private var showBanner: Bool = true
-    @State private var bannerPermanentlyDismissed: Bool = false
     
     @State private var expandedImage: UIImage? = nil
     @State private var selectedLog: LogEntry? = nil
     
     let filterOptions = ["All", "Symptoms", "Meals", "Meds", "Walks", "Sleep", "Notes", "Vet visits"]
-    
-    // Computed Properties
-    private var filteredLogs: [LogEntry] {
-        var result = logStore.logs
-        
-        // Category Filter
-        if selectedFilter != "All" {
-            result = result.filter { log in
-                switch selectedFilter {
-                case "Symptoms": return log.category == .symptom
-                case "Meals": return log.category == .meal || log.category == .water
-                case "Meds": return log.category == .med
-                case "Walks": return log.category == .walk
-                case "Sleep": return log.category == .sleep
-                case "Notes": return log.category == .other // approximate mapping
-                case "Vet visits": return log.category == .vetVisit
-                default: return true
-                }
-            }
-        }
-        
-        // Search Filter
-        if !searchQuery.isEmpty {
-            let lowerQuery = searchQuery.lowercased()
-            result = result.filter {
-                $0.category.rawValue.lowercased().contains(lowerQuery) ||
-                ($0.note?.lowercased().contains(lowerQuery) ?? false)
-            }
-        }
-        
-        return result
-    }
-    
-    private var bucketedLogs: [BucketGroup] {
-        var groups: [TimelineBucket: [LogEntry]] = [:]
-        
-        let cal = Calendar.current
-        let today = cal.startOfDay(for: Date())
-        let yesterday = cal.date(byAdding: .day, value: -1, to: today)!
-        let startOfWeek = cal.date(from: cal.dateComponents([.yearForWeekOfYear, .weekOfYear], from: today))!
-        let startOfMonth = cal.date(from: cal.dateComponents([.year, .month], from: today))!
-        
-        let formatter = DateFormatter()
-        formatter.dateFormat = "MMM yyyy"
-        
-        for log in filteredLogs {
-            let logDate = cal.startOfDay(for: log.recordedAt)
-            var bucket: TimelineBucket
-            var sortKey = 0
-            
-            if logDate == today {
-                bucket = .today
-            } else if logDate == yesterday {
-                bucket = .yesterday
-            } else if logDate >= startOfWeek {
-                bucket = .thisWeek
-            } else if logDate >= startOfMonth {
-                bucket = .earlierThisMonth
-            } else {
-                bucket = .monthYear(formatter.string(from: logDate))
-            }
-            
-            groups[bucket, default: []].append(log)
-        }
-        
-        // Sort buckets chronologically descending
-        let sortedBuckets: [TimelineBucket] = [
-            .today, .yesterday, .thisWeek, .earlierThisMonth
-        ] + groups.keys.filter { 
-            if case .monthYear = $0 { return true }
-            return false 
-        }.sorted { a, b in
-            // Just simple reverse string sort for Month Year MVP
-            a.title > b.title
-        }
-        
-        let dFormatter = DateFormatter()
-        dFormatter.dateFormat = "EEE MMM d"
-        
-        return sortedBuckets.compactMap { bucket in
-            guard let logs = groups[bucket] else { return nil }
-            
-            var subtitle: String? = nil
-            if bucket == .today { subtitle = dFormatter.string(from: Date()) }
-            if bucket == .yesterday { subtitle = dFormatter.string(from: cal.date(byAdding: .day, value: -1, to: Date())!) }
-            
-            // Sort logs within bucket newest first
-            let sortedLogs = logs.sorted { $0.recordedAt > $1.recordedAt }
-            return BucketGroup(bucket: bucket, headerSubtitle: subtitle, logs: sortedLogs)
-        }
-    }
-    
-    private var lastLoggedTimeText: String {
-        guard let last = logStore.logs.first else { return "No logs yet" }
-        let diff = Int(Date().timeIntervalSince(last.recordedAt) / 3600)
-        if diff == 0 { return "last logged just now" }
-        return "last logged \(diff)h ago"
-    }
     
     // MARK: - Body
     var body: some View {
@@ -155,9 +28,9 @@ struct FullTimelineView: View {
                 // 1.1 Nav Bar
                 navBar
                 
-                if filteredLogs.isEmpty && logStore.logs.isEmpty {
+                if viewModel.filteredLogs.isEmpty && logStore.logs.isEmpty {
                     emptyStateNewPet
-                } else if filteredLogs.isEmpty {
+                } else if viewModel.filteredLogs.isEmpty {
                     emptyStateFilter
                 } else {
                     // Main Scroll Content
@@ -168,22 +41,24 @@ struct FullTimelineView: View {
                             titleBlock
                             
                             // 1.3 AI Pattern Banner
-                            if showBanner && !bannerPermanentlyDismissed {
-                                aiPatternBanner
+                            if viewModel.showBanner && !viewModel.bannerPermanentlyDismissed {
+                                if let heroInsight = insightsVM.heroInsight {
+                                    aiPatternBanner(insight: heroInsight)
+                                }
                             }
                             
                             // 1.4 Filter Chip Row
                             filterChipRow
                             
                             // 1.5 Timeline Buckets
-                            ForEach(bucketedLogs) { group in
+                            ForEach(viewModel.bucketedLogs) { group in
                                 Section(header: stickyHeader(group: group)) {
                                     bucketContent(group: group)
                                 }
                             }
                             
                             // 1.11 Footer CTA
-                            if filteredLogs.count >= 7 {
+                            if viewModel.filteredLogs.count >= 7 {
                                 footerCTA
                             }
                         }
@@ -192,27 +67,53 @@ struct FullTimelineView: View {
                 }
             }
             
-            // Full Screen Image Overlay
+            // Full Screen Image Overlay with Pinch-to-Zoom & Close
             if let image = expandedImage {
-                ZStack {
+                ZStack(alignment: .topTrailing) {
                     Color.black.ignoresSafeArea()
-                    Image(uiImage: image)
-                        .resizable()
-                        .scaledToFit()
-                        .ignoresSafeArea()
+                    
+                    ScrollView([.horizontal, .vertical], showsIndicators: false) {
+                        Image(uiImage: image)
+                            .resizable()
+                            .scaledToFit()
+                            // Frame allows dragging within ScrollView
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
+                    .ignoresSafeArea()
+                    
+                    Button(action: {
+                        withAnimation(.easeInOut(duration: 0.2)) { expandedImage = nil }
+                    }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 32))
+                            .foregroundColor(.white.opacity(0.8))
+                            .padding()
+                            .padding(.top, 30) // Safety for notch
+                    }
+                    .accessibilityLabel("Close photo")
                 }
                 .ignoresSafeArea()
-                .onTapGesture {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        expandedImage = nil
-                    }
-                }
                 .transition(.opacity)
+                .zIndex(100)
             }
         }
         .navigationBarHidden(true)
         .sheet(item: $selectedLog) { log in
             LogDetailSheet(existingLog: log)
+        }
+        .alert("Premium Feature Coming Soon", isPresented: $viewModel.showPremiumAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text("We're actively building this feature. Stay tuned!")
+        }
+        .onAppear {
+            viewModel.ingest(logs: logStore.logs)
+            Task {
+                await insightsVM.loadInsights(for: petStore.activePet)
+            }
+        }
+        .onReceive(logStore.$logs) { newLogs in
+            viewModel.ingest(logs: newLogs)
         }
     }
     
@@ -251,7 +152,7 @@ struct FullTimelineView: View {
                             .foregroundColor(.ink900)
                             .frame(width: 44, height: 44)
                         
-                        if selectedFilter != "All" {
+                        if viewModel.selectedFilter != "All" {
                             Circle()
                                 .fill(Color.coral500)
                                 .frame(width: 6, height: 6)
@@ -273,7 +174,7 @@ struct FullTimelineView: View {
     private var titleBlock: some View {
         VStack(alignment: .leading, spacing: 4) {
             if isSearching {
-                TextField("Search events, notes...", text: $searchQuery)
+                TextField("Search events, notes...", text: $viewModel.searchQuery)
                     .font(.bodyLG)
                     .padding(12)
                     .background(Color.surface1)
@@ -284,7 +185,7 @@ struct FullTimelineView: View {
                     .font(.displayM)
                     .foregroundColor(.ink900)
                 
-                Text("\(logStore.logs.count) events · \(lastLoggedTimeText)")
+                Text("\(logStore.logs.count) events · \(viewModel.lastLoggedTimeText)")
                     .font(.caption)
                     .foregroundColor(.ink600)
             }
@@ -295,33 +196,35 @@ struct FullTimelineView: View {
         .padding(.bottom, 16)
     }
     
-    private var aiPatternBanner: some View {
+    private func aiPatternBanner(insight: Insight) -> some View {
         HStack(alignment: .top, spacing: 12) {
-            Image(systemName: "sparkles")
+            Image(systemName: insight.tier.iconName)
                 .font(.system(size: 24))
                 .foregroundColor(.sage700)
             
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
-                    Text("Pattern detected")
+                    Text(insight.tier.label.capitalized)
                         .font(.bodySSemibold)
                         .foregroundColor(.sage700)
                     Spacer()
-                    Text("Premium")
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(Color.sage700)
-                        .clipShape(Capsule())
+                    if insight.isPremiumGated {
+                        Text("Premium")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color.sage700)
+                            .clipShape(Capsule())
+                    }
                 }
                 
-                Text("Limping appeared 3× in 10 days — all evenings.")
+                Text(insight.headline)
                     .font(.bodyS)
                     .foregroundColor(.ink900)
                     .fixedSize(horizontal: false, vertical: true)
                 
-                Button(action: { /* Deep dive */ }) {
+                Button(action: { viewModel.showPremiumAlert = true }) {
                     Text("See deep dive ›")
                         .font(.bodySSemibold)
                         .foregroundColor(.sage700)
@@ -341,14 +244,14 @@ struct FullTimelineView: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
                 ForEach(filterOptions, id: \.self) { option in
-                    let isActive = selectedFilter == option
+                    let isActive = viewModel.selectedFilter == option
                     
                     Button(action: {
                         withAnimation {
                             if isActive && option != "All" {
-                                selectedFilter = "All"
+                                viewModel.selectedFilter = "All"
                             } else {
-                                selectedFilter = option
+                                viewModel.selectedFilter = option
                             }
                         }
                     }) {
@@ -374,7 +277,6 @@ struct FullTimelineView: View {
     
     private func stickyHeader(group: BucketGroup) -> some View {
         HStack {
-            // "─── TODAY · Mon Mar 17 ───"
             Rectangle().frame(height: 1).foregroundColor(.ink200)
             
             HStack(spacing: 4) {
@@ -403,15 +305,17 @@ struct FullTimelineView: View {
     private func bucketContent(group: BucketGroup) -> some View {
         VStack(spacing: 12) {
             let isExpanded = expandedBuckets.contains(group.bucket)
-            // Smart collapse rules: Expand Today & Yesterday by default. 
-            // Older buckets collapse if > 5 items.
             let autoCollapse = group.bucket != .today && group.bucket != .yesterday
             let shouldCollapse = autoCollapse && group.logs.count > 5 && !isExpanded
             
             let visibleLogs = shouldCollapse ? Array(group.logs.prefix(5)) : group.logs
             
             ForEach(visibleLogs) { log in
-                TimelineItemRowV2(log: log, expandedImage: $expandedImage) {
+                TimelineItemRowV2(
+                    log: log,
+                    badgeText: viewModel.getInsightBadge(for: log),
+                    expandedImage: $expandedImage
+                ) {
                     selectedLog = log
                 }
             }
@@ -436,9 +340,9 @@ struct FullTimelineView: View {
     }
     
     private var footerCTA: some View {
-        Button(action: { print("Vet PDF requested") }) {
+        Button(action: { viewModel.showPremiumAlert = true }) {
             HStack {
-                Text(selectedFilter == "All" ? "Export this month as Vet PDF" : "Export filtered view as PDF")
+                Text(viewModel.selectedFilter == "All" ? "Export this month as Vet PDF" : "Export filtered view as PDF")
                     .font(.bodySSemibold)
                     .foregroundColor(.white)
                 
@@ -485,13 +389,13 @@ struct FullTimelineView: View {
                 .font(.system(size: 64))
                 .foregroundColor(.ink300)
             
-            Text("No \(selectedFilter.lowercased()) events in this range.")
+            Text("No \(viewModel.selectedFilter.lowercased()) events in this range.")
                 .font(.bodyMD)
                 .foregroundColor(.ink600)
                 .multilineTextAlignment(.center)
             
             Button("Clear filter") {
-                withAnimation { selectedFilter = "All" }
+                withAnimation { viewModel.selectedFilter = "All" }
             }
             .font(.bodySSemibold)
             .foregroundColor(.sage700)
@@ -502,13 +406,24 @@ struct FullTimelineView: View {
     }
 }
 
+// MARK: - ScaleButtonStyle
+struct ScaleButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .background(configuration.isPressed ? Color.surface1 : Color.surface0)
+            .cornerRadius(14)
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.ink100, lineWidth: 1))
+            .animation(.easeIn(duration: 0.05), value: configuration.isPressed)
+            .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
+    }
+}
+
 // MARK: - TimelineItemRowV2
 struct TimelineItemRowV2: View {
     let log: LogEntry
+    let badgeText: String?
     @Binding var expandedImage: UIImage?
     var onTap: (() -> Void)? = nil
-    
-    @State private var isPressed = false
     
     var isSymptom: Bool { log.category == .symptom }
     
@@ -524,76 +439,70 @@ struct TimelineItemRowV2: View {
     }
     
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            
-            // Left Column: Glyph
-            glyph
-                .frame(width: 32)
-            
-            // Middle Column: Content
-            VStack(alignment: .leading, spacing: 4) {
-                // Title Line
-                let title = log.note?.isEmpty == false && !isSymptom ? log.note! : log.category.rawValue
-                Text(isSymptom ? "\(log.category.rawValue) — Symptom" : title)
-                    .font(.bodySSemibold)
-                    .foregroundColor(.ink900)
-                    .lineLimit(1)
+        Button(action: { onTap?() }) {
+            HStack(alignment: .top, spacing: 12) {
                 
-                // Pattern Badge (Mock condition)
-                if isSymptom {
-                    HStack(spacing: 4) {
-                        Image(systemName: "chart.line.uptrend.xyaxis")
-                            .font(.system(size: 10))
-                        Text("3rd time this month")
+                // Left Column: Glyph
+                glyph
+                    .frame(width: 32)
+                
+                // Middle Column: Content
+                VStack(alignment: .leading, spacing: 4) {
+                    // Title Line
+                    let title = log.note?.isEmpty == false && !isSymptom ? log.note! : log.category.rawValue
+                    Text(isSymptom ? "\(log.category.rawValue) — Symptom" : title)
+                        .font(.bodySSemibold)
+                        .foregroundColor(.ink900)
+                        .lineLimit(1)
+                    
+                    // Dynamic Pattern Badge
+                    if isSymptom, let badge = badgeText {
+                        HStack(spacing: 4) {
+                            Image(systemName: "chart.line.uptrend.xyaxis")
+                                .font(.system(size: 10))
+                            Text(badge)
+                        }
+                        .font(.captionSemibold)
+                        .foregroundColor(.sage700)
                     }
-                    .font(.captionSemibold)
-                    .foregroundColor(.sage700)
-                }
-                
-                // Note
-                if let note = log.note, !note.isEmpty, isSymptom {
-                    Text(note)
-                        .font(.bodyS)
-                        .foregroundColor(.ink700)
-                        .lineLimit(2)
-                }
-                
-                // Photo
-                if let photo = log.photoImage {
-                    Button(action: {
-                        withAnimation(.easeInOut(duration: 0.2)) { expandedImage = photo }
-                    }) {
-                        Image(uiImage: photo)
-                            .resizable()
-                            .scaledToFill()
-                            .frame(width: 64, height: 64)
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
-                            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.ink100, lineWidth: 1))
-                            .padding(.top, 4)
+                    
+                    // Note
+                    if let note = log.note, !note.isEmpty, isSymptom {
+                        Text(note)
+                            .font(.bodyS)
+                            .foregroundColor(.ink700)
+                            .lineLimit(2)
                     }
-                    .buttonStyle(PlainButtonStyle())
+                    
+                    // Photo
+                    if let photo = log.photoImage {
+                        Button(action: {
+                            withAnimation(.easeInOut(duration: 0.2)) { expandedImage = photo }
+                        }) {
+                            Image(uiImage: photo)
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: 64, height: 64)
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                                .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.ink100, lineWidth: 1))
+                                .padding(.top, 4)
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    }
                 }
+                
+                Spacer(minLength: 8)
+                
+                // Right Column: Timestamp
+                Text(log.recordedAt.formatted(date: .omitted, time: .shortened).lowercased())
+                    .font(.captionTabular)
+                    .foregroundColor(.ink500)
+                    .padding(.top, 2)
             }
-            
-            Spacer(minLength: 8)
-            
-            // Right Column: Timestamp
-            Text(timeFormatter.string(from: log.recordedAt).lowercased())
-                .font(.captionTabular)
-                .foregroundColor(.ink500)
-                .padding(.top, 2)
+            .padding(.vertical, 14)
+            .padding(.horizontal, 16)
         }
-        .padding(.vertical, 14)
-        .padding(.horizontal, 16)
-        .background(isPressed ? Color.surface1 : Color.surface0)
-        .cornerRadius(14)
-        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.ink100, lineWidth: 1))
-        .onTapGesture {
-            onTap?()
-        }
-        ._onButtonGesture { pressing in
-            withAnimation(.easeIn(duration: 0.05)) { isPressed = pressing }
-        } perform: {}
+        .buttonStyle(ScaleButtonStyle())
     }
     
     @ViewBuilder
@@ -625,11 +534,5 @@ struct TimelineItemRowV2: View {
                     .offset(x: 4, y: 4)
             }
         }
-    }
-    
-    private var timeFormatter: DateFormatter {
-        let f = DateFormatter()
-        f.dateFormat = "h:mma"
-        return f
     }
 }
