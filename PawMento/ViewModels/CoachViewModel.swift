@@ -88,6 +88,8 @@ class CoachViewModel: ObservableObject {
         
         // 4. Stream LLM Response
         isTyping = true
+        defer { isTyping = false }
+        
         let assistantMessageId = UUID()
         let initialAssistantMessage = ChatMessage(id: assistantMessageId, role: .assistant, content: "", petId: pet?.id)
         messages.append(initialAssistantMessage)
@@ -97,10 +99,14 @@ class CoachViewModel: ObservableObject {
         do {
             let stream = AICoachClient.shared.streamAdvice(messages: recentMessages, systemPrompt: systemPrompt)
             for try await token in stream {
-                isTyping = false
                 if let index = messages.firstIndex(where: { $0.id == assistantMessageId }) {
                     messages[index].content += token
                 }
+            }
+            
+            if let index = messages.firstIndex(where: { $0.id == assistantMessageId }), messages[index].content.isEmpty {
+                messages.remove(at: index)
+                return
             }
             
             // Post-Stream Premium Gating (Gate 2: Coach Warning)
@@ -127,7 +133,6 @@ class CoachViewModel: ObservableObject {
             }
             
         } catch {
-            isTyping = false
             print("Coach stream failed: \(error)") // Log raw technical error for devs
             
             // Refund the question quota if we failed
