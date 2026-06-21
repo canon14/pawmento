@@ -16,8 +16,6 @@ struct PawMentoApp: App {
     @StateObject private var medicationStore = MedicationStore()
     @StateObject private var toastManager = ToastManager()
     
-    @Environment(\.scenePhase) private var scenePhase
-    
     init() {
         // Initialize early to ensure UNUserNotificationCenter delegate is registered
         _ = NotificationManager.shared
