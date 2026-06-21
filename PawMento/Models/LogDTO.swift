@@ -49,4 +49,26 @@ extension LogEntry {
             severity: severity
         )
     }
+    
+    func toUpdateDTO() -> LogUpdateDTO {
+        return LogUpdateDTO(
+            pet_id: petId,
+            log_type: category.rawValue,
+            title: "\(category.rawValue) Log",
+            description: note,
+            timestamp: recordedAt,
+            photo_url: photoLocalURL?.absoluteString,
+            severity: severity
+        )
+    }
+}
+
+struct LogUpdateDTO: Codable {
+    let pet_id: UUID
+    let log_type: String
+    let title: String
+    let description: String?
+    let timestamp: Date
+    let photo_url: String?
+    let severity: Int?
 }

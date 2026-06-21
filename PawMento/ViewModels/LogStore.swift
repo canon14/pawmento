@@ -47,7 +47,7 @@ class LogStore: ObservableObject {
         }
         
         // 2. Sync to Supabase
-        let dto = finalLog.toDTO(userId: userId)
+        let dto = finalLog.toUpdateDTO()
         try await SupabaseManager.shared.client
             .from("logs")
             .update(dto)
