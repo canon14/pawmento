@@ -7,7 +7,14 @@ import Supabase
 class CoachViewModel: ObservableObject {
     @Published var messages: [ChatMessage] = []
     @Published var isTyping: Bool = false
-    @Published var freeQuestionsRemaining: Int = 5
+    @Published var freeQuestionsRemaining: Int = 5 {
+        didSet {
+            if freeQuestionsRemaining == 5 {
+                hasShownLowQuotaWarning = false
+            }
+        }
+    }
+    private var hasShownLowQuotaWarning = false
     @Published var showPremiumWall: Bool = false
     
     // Quick Replies context
@@ -97,10 +104,11 @@ class CoachViewModel: ObservableObject {
             }
             
             // Post-Stream Premium Gating (Gate 2: Coach Warning)
-            if freeQuestionsRemaining == 2 {
+            if freeQuestionsRemaining <= 2 && freeQuestionsRemaining > 0 && !hasShownLowQuotaWarning {
+                hasShownLowQuotaWarning = true
                 let warningMessage = ChatMessage(
                     role: .assistant,
-                    content: "Just so you know — you've got 2 free questions left this month.\nIf you want unlimited, I'd love to keep helping."
+                    content: "Just so you know — you've got \(freeQuestionsRemaining) free questions left this month.\nIf you want unlimited, I'd love to keep helping."
                 )
                 messages.append(warningMessage)
                 quickReplies = ["See Premium", "Got it"]
