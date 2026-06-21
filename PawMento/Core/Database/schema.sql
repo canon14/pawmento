@@ -26,6 +26,11 @@ CREATE TABLE IF NOT EXISTS public.subscriptions (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Migration: add columns that may be missing if the table was created before these were added.
+-- ALTER TABLE ... ADD COLUMN IF NOT EXISTS is idempotent and safe to re-run.
+ALTER TABLE public.subscriptions ADD COLUMN IF NOT EXISTS questions_used INTEGER DEFAULT 0;
+ALTER TABLE public.subscriptions ADD COLUMN IF NOT EXISTS period_start TIMESTAMP WITH TIME ZONE DEFAULT NOW();
+
 -- 3. Pets Table
 CREATE TABLE IF NOT EXISTS public.pets (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
