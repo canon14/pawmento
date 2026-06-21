@@ -123,8 +123,6 @@ class PetStore: ObservableObject {
             
             // Update local after success
             if let index = pets.firstIndex(where: { $0.id == pet.id }) {
-                pets[index].isActive = false
-                
                 if activePet?.id == pet.id {
                     activePet = pets.first(where: { $0.isActive && $0.id != pet.id })
                 }

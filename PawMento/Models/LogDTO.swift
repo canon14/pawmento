@@ -10,10 +10,7 @@ struct LogDTO: Codable, Identifiable {
     let timestamp: Date
     let created_by: UUID
     
-    // We map the photo URL into `title` temporarily if we want, or add `photo_url` to DB.
-    // Wait, `logs` table in `schema.sql` doesn't have `photo_url`! 
-    // We should either add `photo_url` to `logs` table in schema.sql OR store it in description.
-    // For now, let's assume we can add `photo_url` to `logs` table.
+
     let photo_url: String?
     let severity: Int?
     

@@ -79,7 +79,7 @@ ALTER TABLE public.reminders ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can view own profile" ON public.users FOR SELECT USING (auth.uid() = id);
 CREATE POLICY "Users can update own profile" ON public.users FOR UPDATE USING (auth.uid() = id);
 
--- Users can only view and edit their own subscriptions
+-- Users can only view their own subscriptions (writes happen server-side via service role)
 CREATE POLICY "Users can view own subscriptions" ON public.subscriptions FOR SELECT USING (auth.uid() = user_id);
 
 -- Pets policies: users can only CRUD their own pets
