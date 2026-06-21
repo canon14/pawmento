@@ -14,7 +14,7 @@ struct PawMentoApp: App {
     @StateObject private var coachViewModel = CoachViewModel()
     @StateObject private var logStore = LogStore()
     @StateObject private var medicationStore = MedicationStore()
-    @StateObject private var toastManager = ToastManager()
+    @StateObject private var toastManager = ToastManager.shared
     
     init() {
         // Initialize early to ensure UNUserNotificationCenter delegate is registered

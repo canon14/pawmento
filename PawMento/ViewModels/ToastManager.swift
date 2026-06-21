@@ -14,6 +14,7 @@ struct ToastMessage: Equatable {
 
 @MainActor
 class ToastManager: ObservableObject {
+    static let shared = ToastManager()
     @Published var currentToast: ToastMessage?
     private var dismissTask: Task<Void, Never>?
     

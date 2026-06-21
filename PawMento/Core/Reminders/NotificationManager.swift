@@ -59,6 +59,15 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
             if !granted { return }
         }
         
+        let pendingRequests = await UNUserNotificationCenter.current().pendingNotificationRequests()
+        if pendingRequests.count >= 60 {
+            print("Warning: Exceeding iOS 64 pending notification limit.")
+            await MainActor.run {
+                ToastManager.shared.show("Notification limit reached. Some reminders won't schedule.", duration: 4.0)
+            }
+            return
+        }
+        
         let content = UNMutableNotificationContent()
         content.title = "Time for \(reminder.title)!"
         content.body = "Tap to log this event for your pet."
@@ -74,6 +83,13 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
         
         let calendar = Calendar.current
         var trigger: UNNotificationTrigger
+        
+        // STRATEGY: Timezone Handling
+        // .daily and .weekly use UNCalendarNotificationTrigger with hour/minute components.
+        // Without an explicit `.timeZone` on DateComponents, it defaults to the device's current timezone.
+        // A 9:00 AM reminder will always fire at 9:00 AM local time, even if the user travels.
+        // Optional hook: observe `.NSSystemTimeZoneDidChange` in the app shell to force a reschedule
+        // of all reminders if we ever need to recalculate them relative to a fixed timezone.
         
         switch reminder.frequency {
         case .once:
