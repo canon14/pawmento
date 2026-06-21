@@ -4,6 +4,8 @@ import Combine
 
 @MainActor
 final class InsightsViewModel: ObservableObject {
+    static let useMockBenchmarks = false
+    
     var petId: UUID?
     
     @Published var timeRange: TimeRange = .days30
@@ -67,16 +69,20 @@ final class InsightsViewModel: ObservableObject {
             self.patternCount = fetchedInsights.count
             self.lastUpdated = Date()
             
-            // Mock Benchmark since we don't have enough global users yet
-            self.breedBenchmark = BreedBenchmark(
-                breed: pet.breed ?? "Dog",
-                age: 6,
-                activityPercentile: 62,
-                symptomsPercentile: 78,
-                sleepPercentile: 51
-            )
+            if InsightsViewModel.useMockBenchmarks {
+                // Mock Benchmark since we don't have enough global users yet
+                self.breedBenchmark = BreedBenchmark(
+                    breed: pet.breed ?? "Dog",
+                    age: 6,
+                    activityPercentile: 62,
+                    symptomsPercentile: 78,
+                    sleepPercentile: 51
+                )
+            } else {
+                self.breedBenchmark = nil
+            }
             
-            // Mock Coach Suggestions
+            // MOCK: Coach Suggestions are hardcoded for now
             self.coachSuggestions = [
                 "Is \(pet.name)'s weight healthy?",
                 "What should I ask the vet about \(pet.name)?",
