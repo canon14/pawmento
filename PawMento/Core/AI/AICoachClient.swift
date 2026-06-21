@@ -28,7 +28,7 @@ class AICoachClient {
     
     // MARK: - OpenAI Streaming
     private func streamOpenAI(messages: [[String: String]], systemPrompt: String) -> AsyncThrowingStream<String, Error> {
-        AsyncThrowingStream { continuation in
+        AsyncThrowingStream<String, Error> { continuation in
             Task {
                 do {
                     let url = URL(string: "https://api.openai.com/v1/chat/completions")!
@@ -51,7 +51,19 @@ class AICoachClient {
                     let (result, response) = try await URLSession.shared.bytes(for: request)
                     
                     guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
-                        continuation.finish(throwing: URLError(.badServerResponse))
+                        var errorBody = ""
+                        for try await line in result.lines {
+                            errorBody += line
+                        }
+                        if let data = errorBody.data(using: .utf8),
+                           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                           let errorObj = json["error"] as? [String: Any],
+                           let message = errorObj["message"] as? String {
+                            let statusCode = (response as? HTTPURLResponse)?.statusCode ?? 500
+                            continuation.finish(throwing: NSError(domain: "OpenAIAPI", code: statusCode, userInfo: [NSLocalizedDescriptionKey: "API Error: \(message)"]))
+                        } else {
+                            continuation.finish(throwing: URLError(.badServerResponse))
+                        }
                         return
                     }
                     
@@ -79,7 +91,7 @@ class AICoachClient {
     
     // MARK: - Anthropic Streaming
     private func streamAnthropic(messages: [[String: String]], systemPrompt: String) -> AsyncThrowingStream<String, Error> {
-        AsyncThrowingStream { continuation in
+        AsyncThrowingStream<String, Error> { continuation in
             Task {
                 do {
                     let url = URL(string: "https://api.anthropic.com/v1/messages")!
