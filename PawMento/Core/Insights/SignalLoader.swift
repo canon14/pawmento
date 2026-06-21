@@ -5,6 +5,7 @@ struct Signal {
     let id: UUID
     let category: LogCategory
     let note: String?
+    let severity: Int?
     let timestamp: Date
 }
 
@@ -37,7 +38,7 @@ class SignalLoader {
         
         return dtos.map { dto in
             let category = LogCategory(rawValue: dto.log_type) ?? .other
-            return Signal(id: dto.id, category: category, note: dto.description, timestamp: dto.timestamp)
+            return Signal(id: dto.id, category: category, note: dto.description, severity: dto.severity, timestamp: dto.timestamp)
         }
     }
 }

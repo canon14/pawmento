@@ -50,15 +50,6 @@ CREATE TABLE public.logs (
     created_by UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE
 );
 
--- 5. Symptoms Table (For AI Pattern Tracking)
-CREATE TABLE public.symptoms (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    pet_id UUID NOT NULL REFERENCES public.pets(id) ON DELETE CASCADE,
-    symptom_type TEXT NOT NULL,
-    severity INTEGER CHECK (severity >= 1 AND severity <= 5),
-    notes TEXT,
-    timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
 
 -- 6. Reminders Table
 CREATE TABLE public.reminders (
@@ -81,7 +72,7 @@ ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.subscriptions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.pets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.logs ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.symptoms ENABLE ROW LEVEL SECURITY;
+
 ALTER TABLE public.reminders ENABLE ROW LEVEL SECURITY;
 
 -- Users can only view and edit their own profile
@@ -103,11 +94,6 @@ CREATE POLICY "Users can manage logs for their pets" ON public.logs
         EXISTS (SELECT 1 FROM public.pets WHERE id = public.logs.pet_id AND owner_id = auth.uid())
     );
 
--- Symptoms policies: verify the symptom belongs to a pet owned by the auth user
-CREATE POLICY "Users can manage symptoms for their pets" ON public.symptoms 
-    FOR ALL USING (
-        EXISTS (SELECT 1 FROM public.pets WHERE id = public.symptoms.pet_id AND owner_id = auth.uid())
-    );
 
 -- Reminders policies: verify the reminder belongs to a pet owned by the auth user
 CREATE POLICY "Users can manage reminders for their pets" ON public.reminders 
