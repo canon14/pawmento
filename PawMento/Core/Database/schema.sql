@@ -169,3 +169,7 @@ BEGIN
     DELETE FROM auth.users WHERE id = auth.uid();
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Lock down execution to authenticated users only
+REVOKE EXECUTE ON FUNCTION public.delete_user() FROM public;
+GRANT EXECUTE ON FUNCTION public.delete_user() TO authenticated;
