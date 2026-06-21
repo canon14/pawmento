@@ -70,7 +70,7 @@ actor InsightEngine {
         }
         
         // 6. Sort and Cache
-        finalInsights.sort { $0.tier < $1.tier }
+        finalInsights.sort { $0.tier.priority < $1.tier.priority }
         let topInsights = Array(finalInsights.prefix(8))
         
         cache[key] = topInsights

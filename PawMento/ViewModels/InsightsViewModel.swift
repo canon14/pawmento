@@ -131,10 +131,10 @@ final class InsightsViewModel: ObservableObject {
     
     private func bestInsight(from insights: [Insight]) -> Insight? {
         return insights.min(by: { 
-            if $0.tier == $1.tier {
+            if $0.tier.priority == $1.tier.priority {
                 return $0.confidence > $1.confidence
             }
-            return $0.tier < $1.tier
+            return $0.tier.priority < $1.tier.priority
         })
     }
 }
