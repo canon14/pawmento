@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct OnboardingCarouselView: View {
-    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding: Bool = false
+    @EnvironmentObject var authManager: AuthManager
     
     @State private var currentIndex = 0
     @State private var showingSkipConfirmation = false
@@ -104,7 +104,9 @@ struct OnboardingCarouselView: View {
         }
         .sheet(isPresented: $showingAddPetSheet) {
             AddFirstPetScreen {
-                hasCompletedOnboarding = true
+                Task {
+                    await authManager.completeOnboarding()
+                }
             }
         }
     }

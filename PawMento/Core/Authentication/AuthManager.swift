@@ -12,8 +12,8 @@ class AuthManager: ObservableObject {
     // Flag to tell the UI that the user needs to check their email
     @Published var needsEmailConfirmation: Bool = false
     
-    // Centralized magic string
-    private let onboardingKey = "hasCompletedOnboarding"
+    // Flag for per-user onboarding state
+    @Published var hasCompletedOnboarding: Bool = false
     
     func getCurrentUserId() async -> UUID? {
         try? await SupabaseManager.shared.client.auth.session.user.id
@@ -21,6 +21,23 @@ class AuthManager: ObservableObject {
     
     func getCurrentUserEmail() async -> String? {
         try? await SupabaseManager.shared.client.auth.session.user.email
+    }
+    
+    // MARK: - Onboarding
+    
+    func checkOnboardingState() async {
+        if let userId = await getCurrentUserId() {
+            hasCompletedOnboarding = UserDefaults.standard.bool(forKey: "hasCompletedOnboarding_\(userId.uuidString)")
+        } else {
+            hasCompletedOnboarding = false
+        }
+    }
+    
+    func completeOnboarding() async {
+        if let userId = await getCurrentUserId() {
+            UserDefaults.standard.set(true, forKey: "hasCompletedOnboarding_\(userId.uuidString)")
+            hasCompletedOnboarding = true
+        }
     }
     
     // MARK: - Safe Error Mapping
@@ -103,7 +120,6 @@ class AuthManager: ObservableObject {
             
             if response.session != nil {
                 // User has an active session, skip email confirmation
-                UserDefaults.standard.set(false, forKey: onboardingKey)
                 isAuthenticated = true
             } else {
                 // Email confirmation is required by Supabase settings
@@ -126,6 +142,7 @@ class AuthManager: ObservableObject {
         }
         isAuthenticated = false
         needsEmailConfirmation = false
+        hasCompletedOnboarding = false
     }
     
     // Delete Account
@@ -152,14 +169,8 @@ class AuthManager: ObservableObject {
                 credentials: .init(provider: .apple, idToken: idToken, nonce: nonce)
             )
             
-            // Check if lastSignInAt is within 5 seconds of createdAt to reliably detect new users
-            let user = response.user
-            let lastSignIn = user.lastSignInAt ?? user.createdAt
-            let isNewUser = abs(user.createdAt.timeIntervalSince(lastSignIn)) < 5.0
-            
-            if isNewUser {
-                UserDefaults.standard.set(false, forKey: onboardingKey)
-            }
+            // We no longer rely on brittle timestamp heuristics for new user detection.
+            // Onboarding is driven entirely by the per-user flag and pet presence.
             
             isAuthenticated = true
         } catch {
