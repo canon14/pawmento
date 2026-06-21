@@ -17,9 +17,11 @@ class PetProfileViewModel: ObservableObject {
     @Published var wellnessScore: Int = 0
     @Published var scoreTrend: String = "Trending →"
     @Published var scoreDelta: String = "Calculating..."
-    private var hasCalculatedInitialScore: Bool = false
+    // Fix S11: Track previous score for session-local delta
+    private var previousScore: Int?
     
-    func refreshProfile(for pet: Pet, logs: [LogEntry], fetchedMedications: [Medication]) async {
+    // Fix S13: Accept forceRefresh parameter to bypass insight caching
+    func refreshProfile(for pet: Pet, logs: [LogEntry], fetchedMedications: [Medication], forceRefresh: Bool = false) async {
         isLoading = true
         defer { isLoading = false }
         
@@ -27,54 +29,52 @@ class PetProfileViewModel: ObservableObject {
         
         let score = WellnessCalculator.calculateScore(logs: logs, medications: fetchedMedications)
         
-        if !hasCalculatedInitialScore {
-            self.wellnessScore = score
-            self.hasCalculatedInitialScore = true
-            
-            if logs.count < 3 {
-                scoreTrend = "Need more logs"
-                scoreDelta = "Gathering data"
-            } else if score >= 80 {
+        // Fix S11: Compute trend from real session-local deltas only.
+        // No fabricated "+4/-5" numbers. If we have no prior score, say "Gathering data".
+        if logs.count < 3 {
+            scoreTrend = "Need more logs"
+            scoreDelta = "Gathering data"
+        } else if let oldScore = previousScore {
+            let delta = score - oldScore
+            if delta > 0 {
                 scoreTrend = "Trending ↗"
-                scoreDelta = "+4 this week"
-            } else if score >= 60 {
+                scoreDelta = "+\(delta) since last check"
+            } else if delta < 0 {
+                scoreTrend = "Trending ↘"
+                scoreDelta = "\(delta) since last check"
+            } else {
                 scoreTrend = "Trending →"
                 scoreDelta = "Stable"
-            } else {
-                scoreTrend = "Trending ↘"
-                scoreDelta = "-5 this week"
             }
         } else {
-            let oldScore = self.wellnessScore
-            self.wellnessScore = score
-            
-            if logs.count < 3 {
-                scoreTrend = "Need more logs"
-                scoreDelta = "Gathering data"
-            } else if self.wellnessScore > oldScore {
+            // First calculation this session — no prior baseline to compare
+            if score >= 80 {
                 scoreTrend = "Trending ↗"
-                scoreDelta = "+\(self.wellnessScore - oldScore) this week"
-            } else if self.wellnessScore < oldScore {
-                scoreTrend = "Trending ↘"
-                scoreDelta = "-\(oldScore - self.wellnessScore) this week"
-            } else {
+            } else if score >= 60 {
                 scoreTrend = "Trending →"
-                scoreDelta = "Stable"
+            } else {
+                scoreTrend = "Trending ↘"
             }
+            scoreDelta = "Gathering data"
         }
         
-        // Generate AI Insight using actual LLM if needed
-        if aiInsight == nil {
-            await generateInsight(for: pet, logs: logs)
+        previousScore = score
+        self.wellnessScore = score
+        
+        // Fix S13: Generate AI Insight — support forceRefresh to bypass nil-guard and cache
+        if aiInsight == nil || forceRefresh {
+            await generateInsight(for: pet, logs: logs, forceRefresh: forceRefresh)
         }
     }
     
-    func generateInsight(for pet: Pet, logs: [LogEntry]) async {
+    // Fix S13: Added forceRefresh parameter to bypass 24h cache
+    func generateInsight(for pet: Pet, logs: [LogEntry], forceRefresh: Bool = false) async {
         let cacheKey = "ai_insight_\(pet.id.uuidString)"
         let cacheDateKey = "ai_insight_date_\(pet.id.uuidString)"
         
-        // 1. Check cache (24 hours)
-        if let lastDate = UserDefaults.standard.object(forKey: cacheDateKey) as? Date,
+        // 1. Check cache (24 hours) — skip if forceRefresh
+        if !forceRefresh,
+           let lastDate = UserDefaults.standard.object(forKey: cacheDateKey) as? Date,
            let lastInsight = UserDefaults.standard.string(forKey: cacheKey),
            Date().timeIntervalSince(lastDate) < 24 * 3600 {
             self.aiInsight = lastInsight
@@ -94,8 +94,9 @@ class PetProfileViewModel: ObservableObject {
         isGeneratingInsight = true
         defer { isGeneratingInsight = false }
         
-        // Prepare context
-        let recentLogsString = logs.prefix(10).map { "\($0.category.rawValue): \($0.note ?? "")" }.joined(separator: ", ")
+        // Fix S13: Sort logs by recordedAt descending before prefix(10) so context is truly most-recent
+        let sortedLogs = logs.sorted { $0.recordedAt > $1.recordedAt }
+        let recentLogsString = sortedLogs.prefix(10).map { "\($0.category.rawValue): \($0.note ?? "")" }.joined(separator: ", ")
         let prompt = """
         You are an expert AI vet coach. Briefly analyze the recent logs for \(pet.name) and provide a 1-2 sentence reassuring or observational insight. Do not prescribe.
         Recent logs: \(recentLogsString.isEmpty ? "None" : recentLogsString)
@@ -116,7 +117,8 @@ class PetProfileViewModel: ObservableObject {
             UserDefaults.standard.set(Date(), forKey: cacheDateKey)
             
         } catch {
-            self.aiInsight = "I lost connection while trying to analyze Buddy's data. Tap to retry."
+            // Fix S12: Replace hardcoded "Buddy" with pet.name
+            self.aiInsight = "I lost connection while trying to analyze \(pet.name)'s data. Tap to retry."
         }
     }
 }
@@ -130,5 +132,3 @@ struct MockCareProvider: Identifiable {
     let phone: String
     let distance: String
 }
-
-

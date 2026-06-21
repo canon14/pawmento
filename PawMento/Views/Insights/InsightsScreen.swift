@@ -290,13 +290,13 @@ struct InsightsScreen: View {
         }
         
         Button(action: {
-            viewModel.dismissInsight(insight, reason: .resolved)
+            viewModel.dismissInsight(insight, reason: .resolved, petId: petStore.activePet?.id)
         }) {
             Label("Mark as Resolved", systemImage: "checkmark.circle")
         }
         
         Button(role: .destructive, action: {
-            viewModel.dismissInsight(insight, reason: .notRelevant)
+            viewModel.dismissInsight(insight, reason: .notRelevant, petId: petStore.activePet?.id)
         }) {
             Label("Not Relevant to \(petStore.activePet?.name ?? PetStore.fallbackPetName)", systemImage: "xmark.circle")
         }

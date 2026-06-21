@@ -45,7 +45,7 @@ struct PetProfileScreen: View {
             .refreshable {
                 if let pet = petStore.activePet {
                     await medicationStore.fetchMedications(for: pet.id)
-                    await viewModel.refreshProfile(for: pet, logs: logStore.logs, fetchedMedications: medicationStore.medications)
+                    await viewModel.refreshProfile(for: pet, logs: logStore.logs, fetchedMedications: medicationStore.medications, forceRefresh: true)
                 }
             }
         }

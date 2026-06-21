@@ -264,3 +264,41 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- Lock down execution to authenticated users only
 REVOKE EXECUTE ON FUNCTION public.delete_user() FROM public;
 GRANT EXECUTE ON FUNCTION public.delete_user() TO authenticated;
+
+-- (Fix S9) Atomically increment question usage and return remaining count.
+-- Bypasses SELECT-only RLS via SECURITY DEFINER; prevents lost updates from concurrent sends.
+CREATE OR REPLACE FUNCTION public.increment_question_usage()
+RETURNS INTEGER
+LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+  new_used INTEGER;
+BEGIN
+  UPDATE public.subscriptions
+    SET questions_used = questions_used + 1
+    WHERE user_id = auth.uid()
+  RETURNING questions_used INTO new_used;
+  RETURN GREATEST(0, 5 - COALESCE(new_used, 0));
+END;
+$$;
+
+REVOKE EXECUTE ON FUNCTION public.increment_question_usage() FROM public;
+GRANT EXECUTE ON FUNCTION public.increment_question_usage() TO authenticated;
+
+-- (Fix S9) Atomically decrement question usage (refund) and return remaining count.
+CREATE OR REPLACE FUNCTION public.decrement_question_usage()
+RETURNS INTEGER
+LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+  new_used INTEGER;
+BEGIN
+  UPDATE public.subscriptions
+    SET questions_used = GREATEST(0, questions_used - 1)
+    WHERE user_id = auth.uid()
+  RETURNING questions_used INTO new_used;
+  RETURN GREATEST(0, 5 - COALESCE(new_used, 0));
+END;
+$$;
+
+REVOKE EXECUTE ON FUNCTION public.decrement_question_usage() FROM public;
+GRANT EXECUTE ON FUNCTION public.decrement_question_usage() TO authenticated;
+

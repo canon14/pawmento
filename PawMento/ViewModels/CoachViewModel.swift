@@ -7,19 +7,16 @@ import Supabase
 class CoachViewModel: ObservableObject {
     @Published var messages: [ChatMessage] = []
     @Published var isTyping: Bool = false
-    @Published var freeQuestionsRemaining: Int = 5 {
-        didSet {
-            if freeQuestionsRemaining == 5 {
-                hasShownLowQuotaWarning = false
-            }
-        }
-    }
+    @Published var freeQuestionsRemaining: Int = 5
     private var hasShownLowQuotaWarning = false
     @Published var isPremium: Bool = false
     @Published var showPremiumWall: Bool = false
     
     // Quick Replies context
     @Published var quickReplies: [String] = []
+    
+    // Fix S14: Track the pet whose messages are currently loaded
+    private var loadedPetId: UUID?
     
     // MARK: - Quota & Subscription
     
@@ -49,23 +46,23 @@ class CoachViewModel: ObservableObject {
             if now.timeIntervalSince(sub.period_start) >= thirtyDays {
                 // Period expired, reset locally and remotely
                 self.freeQuestionsRemaining = 5
+                // Fix S18: Reset warning flag on actual period reset, not via didSet
+                self.hasShownLowQuotaWarning = false
                 
-                // Fire and forget remote update
-                Task {
-                    struct UpdateQuotaDTO: Codable {
-                        let questions_used: Int
-                        let period_start: Date
-                    }
-                    do {
-                        let update = UpdateQuotaDTO(questions_used: 0, period_start: now)
-                        try await SupabaseManager.shared.client
-                            .from("subscriptions")
-                            .update(update)
-                            .eq("user_id", value: ownerId.uuidString)
-                            .execute()
-                    } catch {
-                        print("Failed to reset quota on server: \(error)")
-                    }
+                // Reset quota on server (init-time, non-concurrent — direct UPDATE is fine here)
+                struct UpdateQuotaDTO: Codable {
+                    let questions_used: Int
+                    let period_start: Date
+                }
+                do {
+                    let update = UpdateQuotaDTO(questions_used: 0, period_start: now)
+                    try await SupabaseManager.shared.client
+                        .from("subscriptions")
+                        .update(update)
+                        .eq("user_id", value: ownerId.uuidString)
+                        .execute()
+                } catch {
+                    print("Failed to reset quota on server: \(error)")
                 }
             } else {
                 // Still in period
@@ -84,8 +81,8 @@ class CoachViewModel: ObservableObject {
     func fetchMessages(for petId: UUID?, ownerId: UUID, forceRefresh: Bool = false) async {
         guard let petId = petId else { return }
         
-        // Prevent overwriting active chat if we already loaded it for this pet
-        if !forceRefresh && !messages.isEmpty && messages.last?.petId == petId {
+        // Fix S14: Gate cache-skip on loadedPetId, not messages.last?.petId
+        if !forceRefresh && !messages.isEmpty && loadedPetId == petId {
             return
         }
         
@@ -100,6 +97,7 @@ class CoachViewModel: ObservableObject {
                 .value
             
             self.messages = dtos.map { $0.toMessage() }
+            self.loadedPetId = petId
         } catch {
             print("Failed to fetch chat history: \(error)")
         }
@@ -142,25 +140,18 @@ class CoachViewModel: ObservableObject {
             return
         }
         
-        // 2. Decrement Counter (Gate 1)
+        // 2. Fix S9: Decrement Counter via atomic RPC (serialized, not fire-and-forget)
         if !isPremium {
-            freeQuestionsRemaining -= 1
-            if let ownerId = ownerId {
-                Task {
-                    do {
-                        let used = 5 - freeQuestionsRemaining
-                        struct UpdateUsageDTO: Codable {
-                            let questions_used: Int
-                        }
-                        try await SupabaseManager.shared.client
-                            .from("subscriptions")
-                            .update(UpdateUsageDTO(questions_used: used))
-                            .eq("user_id", value: ownerId.uuidString)
-                            .execute()
-                    } catch {
-                        print("Failed to update usage on server: \(error)")
-                    }
-                }
+            do {
+                let remaining: Int = try await SupabaseManager.shared.client
+                    .rpc("increment_question_usage")
+                    .execute()
+                    .value
+                self.freeQuestionsRemaining = remaining
+            } catch {
+                print("Failed to increment question usage: \(error)")
+                // Optimistic fallback: decrement locally
+                freeQuestionsRemaining = max(0, freeQuestionsRemaining - 1)
             }
         }
         
@@ -185,17 +176,28 @@ class CoachViewModel: ObservableObject {
                 }
             }
             
+            // Fix S15: On empty stream, still persist the user message so it's not lost from history
             if let index = messages.firstIndex(where: { $0.id == assistantMessageId }), messages[index].content.isEmpty {
                 messages.remove(at: index)
+                // Persist the user message even though the stream was empty
+                if let ownerId = ownerId {
+                    let userDTO = userMessage.toDTO(ownerId: ownerId)
+                    _ = try? await SupabaseManager.shared.client
+                        .from("chat_messages")
+                        .insert(userDTO)
+                        .execute()
+                }
                 return
             }
             
             // Post-Stream Premium Gating (Gate 2: Coach Warning)
             if !isPremium && freeQuestionsRemaining <= 2 && freeQuestionsRemaining > 0 && !hasShownLowQuotaWarning {
                 hasShownLowQuotaWarning = true
+                // Fix S15: Give warning message the active pet's id
                 let warningMessage = ChatMessage(
                     role: .assistant,
-                    content: "Just so you know — you've got \(freeQuestionsRemaining) free questions left this month.\nIf you want unlimited, I'd love to keep helping."
+                    content: "Just so you know — you've got \(freeQuestionsRemaining) free questions left this month.\nIf you want unlimited, I'd love to keep helping.",
+                    petId: pet?.id
                 )
                 messages.append(warningMessage)
                 quickReplies = ["See Premium", "Got it"]
@@ -217,25 +219,18 @@ class CoachViewModel: ObservableObject {
         } catch {
             print("Coach stream failed: \(error)") // Log raw technical error for devs
             
-            // Refund the question quota if we failed
+            // Fix S9: Refund the question quota via atomic RPC (serialized)
             if !isPremium {
-                freeQuestionsRemaining += 1
-                if let ownerId = ownerId {
-                    Task {
-                        do {
-                            let used = max(0, 5 - freeQuestionsRemaining)
-                            struct UpdateUsageDTO: Codable {
-                                let questions_used: Int
-                            }
-                            try await SupabaseManager.shared.client
-                                .from("subscriptions")
-                                .update(UpdateUsageDTO(questions_used: used))
-                                .eq("user_id", value: ownerId.uuidString)
-                                .execute()
-                        } catch {
-                            print("Failed to refund usage on server: \(error)")
-                        }
-                    }
+                do {
+                    let remaining: Int = try await SupabaseManager.shared.client
+                        .rpc("decrement_question_usage")
+                        .execute()
+                        .value
+                    self.freeQuestionsRemaining = remaining
+                } catch {
+                    print("Failed to refund usage on server: \(error)")
+                    // Optimistic fallback: refund locally
+                    freeQuestionsRemaining = min(5, freeQuestionsRemaining + 1)
                 }
             }
             
@@ -255,6 +250,7 @@ class CoachViewModel: ObservableObject {
         isTyping = false
         showPremiumWall = false
         quickReplies = []
+        loadedPetId = nil
         // we deliberately keep freeQuestionsRemaining so we don't reset until initializeQuotaAndSubscription runs.
     }
 }

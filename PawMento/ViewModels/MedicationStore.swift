@@ -6,10 +6,12 @@ import Supabase
 class MedicationStore: ObservableObject {
     @Published var medications: [Medication] = []
     @Published var isLoading: Bool = false
+    // Fix S10: Publish fetch errors instead of injecting fake data
+    @Published var fetchError: String? = nil
     
-    // We will just fetch for MVP. Adding can be done later.
     func fetchMedications(for petId: UUID) async {
         isLoading = true
+        fetchError = nil
         defer { isLoading = false }
         
         do {
@@ -24,11 +26,10 @@ class MedicationStore: ObservableObject {
             self.medications = dtos.map { $0.toModel() }
         } catch {
             print("Failed to fetch medications: \(error)")
-            // Fallback to mock data for MVP demo if database is empty or fails
-            self.medications = [
-                Medication(petId: petId, name: "Apoquel 16mg", frequency: "Daily, 8am", streakCount: 14),
-                Medication(petId: petId, name: "Heartgard", frequency: "Monthly", nextDueDate: Date().addingTimeInterval(12*24*3600), streakCount: 0)
-            ]
+            // Fix S10: PATIENT SAFETY — never show fake/mock medications on error.
+            // Preserve existing data if we had a successful fetch before; otherwise empty.
+            // Surface the error so the UI can show a retry state.
+            fetchError = "Unable to load medications. Please check your connection and try again."
         }
     }
     
@@ -36,5 +37,6 @@ class MedicationStore: ObservableObject {
     func reset() {
         medications = []
         isLoading = false
+        fetchError = nil
     }
 }

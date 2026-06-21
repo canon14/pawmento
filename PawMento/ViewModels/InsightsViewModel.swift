@@ -51,9 +51,15 @@ final class InsightsViewModel: ObservableObject {
         
         isAnalyzing = true
         viewState = .loading
+        
+        // Fix S16: Load dismissed insight IDs for this pet
+        let dismissedIds = Self.loadDismissedIds(for: pet.id)
+        
         do {
             let result = try await InsightEngine.shared.generateInsights(for: pet, window: timeRange, forceRefresh: forceRefresh)
-            let fetchedInsights = result.insights
+            
+            // Fix S16: Filter out dismissed insights
+            let fetchedInsights = result.insights.filter { !dismissedIds.contains($0.id) }
             
             if result.signalCount == 0 {
                 self.viewState = .noDataForRange
@@ -66,7 +72,8 @@ final class InsightsViewModel: ObservableObject {
             // Re-partition the insights for the UI
             self.heroInsight = bestInsight(from: fetchedInsights)
             self.patternCards = fetchedInsights.filter { $0.id != self.heroInsight?.id }
-            self.patternCount = fetchedInsights.count
+            // Fix S16: Consistent count from the actual displayed set
+            self.patternCount = patternCards.count + (heroInsight != nil ? 1 : 0)
             self.lastUpdated = Date()
             
             if InsightsViewModel.useMockBenchmarks {
@@ -115,9 +122,16 @@ final class InsightsViewModel: ObservableObject {
         case notRelevant
     }
     
-    func dismissInsight(_ insight: Insight, reason: DismissReason) {
-        // In a real app, we would log this to telemetry and update the database
-        // For now, we just remove it from the UI
+    // Fix S16: Persist dismissed insight IDs so they don't resurface on refresh
+    func dismissInsight(_ insight: Insight, reason: DismissReason, petId: UUID?) {
+        // Persist the dismissal
+        if let petId = petId {
+            var dismissed = Self.loadDismissedIds(for: petId)
+            dismissed.insert(insight.id)
+            Self.saveDismissedIds(dismissed, for: petId)
+        }
+        
+        // Update UI state
         if heroInsight?.id == insight.id {
             heroInsight = bestInsight(from: patternCards)
             if let newHero = heroInsight {
@@ -127,6 +141,7 @@ final class InsightsViewModel: ObservableObject {
             patternCards.removeAll { $0.id == insight.id }
         }
         
+        // Fix S16: Recompute count consistently from the actual displayed set
         patternCount = patternCards.count + (heroInsight != nil ? 1 : 0)
         
         // If everything is dismissed, show empty state
@@ -142,5 +157,22 @@ final class InsightsViewModel: ObservableObject {
             }
             return $0.tier.priority < $1.tier.priority
         })
+    }
+    
+    // MARK: - Dismissed Insights Persistence (UserDefaults per pet)
+    
+    private static func dismissedIdsKey(for petId: UUID) -> String {
+        "dismissedInsights_\(petId.uuidString)"
+    }
+    
+    private static func loadDismissedIds(for petId: UUID) -> Set<UUID> {
+        let key = dismissedIdsKey(for: petId)
+        guard let strings = UserDefaults.standard.stringArray(forKey: key) else { return [] }
+        return Set(strings.compactMap { UUID(uuidString: $0) })
+    }
+    
+    private static func saveDismissedIds(_ ids: Set<UUID>, for petId: UUID) {
+        let key = dismissedIdsKey(for: petId)
+        UserDefaults.standard.set(ids.map { $0.uuidString }, forKey: key)
     }
 }

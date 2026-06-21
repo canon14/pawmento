@@ -15,6 +15,8 @@ class BreedStore {
         guard let url = Bundle.main.url(forResource: "breeds", withExtension: "json"),
               let data = try? Data(contentsOf: url),
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: [String]] else {
+            // Fix S17: breeds.json is a bundled resource — failure is a build/packaging bug
+            assertionFailure("breeds.json failed to load — check that it is included in the app bundle.")
             return
         }
         
@@ -45,10 +47,12 @@ class BreedStore {
         let contains = allBreeds.filter { $0.lowercased().contains(lowerQuery) && !$0.lowercased().hasPrefix(lowerQuery) }
         results.append(contentsOf: contains)
         
-        // Levenshtein distance fallback for fuzzy match (simple implementation)
+        // Levenshtein distance fallback for fuzzy match
+        // Fix S17: Scale threshold to query length to avoid noise on 1-2 char queries
         if results.count < 5 {
+            let fuzzyThreshold = max(2, lowerQuery.count / 2)
             let others = allBreeds.filter { !results.contains($0) }
-            let fuzzy = others.filter { levenshtein(a: $0.lowercased(), b: lowerQuery) <= 2 }
+            let fuzzy = others.filter { levenshtein(a: $0.lowercased(), b: lowerQuery) <= fuzzyThreshold }
             results.append(contentsOf: fuzzy)
         }
         
