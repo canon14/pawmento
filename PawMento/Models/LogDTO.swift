@@ -30,7 +30,7 @@ struct LogDTO: Codable, Identifiable {
             photoImage: nil,
             createdAt: timestamp,
             recordedAt: timestamp,
-            syncedAt: Date()
+            syncedAt: timestamp
         )
     }
 }
