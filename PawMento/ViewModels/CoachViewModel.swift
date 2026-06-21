@@ -53,6 +53,23 @@ class CoachViewModel: ObservableObject {
         if SafetyClassifier.isEmergency(message: text) {
             let emergencyResponse = ChatMessage(role: .assistant, content: "This sounds urgent.\nGet to an emergency vet now.", isEmergency: true, petId: pet?.id)
             messages.append(emergencyResponse)
+            
+            // Do NOT charge quota for emergencies. Safety should never be gated.
+            
+            if let ownerId = ownerId {
+                let userDTO = userMessage.toDTO(ownerId: ownerId)
+                let emergencyDTO = emergencyResponse.toDTO(ownerId: ownerId)
+                
+                do {
+                    try await SupabaseManager.shared.client
+                        .from("chat_messages")
+                        .insert([userDTO, emergencyDTO])
+                        .execute()
+                } catch {
+                    print("Failed to save emergency messages: \(error)")
+                }
+            }
+            
             return
         }
         
