@@ -157,3 +157,15 @@ CREATE POLICY "Users can manage medications for their pets" ON public.medication
     FOR ALL USING (
         EXISTS (SELECT 1 FROM public.pets WHERE id = public.medications.pet_id AND owner_id = auth.uid())
     );
+
+-- ==========================================
+-- 9. RPC Functions
+-- ==========================================
+
+-- Securely delete the caller's auth.users account (cascades to public tables)
+CREATE OR REPLACE FUNCTION public.delete_user()
+RETURNS void AS $$
+BEGIN
+    DELETE FROM auth.users WHERE id = auth.uid();
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;

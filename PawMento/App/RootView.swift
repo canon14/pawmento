@@ -22,8 +22,8 @@ struct RootView: View {
             .task {
                 await authManager.checkSession()
             }
-            .onChange(of: authManager.isAuthenticated) { isAuthenticated in
-                if isAuthenticated {
+            .onChange(of: authManager.isAuthenticated) { oldValue, newValue in
+                if newValue {
                     Task {
                         await authManager.checkOnboardingState()
                         await petStore.fetchPets()
