@@ -1,127 +1,205 @@
 import Foundation
 import Supabase
 
-enum AIProvider {
-    case openai
-    case anthropic
-}
+// Fix C1: DONE in I2 — API keys removed, all calls go through ai-proxy Edge Function.
+// Fix C5: Made AICoachClient a final class with immutable config.
+// Provider is no longer mutable shared state — it's Anthropic-only via the proxy.
 
-class AICoachClient {
+final class AICoachClient: Sendable {
     static let shared = AICoachClient()
-    
-    // Defaulting to Anthropic Haiku for cost efficiency as per spec
-    var provider: AIProvider = .anthropic
-    
-    // Fix I2: API keys removed from client bundle. All LLM calls go through
-    // the Supabase Edge Function proxy which holds keys server-side.
     
     private init() {}
     
-    /// Generates advice from the AI Coach using SSE streaming
+    // Fix C2: Dedicated URLSession with timeout from AIConfig
+    private static let proxySession: URLSession = {
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = AIConfig.requestTimeout
+        config.timeoutIntervalForResource = AIConfig.requestTimeout * 3 // 90s for full resource
+        return URLSession(configuration: config)
+    }()
+    
+    /// Generates advice from the AI Coach using SSE streaming via the proxy.
+    /// - Parameters:
+    ///   - messages: Chat history as role/content dicts
+    ///   - systemPrompt: System prompt (default: pet-less; CoachViewModel passes buildPrompt(for:))
     func streamAdvice(messages: [[String: String]], systemPrompt: String = AICoachPrompt.systemPrompt) -> AsyncThrowingStream<String, Error> {
-        // Fix I2: Both providers now route through the same proxy
         return streamViaProxy(messages: messages, systemPrompt: systemPrompt)
     }
     
-    // MARK: - Supabase Edge Function Proxy (Fix I2)
-    // All LLM requests go through the ai-proxy Edge Function which:
-    // 1. Verifies the user's Supabase auth token
-    // 2. Enforces subscription/quota limits
-    // 3. Holds API keys server-side (never shipped in the client bundle)
-    // 4. Proxies SSE streaming responses back to the client
+    // MARK: - Supabase Edge Function Proxy
     
     private func streamViaProxy(messages: [[String: String]], systemPrompt: String) -> AsyncThrowingStream<String, Error> {
-        let currentProvider = provider
-        
         return AsyncThrowingStream<String, Error> { continuation in
             Task {
-                do {
-                    let proxyURL = URL(string: "\(Secrets.supabaseURL)/functions/v1/ai-proxy")!
-                    var request = URLRequest(url: proxyURL)
-                    request.httpMethod = "POST"
-                    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-                    
-                    // Auth: user's Supabase session token
-                    if let session = try? await SupabaseManager.shared.client.auth.session {
-                        request.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
-                    }
-                    
-                    let providerName: String
-                    let modelName: String
-                    
-                    switch currentProvider {
-                    case .anthropic:
-                        providerName = "anthropic"
-                        modelName = AIConfig.haikuModel
-                    case .openai:
-                        providerName = "openai"
-                        modelName = "gpt-4o-mini"
-                    }
-                    
-                    let body: [String: Any] = [
-                        "provider": providerName,
-                        "model": modelName,
-                        "max_tokens": 1024,
-                        "system": systemPrompt,
-                        "messages": messages,
-                        "stream": true
-                    ]
-                    
-                    request.httpBody = try JSONSerialization.data(withJSONObject: body)
-                    
-                    let (result, response) = try await URLSession.shared.bytes(for: request)
-                    
-                    guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
-                        var errorBody = ""
-                        for try await line in result.lines {
-                            errorBody += line
-                        }
-                        if let data = errorBody.data(using: .utf8),
-                           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                           let errorObj = json["error"] as? [String: Any],
-                           let message = errorObj["message"] as? String {
-                            let statusCode = (response as? HTTPURLResponse)?.statusCode ?? 500
-                            continuation.finish(throwing: NSError(domain: "AIProxy", code: statusCode, userInfo: [NSLocalizedDescriptionKey: "API Error: \(message)"]))
-                        } else {
-                            continuation.finish(throwing: URLError(.badServerResponse))
-                        }
+                // Fix C2: Retry loop with backoff for retryable failures.
+                // Only retries BEFORE any tokens have been yielded to avoid replaying
+                // a half-streamed answer.
+                var lastError: Error?
+                
+                for attempt in 0..<AIConfig.maxRetries {
+                    do {
+                        try await self.executeStream(
+                            messages: messages,
+                            systemPrompt: systemPrompt,
+                            continuation: continuation
+                        )
+                        // If we get here, the stream completed successfully
+                        lastError = nil
                         return
-                    }
-                    
-                    // The proxy streams back SSE events in the provider's native format
-                    for try await line in result.lines {
-                        guard line.hasPrefix("data: ") else { continue }
-                        let jsonString = line.dropFirst(6)
+                    } catch {
+                        lastError = error
                         
-                        // Handle OpenAI-style [DONE]
-                        if jsonString == "[DONE]" { break }
-                        
-                        guard let data = jsonString.data(using: .utf8),
-                              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { continue }
-                        
-                        // Anthropic format
-                        if let type = json["type"] as? String {
-                            if type == "content_block_delta",
-                               let delta = json["delta"] as? [String: Any],
-                               let text = delta["text"] as? String {
-                                continuation.yield(text)
-                            } else if type == "message_stop" {
-                                break
-                            }
+                        // Only retry on retryable errors (timeout, 429, 5xx)
+                        // and only if we haven't yielded any tokens yet
+                        let isRetryable = Self.isRetryableError(error)
+                        guard isRetryable && attempt < AIConfig.maxRetries - 1 else {
+                            continuation.finish(throwing: error)
+                            return
                         }
-                        // OpenAI format
-                        else if let choices = json["choices"] as? [[String: Any]],
-                                let firstChoice = choices.first,
-                                let delta = firstChoice["delta"] as? [String: Any],
-                                let content = delta["content"] as? String {
-                            continuation.yield(content)
-                        }
+                        
+                        let backoff = 0.5 * pow(2.0, Double(attempt))
+                        try? await Task.sleep(nanoseconds: UInt64(backoff * 1_000_000_000))
                     }
-                    continuation.finish()
-                } catch {
-                    continuation.finish(throwing: error)
                 }
+                
+                // All retries exhausted
+                continuation.finish(throwing: lastError ?? URLError(.timedOut))
             }
         }
+    }
+    
+    private func executeStream(
+        messages: [[String: String]],
+        systemPrompt: String,
+        continuation: AsyncThrowingStream<String, Error>.Continuation
+    ) async throws {
+        let proxyURL = URL(string: "\(Secrets.supabaseURL)/functions/v1/ai-proxy")!
+        var request = URLRequest(url: proxyURL)
+        request.httpMethod = "POST"
+        request.timeoutInterval = AIConfig.requestTimeout
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        // Auth: user's Supabase session token
+        if let session = try? await SupabaseManager.shared.client.auth.session {
+            request.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
+        }
+        
+        // Fix C5: Provider is no longer mutable — Anthropic-only via proxy
+        let body: [String: Any] = [
+            "model": AIConfig.haikuModel,
+            "max_tokens": AIConfig.maxResponseTokens,
+            "system": systemPrompt,
+            "messages": messages,
+            "stream": true
+        ]
+        
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        
+        let (result, response) = try await Self.proxySession.bytes(for: request)
+        
+        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+            var errorBody = ""
+            for try await line in result.lines {
+                errorBody += line
+            }
+            let statusCode = (response as? HTTPURLResponse)?.statusCode ?? 500
+            
+            if let data = errorBody.data(using: .utf8),
+               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let errorObj = json["error"] as? [String: Any],
+               let message = errorObj["message"] as? String {
+                throw NSError(domain: "AIProxy", code: statusCode, userInfo: [NSLocalizedDescriptionKey: "API Error: \(message)"])
+            } else {
+                throw NSError(domain: "AIProxy", code: statusCode, userInfo: [NSLocalizedDescriptionKey: "Server error (\(statusCode))"])
+            }
+        }
+        
+        // Fix C3/C4: Track tokens yielded for zero-token guard
+        var tokensYielded = 0
+        
+        for try await line in result.lines {
+            guard line.hasPrefix("data: ") else { continue }
+            let jsonString = line.dropFirst(6)
+            
+            // Handle OpenAI-style [DONE]
+            if jsonString == "[DONE]" { break }
+            
+            guard let data = jsonString.data(using: .utf8),
+                  let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { continue }
+            
+            if let type = json["type"] as? String {
+                switch type {
+                case "content_block_delta":
+                    // Fix C3: Normal content delta
+                    if let delta = json["delta"] as? [String: Any],
+                       let text = delta["text"] as? String {
+                        continuation.yield(text)
+                        tokensYielded += 1
+                    }
+                    
+                case "message_delta":
+                    // Fix C3: Check for stop_reason == "max_tokens" (truncation)
+                    if let delta = json["delta"] as? [String: Any],
+                       let stopReason = delta["stop_reason"] as? String,
+                       stopReason == "max_tokens" {
+                        // Signal truncation to the user
+                        continuation.yield("\n\n_(Response was truncated due to length. Ask a follow-up to continue.)_")
+                    }
+                    
+                case "error":
+                    // Fix C3: Handle mid-stream error events (e.g. overloaded_error)
+                    let errorMessage: String
+                    if let errorObj = json["error"] as? [String: Any],
+                       let msg = errorObj["message"] as? String {
+                        errorMessage = msg
+                    } else {
+                        errorMessage = "Stream error from provider"
+                    }
+                    throw NSError(domain: "AIProxy", code: -1, userInfo: [NSLocalizedDescriptionKey: errorMessage])
+                    
+                case "message_stop":
+                    break
+                    
+                default:
+                    // Ignore other event types (message_start, content_block_start, ping, etc.)
+                    break
+                }
+            }
+            // OpenAI format (fallback if proxy ever changes)
+            else if let choices = json["choices"] as? [[String: Any]],
+                    let firstChoice = choices.first,
+                    let delta = firstChoice["delta"] as? [String: Any],
+                    let content = delta["content"] as? String {
+                continuation.yield(content)
+                tokensYielded += 1
+            }
+            // Fix C4: Detect top-level error object in a data line
+            else if let errorObj = json["error"] as? [String: Any] {
+                let message = errorObj["message"] as? String ?? "Unknown stream error"
+                throw NSError(domain: "AIProxy", code: -1, userInfo: [NSLocalizedDescriptionKey: message])
+            }
+        }
+        
+        // Fix C4: Zero-token guard — if we got 200 but yielded nothing, that's an error
+        if tokensYielded == 0 {
+            throw NSError(domain: "AIProxy", code: -1, userInfo: [NSLocalizedDescriptionKey: "No content received from AI provider"])
+        }
+        
+        continuation.finish()
+    }
+    
+    // MARK: - Retry Helpers
+    
+    private static func isRetryableError(_ error: Error) -> Bool {
+        // Timeout errors
+        if let urlError = error as? URLError {
+            return urlError.code == .timedOut || urlError.code == .networkConnectionLost
+        }
+        // 429 (rate limit) or 5xx (server error) from proxy
+        if let nsError = error as? NSError, nsError.domain == "AIProxy" {
+            let code = nsError.code
+            return code == 429 || (code >= 500 && code < 600)
+        }
+        return false
     }
 }
