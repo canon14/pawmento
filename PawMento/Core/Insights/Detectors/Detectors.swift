@@ -226,7 +226,7 @@ class TrendDetector {
 
 class MilestoneDetector {
     static func detect(_ signals: [Signal]) async -> [InsightCandidate] {
-        let activities = signals.filter { $0.category == .walk || $0.category == .play }
+        let activities = signals.filter { LogCategory.activityCategories.contains($0.category) }
         guard activities.count >= 5 else { return [] }
         
         // Rule-based: just return a precomputed InsightCandidate

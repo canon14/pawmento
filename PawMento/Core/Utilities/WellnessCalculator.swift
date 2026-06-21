@@ -13,11 +13,11 @@ struct WellnessCalculator {
         symptomScore = max(0, symptomScore)
         
         // 2. Routine Adherence (Max 25)
-        let routineLogs = last14DaysLogs.filter { $0.category == .meal || $0.category == .potty || $0.category == .sleep }
+        let routineLogs = last14DaysLogs.filter { LogCategory.routineCategories.contains($0.category) }
         let routineScore = min(25, routineLogs.count * 2)
         
         // 3. Activity Level (Max 20)
-        let activityLogs = last14DaysLogs.filter { $0.category == .walk || $0.category == .training }
+        let activityLogs = last14DaysLogs.filter { LogCategory.activityCategories.contains($0.category) }
         let activityScore = min(20, activityLogs.count * 3)
         
         // 4. Medication Compliance (Max 15)

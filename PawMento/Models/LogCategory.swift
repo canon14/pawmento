@@ -46,3 +46,11 @@ enum LogCategory: String, CaseIterable, Identifiable, Codable {
         [.meal, .water, .potty, .sleep, .walk, .symptom, .med, .mood]
     }
 }
+
+extension LogCategory {
+    // Canonical set for "Activity"
+    static let activityCategories: Set<LogCategory> = [.walk, .play, .training]
+    
+    // Canonical set for "Routine"
+    static let routineCategories: Set<LogCategory> = [.meal, .potty, .sleep, .water]
+}
