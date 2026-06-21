@@ -50,12 +50,12 @@ final class InsightsViewModel: ObservableObject {
         isAnalyzing = true
         viewState = .loading
         do {
-            let fetchedInsights = try await InsightEngine.shared.generateInsights(for: pet, window: timeRange, forceRefresh: forceRefresh)
+            let result = try await InsightEngine.shared.generateInsights(for: pet, window: timeRange, forceRefresh: forceRefresh)
+            let fetchedInsights = result.insights
             
-            if fetchedInsights.isEmpty {
-                // TODO: Distinguish between .noDataForRange and .noPatterns
-                // This requires a new InsightEngine API to return the signal count alongside the insights,
-                // e.g. `generateInsights(...) -> (insights: [Insight], signalCount: Int)`.
+            if result.signalCount == 0 {
+                self.viewState = .noDataForRange
+            } else if fetchedInsights.isEmpty {
                 self.viewState = .noPatterns
             } else {
                 self.viewState = .success

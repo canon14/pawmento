@@ -3,7 +3,7 @@ import Foundation
 actor InsightEngine {
     static let shared = InsightEngine()
     
-    private var cache: [String: [Insight]] = [:]
+    private var cache: [String: ([Insight], Int)] = [:]
     
     private init() {}
     
@@ -16,8 +16,8 @@ actor InsightEngine {
         cache = cache.filter { !$0.key.hasPrefix(prefix) }
     }
     
-    func generateInsights(for pet: Pet?, window: TimeRange, forceRefresh: Bool = false) async throws -> [Insight] {
-        guard let petId = pet?.id else { return [] }
+    func generateInsights(for pet: Pet?, window: TimeRange, forceRefresh: Bool = false) async throws -> (insights: [Insight], signalCount: Int) {
+        guard let petId = pet?.id else { return ([], 0) }
         let key = cacheKey(petId: petId, window: window)
         
         // 1. Cache check
@@ -73,8 +73,8 @@ actor InsightEngine {
         finalInsights.sort { $0.tier.priority < $1.tier.priority }
         let topInsights = Array(finalInsights.prefix(8))
         
-        cache[key] = topInsights
+        cache[key] = (topInsights, signals.count)
         
-        return topInsights
+        return (topInsights, signals.count)
     }
 }
