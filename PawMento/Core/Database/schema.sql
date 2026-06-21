@@ -20,6 +20,8 @@ CREATE TABLE public.subscriptions (
     status TEXT NOT NULL DEFAULT 'free',
     plan_type TEXT NOT NULL DEFAULT 'free',
     current_period_end TIMESTAMP WITH TIME ZONE,
+    questions_used INTEGER DEFAULT 0,
+    period_start TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 

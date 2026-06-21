@@ -23,22 +23,14 @@ class CoachViewModel: ObservableObject {
     
     // MARK: - Quota & Subscription
     
-    private func quotaKey(ownerId: UUID, month: String) -> String {
-        return "coach_quota_\(ownerId.uuidString)_\(month)"
-    }
-    
-    private func currentMonthString() -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy_MM"
-        return formatter.string(from: Date())
-    }
-    
     func initializeQuotaAndSubscription(ownerId: UUID) async {
         // 1. Fetch Subscription Status
         do {
             struct SubscriptionDTO: Codable {
                 let status: String
                 let plan_type: String
+                let questions_used: Int
+                let period_start: Date
             }
             let sub: SubscriptionDTO = try await SupabaseManager.shared.client
                 .from("subscriptions")
@@ -49,21 +41,42 @@ class CoachViewModel: ObservableObject {
                 .value
             
             self.isPremium = (sub.status == "active" || sub.plan_type == "premium")
+            
+            // 2. Initialize Quota from server
+            let now = Date()
+            let thirtyDays: TimeInterval = 30 * 24 * 60 * 60
+            
+            if now.timeIntervalSince(sub.period_start) >= thirtyDays {
+                // Period expired, reset locally and remotely
+                self.freeQuestionsRemaining = 5
+                
+                // Fire and forget remote update
+                Task {
+                    struct UpdateQuotaDTO: Codable {
+                        let questions_used: Int
+                        let period_start: Date
+                    }
+                    do {
+                        let update = UpdateQuotaDTO(questions_used: 0, period_start: now)
+                        try await SupabaseManager.shared.client
+                            .from("subscriptions")
+                            .update(update)
+                            .eq("user_id", value: ownerId.uuidString)
+                            .execute()
+                    } catch {
+                        print("Failed to reset quota on server: \(error)")
+                    }
+                }
+            } else {
+                // Still in period
+                self.freeQuestionsRemaining = max(0, 5 - sub.questions_used)
+            }
+            
         } catch {
             print("Failed to fetch subscription: \(error)")
             self.isPremium = false
-        }
-        
-        // 2. Initialize Quota
-        let month = currentMonthString()
-        let key = quotaKey(ownerId: ownerId, month: month)
-        
-        if UserDefaults.standard.object(forKey: key) != nil {
-            self.freeQuestionsRemaining = UserDefaults.standard.integer(forKey: key)
-        } else {
-            // New month or new user
+            // Fallback for new users / errors
             self.freeQuestionsRemaining = 5
-            UserDefaults.standard.set(5, forKey: key)
         }
     }
     
@@ -133,9 +146,21 @@ class CoachViewModel: ObservableObject {
         if !isPremium {
             freeQuestionsRemaining -= 1
             if let ownerId = ownerId {
-                let month = currentMonthString()
-                let key = quotaKey(ownerId: ownerId, month: month)
-                UserDefaults.standard.set(freeQuestionsRemaining, forKey: key)
+                Task {
+                    do {
+                        let used = 5 - freeQuestionsRemaining
+                        struct UpdateUsageDTO: Codable {
+                            let questions_used: Int
+                        }
+                        try await SupabaseManager.shared.client
+                            .from("subscriptions")
+                            .update(UpdateUsageDTO(questions_used: used))
+                            .eq("user_id", value: ownerId.uuidString)
+                            .execute()
+                    } catch {
+                        print("Failed to update usage on server: \(error)")
+                    }
+                }
             }
         }
         
@@ -196,9 +221,21 @@ class CoachViewModel: ObservableObject {
             if !isPremium {
                 freeQuestionsRemaining += 1
                 if let ownerId = ownerId {
-                    let month = currentMonthString()
-                    let key = quotaKey(ownerId: ownerId, month: month)
-                    UserDefaults.standard.set(freeQuestionsRemaining, forKey: key)
+                    Task {
+                        do {
+                            let used = max(0, 5 - freeQuestionsRemaining)
+                            struct UpdateUsageDTO: Codable {
+                                let questions_used: Int
+                            }
+                            try await SupabaseManager.shared.client
+                                .from("subscriptions")
+                                .update(UpdateUsageDTO(questions_used: used))
+                                .eq("user_id", value: ownerId.uuidString)
+                                .execute()
+                        } catch {
+                            print("Failed to refund usage on server: \(error)")
+                        }
+                    }
                 }
             }
             
