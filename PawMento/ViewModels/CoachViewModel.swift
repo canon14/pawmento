@@ -21,11 +21,11 @@ class CoachViewModel: ObservableObject {
     @Published var quickReplies: [String] = []
     
     // Fetch previous messages for a pet
-    func fetchMessages(for petId: UUID?, ownerId: UUID) async {
+    func fetchMessages(for petId: UUID?, ownerId: UUID, forceRefresh: Bool = false) async {
         guard let petId = petId else { return }
         
         // Prevent overwriting active chat if we already loaded it for this pet
-        if !messages.isEmpty && messages.last?.petId == petId {
+        if !forceRefresh && !messages.isEmpty && messages.last?.petId == petId {
             return
         }
         
@@ -123,7 +123,8 @@ class CoachViewModel: ObservableObject {
             // Supabase saving
             if let ownerId = ownerId {
                 let userDTO = userMessage.toDTO(ownerId: ownerId)
-                let assistantDTO = messages[messages.firstIndex(where: { $0.id == assistantMessageId })!].toDTO(ownerId: ownerId)
+                guard let index = messages.firstIndex(where: { $0.id == assistantMessageId }) else { return }
+                let assistantDTO = messages[index].toDTO(ownerId: ownerId)
                 let dtos: [ChatMessageDTO] = [userDTO, assistantDTO]
                 
                 try await SupabaseManager.shared.client
