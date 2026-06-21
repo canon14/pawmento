@@ -14,8 +14,9 @@ class LogStore: ObservableObject {
         var finalLog = log
         if let image = log.photoImage {
             let path = "logs/\(userId.uuidString)/\(log.id.uuidString).jpg"
-            let urlString = try await StorageManager.shared.uploadImage(image, path: path)
-            finalLog.photoLocalURL = URL(string: urlString)
+            // Fix 2: uploadImage returns bucket-relative path; derive public URL for display
+            let relativePath = try await StorageManager.shared.uploadImage(image, path: path)
+            finalLog.photoLocalURL = StorageManager.shared.publicURL(forPath: relativePath)
         }
         
         // 2. Sync to Supabase
@@ -42,8 +43,9 @@ class LogStore: ObservableObject {
         var finalLog = log
         if let image = log.photoImage {
             let path = "logs/\(userId.uuidString)/\(log.id.uuidString).jpg"
-            let urlString = try await StorageManager.shared.uploadImage(image, path: path)
-            finalLog.photoLocalURL = URL(string: urlString)
+            // Fix 2: uploadImage returns bucket-relative path; derive public URL for display
+            let relativePath = try await StorageManager.shared.uploadImage(image, path: path)
+            finalLog.photoLocalURL = StorageManager.shared.publicURL(forPath: relativePath)
         }
         
         // 2. Sync to Supabase

@@ -37,7 +37,9 @@ struct PetDTO: Codable, Identifiable {
             breed: breed,
             birthday: dateComponents,
             weightKg: weight_kg,
-            photoLocalURL: photo_url.flatMap { URL(string: $0) },
+            // Fix 2: photo_url stores a bucket-relative path; resolve to full URL for display.
+            // publicURL(forPath:) also handles legacy full URLs via passthrough.
+            photoLocalURL: photo_url.flatMap { StorageManager.shared.publicURL(forPath: $0) },
             photoImage: nil,
             createdAt: created_at,
             isActive: is_active

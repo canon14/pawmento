@@ -7,7 +7,10 @@ class SupabaseManager {
     let client: SupabaseClient
     
     private init() {
-        let supabaseURL = URL(string: Secrets.supabaseURL)!
+        // Fix 8: Safe URL init — fail with a clear message instead of a cryptic crash
+        guard let supabaseURL = URL(string: Secrets.supabaseURL) else {
+            fatalError("Invalid Secrets.supabaseURL — configure Secrets.swift")
+        }
         let supabaseKey = Secrets.supabaseAnonKey
         
         self.client = SupabaseClient(

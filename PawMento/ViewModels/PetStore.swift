@@ -51,8 +51,10 @@ class PetStore: ObservableObject {
     private func uploadPhoto(for pet: Pet, ownerId: UUID) async throws -> URL? {
         if let image = pet.photoImage {
             let path = "pets/\(ownerId.uuidString)/\(pet.id.uuidString).jpg"
-            let urlString = try await StorageManager.shared.uploadImage(image, path: path)
-            return URL(string: urlString)
+            // Fix 2: uploadImage now returns the bucket-relative path.
+            // We store the relative path; the DTO/display layer derives the full URL.
+            let relativePath = try await StorageManager.shared.uploadImage(image, path: path)
+            return StorageManager.shared.publicURL(forPath: relativePath)
         }
         return pet.photoLocalURL
     }

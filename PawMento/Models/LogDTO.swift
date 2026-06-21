@@ -23,7 +23,8 @@ struct LogDTO: Codable, Identifiable {
             category: category,
             severity: severity,
             note: description,
-            photoLocalURL: photo_url.flatMap { URL(string: $0) },
+            // Fix 2: photo_url stores a bucket-relative path; resolve to full URL for display.
+            photoLocalURL: photo_url.flatMap { StorageManager.shared.publicURL(forPath: $0) },
             photoImage: nil,
             createdAt: timestamp,
             recordedAt: timestamp,
