@@ -3,7 +3,18 @@ import Foundation
 actor InsightEngine {
     static let shared = InsightEngine()
     
-    private var cache: [String: ([Insight], Int)] = [:]
+    // Fix I3: Cache with TTL and size bound
+    private struct CacheEntry {
+        let insights: [Insight]
+        let signalCount: Int
+        let generatedAt: Date
+    }
+    
+    private var cache: [String: CacheEntry] = [:]
+    
+    // Fix I3: Cache configuration
+    private let cacheTTL: TimeInterval = 15 * 60 // 15 minutes
+    private let maxCacheEntries = 20
     
     private init() {}
     
@@ -20,9 +31,14 @@ actor InsightEngine {
         guard let petId = pet?.id else { return ([], 0) }
         let key = cacheKey(petId: petId, window: window)
         
-        // 1. Cache check
+        // 1. Cache check with TTL
         if !forceRefresh, let cached = cache[key] {
-            return cached
+            // Fix I3: Check TTL — expired entries are treated as misses
+            if Date().timeIntervalSince(cached.generatedAt) < cacheTTL {
+                return (cached.insights, cached.signalCount)
+            } else {
+                cache.removeValue(forKey: key)
+            }
         }
         
         // 2. Load signals
@@ -63,7 +79,8 @@ actor InsightEngine {
         // 5. Score with LLM Narrator
         if !llmCandidates.isEmpty {
             let speciesStr = pet != nil ? String(describing: pet!.species) : "pet"
-            let petContext = "Pet is a \(speciesStr) named \(pet?.name ?? "Buddy")."
+            // Fix I9: Replace hardcoded "Buddy" with neutral "your pet"
+            let petContext = "Pet is a \(speciesStr) named \(pet?.name ?? "your pet")."
             // The narrator guarantees insights are returned (either via LLM or a local fallback).
             let scored = await InsightNarrator.scoreAndNarrate(candidates: llmCandidates, petContext: petContext)
             finalInsights.append(contentsOf: scored)
@@ -73,7 +90,16 @@ actor InsightEngine {
         finalInsights.sort { $0.tier.priority < $1.tier.priority }
         let topInsights = Array(finalInsights.prefix(8))
         
-        cache[key] = (topInsights, signals.count)
+        // Fix I3: Enforce cache size bound — evict oldest entries if over limit
+        if cache.count >= maxCacheEntries {
+            let sorted = cache.sorted { $0.value.generatedAt < $1.value.generatedAt }
+            let toRemove = cache.count - maxCacheEntries + 1
+            for entry in sorted.prefix(toRemove) {
+                cache.removeValue(forKey: entry.key)
+            }
+        }
+        
+        cache[key] = CacheEntry(insights: topInsights, signalCount: signals.count, generatedAt: Date())
         
         return (topInsights, signals.count)
     }

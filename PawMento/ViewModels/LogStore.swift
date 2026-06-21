@@ -56,6 +56,9 @@ class LogStore: ObservableObject {
         // 4. Remember last used category for this pet
         let key = "lastUsedCategory_\(log.petId.uuidString)"
         UserDefaults.standard.set(log.category.rawValue, forKey: key)
+        
+        // Fix I3: Invalidate insight cache so new logs surface on next Insights load
+        await InsightEngine.shared.clearCache(for: finalLog.petId)
     }
     
     // MARK: - Update
@@ -90,6 +93,9 @@ class LogStore: ObservableObject {
                 logs.sort(by: { $0.recordedAt > $1.recordedAt })
             }
         }
+        
+        // Fix I3: Invalidate insight cache so edits surface on next Insights load
+        await InsightEngine.shared.clearCache(for: finalLog.petId)
     }
     
     // MARK: - Delete
@@ -111,6 +117,9 @@ class LogStore: ObservableObject {
         
         // 3. Remove locally after success
         logs.removeAll { $0.id == log.id }
+        
+        // Fix I3: Invalidate insight cache so deletion surfaces on next Insights load
+        await InsightEngine.shared.clearCache(for: log.petId)
     }
     
     // MARK: - Fetch

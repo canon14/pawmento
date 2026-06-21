@@ -3,11 +3,19 @@ import Foundation
 struct SafetyClassifier {
     
     /*
-     UNIT TEST EXAMPLES:
-     - True Positive: "my dog ate chocolate" -> TRUE (Matches keyword "chocolate")
-     - Negation: "did not eat chocolate" -> FALSE ("did not" captured in Group 1, safely ignored)
-     - Benign Substring: "my companion" -> FALSE (Word boundaries prevent "onion" matching inside "companion")
-     - Newly-added term: "he has pale gums" -> TRUE (Matches keyword "pale gums")
+     SAFETY DESIGN:
+     This classifier is a PREFILTER — it runs deterministically in <50ms before any LLM call.
+     It is NOT the last line of defense: the AI Coach system prompt also instructs the LLM to
+     escalate emergencies. A false positive (extra "see a vet" prompt) is vastly preferable
+     to a false negative (missed emergency).
+     
+     NEGATION POLICY (Fix I7):
+     For TOXINS: Only suppress on tight, unambiguous consumption-negation patterns like
+     "did not eat <toxin>", "didn't eat <toxin>", "hasn't eaten <toxin>".
+     For TRAUMA & CLINICAL SIGNS: NEVER suppress — there is no benign interpretation
+     of "not seizing" or "no idea why he collapsed" that should prevent emergency routing.
+     
+     LOCALIZATION: English-only for now. Non-English support is a follow-up.
      */
     
     // MARK: - Keyword Categories
@@ -15,54 +23,82 @@ struct SafetyClassifier {
     static let toxins = [
         "chocolate", "grape", "grapes", "raisin", "raisins", "xylitol",
         "onion", "onions", "garlic", "macadamia", "poison", "antifreeze", 
-        "rat poison", "lily", "lilies", "ibuprofen", "tylenol", 
-        "acetaminophen", "advil"
+        "rat poison", "rat bait", "snail bait",
+        "lily", "lilies", "ibuprofen", "tylenol", 
+        "acetaminophen", "advil",
+        "bleach", "cleaning product",
+        "ate something", "swallowed"
     ]
     
     static let trauma = [
-        "hit by car", "seizure", "seizures", "seizing", "choking", "choked", 
-        "unconscious", "won't wake up", "collapsed", "collapse"
+        "hit by car", "hit by a car", "seizure", "seizures", "seizing",
+        "choking", "choked", 
+        "unconscious", "won't wake up", "collapsed", "collapse",
+        "fell from", "attacked by"
     ]
     
     static let clinicalSigns = [
         "bloat", "bloated stomach", "gdv", "profuse bleeding", 
         "bleeding profusely", "vomiting blood", "blood in stool", 
-        "can't breathe", "not breathing", "stopped breathing", 
+        "can't breathe", "not breathing", "stopped breathing",
+        "difficulty breathing",
         "pale gums", "blue gums", "straining to urinate", 
-        "lethargic and not eating"
+        "lethargic and not eating",
+        "swollen abdomen", "distended belly",
+        "won't stop vomiting", "continuous vomiting",
+        "unable to stand", "dragging legs"
     ]
     
-    static let allKeywords = toxins + trauma + clinicalSigns
+    // MARK: - Compiled Patterns
     
-    // MARK: - Regex Compilation
+    // Fix I7: Toxin-specific negation — only suppress on tight consumption-negation patterns.
+    // Pattern: "did not eat|didn't eat|hasn't eaten|never ate" immediately before a toxin keyword.
+    // This is much tighter than the old 3-word-gap approach.
+    private static let toxinNegationPrefixes = [
+        "did not eat", "didn't eat", "hasn't eaten", "never ate",
+        "did not consume", "didn't consume", "hasn't consumed",
+        "did not ingest", "didn't ingest", "hasn't ingested",
+        "did not swallow", "didn't swallow"
+    ]
     
-    // Compiled once to ensure <50ms execution on the main thread
-    private static let emergencyRegex: NSRegularExpression = {
-        let keywordsPattern = allKeywords.map { NSRegularExpression.escapedPattern(for: $0) }.joined(separator: "|")
-        let negations = ["not", "no", "didn't", "did not", "hasn't", "won't"]
-        let negationsPattern = negations.map { NSRegularExpression.escapedPattern(for: $0) }.joined(separator: "|")
-        
-        // Matches an optional negation up to 3 words prior, then the keyword.
-        // We use \s+ instead of \W+ for the gap to prevent negating across punctuation (e.g. "no, he ate chocolate").
-        // Group 1: Negation (if present)
-        // Group 2: Keyword
-        let pattern = "(?:\\b(\(negationsPattern))\\b(?:\\s+\\w+){0,3}\\s+)?\\b(\(keywordsPattern))\\b"
-        
+    // Toxin regex: match negated toxin or plain toxin
+    private static let toxinRegex: NSRegularExpression = {
+        let toxinPattern = toxins.map { NSRegularExpression.escapedPattern(for: $0) }.joined(separator: "|")
+        let negPattern = toxinNegationPrefixes.map { NSRegularExpression.escapedPattern(for: $0) }.joined(separator: "|")
+        // Group 1: tight negation prefix (if present), Group 2: toxin keyword
+        let pattern = "(?:\\b(\(negPattern))\\s+)?\\b(\(toxinPattern))\\b"
+        return try! NSRegularExpression(pattern: pattern, options: [.caseInsensitive])
+    }()
+    
+    // Trauma + clinical signs regex: NO negation suppression at all (Fix I7)
+    private static let urgentRegex: NSRegularExpression = {
+        let allUrgent = trauma + clinicalSigns
+        let urgentPattern = allUrgent.map { NSRegularExpression.escapedPattern(for: $0) }.joined(separator: "|")
+        let pattern = "\\b(\(urgentPattern))\\b"
         return try! NSRegularExpression(pattern: pattern, options: [.caseInsensitive])
     }()
     
     // MARK: - Public API
     
-    /// Returns true if the message triggers deterministic emergency routing
+    /// Returns true if the message triggers deterministic emergency routing.
+    /// Biased toward recall (false positives preferred over false negatives).
     static func isEmergency(message: String) -> Bool {
         let range = NSRange(location: 0, length: message.utf16.count)
-        let matches = emergencyRegex.matches(in: message, options: [], range: range)
         
-        for match in matches {
-            // If Group 1 (the negation) is NOT found, we have an un-negated emergency keyword.
+        // 1. Check trauma & clinical signs — NEVER suppressed by negation
+        let urgentMatches = urgentRegex.matches(in: message, options: [], range: range)
+        if !urgentMatches.isEmpty {
+            return true
+        }
+        
+        // 2. Check toxins — only suppressed by tight consumption-negation prefix
+        let toxinMatches = toxinRegex.matches(in: message, options: [], range: range)
+        for match in toxinMatches {
+            // If Group 1 (tight negation prefix) is NOT found, this is an un-negated toxin mention
             if match.range(at: 1).location == NSNotFound {
                 return true
             }
+            // If negation IS found, this specific match is suppressed — but keep checking others
         }
         
         return false

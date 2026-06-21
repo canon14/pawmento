@@ -224,7 +224,7 @@
 /* Begin PBXTargetDependency section */
 		AA00000100000001AABBCC07 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 66A0808B2FC2413E00C5D6D2 /* PawMento */;
+			target = AA00000100000001AABBCC10 /* PawMentoTests */;
 			targetProxy = AA00000100000001AABBCC01 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */

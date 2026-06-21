@@ -1,4 +1,5 @@
 import Foundation
+import Supabase
 
 enum NarratorError: Error {
     case badServerResponse(Int)
@@ -37,6 +38,7 @@ class InsightNarrator {
     }
     
     private static func fetchAndParseInsights(candidates: [InsightCandidate], petContext: String) async throws -> [Insight] {
+        // Fix I10 + I4: Non-causal instruction added to narrator prompt
         let systemPrompt = """
         You are PawMento's Insight Narrator. Your job is to take raw statistical anomalies from the app's detection engine and turn them into empathetic, highly-readable insights for a pet owner.
         
@@ -46,6 +48,7 @@ class InsightNarrator {
         - Provide exactly one object per candidate. Do not invent or omit candidates.
         - The narrative should explain the data calmly. Do NOT alarm the user.
         - Base the insights strictly on the provided candidates. Do not make up symptoms.
+        - NEVER imply causation. Use "may be associated with", "pattern observed", or "worth discussing with your vet" — NOT "causes", "triggers", or "leads to". This is correlational data, not a diagnosis.
         
         Pet Context:
         \(petContext)
@@ -61,7 +64,7 @@ class InsightNarrator {
         
         for attempt in 0..<AIConfig.maxRetries {
             do {
-                dtos = try await performRequest(systemPrompt: systemPrompt, userPrompt: userPrompt)
+                dtos = try await performRequest(systemPrompt: systemPrompt, userPrompt: userPrompt, candidateCount: candidates.count)
                 lastError = nil
                 break
             } catch {
@@ -92,17 +95,12 @@ class InsightNarrator {
         var finalInsights: [Insight] = []
         var matchedCandidateIds = Set<String>()
         
-        for (index, var dto) in dtos.enumerated() {
-            var matchedCandidate: InsightCandidate? = candidateDict[dto.id.lowercased()]
-            
-            if matchedCandidate == nil {
-                print("Warning: InsightNarrator failed to match DTO id \(dto.id). Falling back to index \(index).")
-                if index < candidates.count {
-                    matchedCandidate = candidates[index]
-                }
-            }
-            
-            guard let candidate = matchedCandidate else {
+        for (_, var dto) in dtos.enumerated() {
+            // Fix I5: Only match by exact id — NO positional fallback.
+            // If the LLM reordered or invented ids, discard the DTO.
+            // The unmatched candidate will be routed through localFallback below.
+            guard let candidate = candidateDict[dto.id.lowercased()] else {
+                print("Warning: InsightNarrator DTO id \(dto.id) does not match any candidate — discarding (not falling back to index).")
                 continue
             }
             
@@ -156,23 +154,33 @@ class InsightNarrator {
         return finalInsights
     }
     
-    private static func performRequest(systemPrompt: String, userPrompt: String) async throws -> [NarratedInsightDTO] {
-        let url = URL(string: "https://api.anthropic.com/v1/messages")!
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.timeoutInterval = AIConfig.requestTimeout
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue(AIConfig.anthropicVersion, forHTTPHeaderField: "anthropic-version")
-        request.setValue(Secrets.anthropicApiKey, forHTTPHeaderField: "x-api-key")
+    // Fix I2: Route through Supabase Edge Function proxy instead of calling Anthropic directly.
+    // The Edge Function holds the API key server-side and verifies the user's auth token.
+    private static func performRequest(systemPrompt: String, userPrompt: String, candidateCount: Int) async throws -> [NarratedInsightDTO] {
+        // Fix I10: Scale max_tokens proportionally to candidate count
+        let maxTokens = min(4096, max(512, candidateCount * 300))
         
+        // Build the proxy request body — the Edge Function will forward to Anthropic
         let body: [String: Any] = [
+            "provider": "anthropic",
             "model": AIConfig.haikuModel,
-            "max_tokens": 1024,
+            "max_tokens": maxTokens,
             "system": systemPrompt,
             "messages": [
                 ["role": "user", "content": userPrompt]
             ]
         ]
+        
+        let url = URL(string: "\(Secrets.supabaseURL)/functions/v1/ai-proxy")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.timeoutInterval = AIConfig.requestTimeout
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        
+        // Fix I2: Use the user's Supabase session token for auth — no API key in the client bundle
+        if let session = try? await SupabaseManager.shared.client.auth.session {
+            request.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
+        }
         
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         

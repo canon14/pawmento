@@ -1,4 +1,5 @@
 import Foundation
+import Supabase
 
 enum AIProvider {
     case openai
@@ -11,98 +12,55 @@ class AICoachClient {
     // Defaulting to Anthropic Haiku for cost efficiency as per spec
     var provider: AIProvider = .anthropic
     
-    private var anthropicApiKey: String = Secrets.anthropicApiKey
-    private var openaiApiKey: String = Secrets.openaiApiKey
+    // Fix I2: API keys removed from client bundle. All LLM calls go through
+    // the Supabase Edge Function proxy which holds keys server-side.
     
     private init() {}
     
     /// Generates advice from the AI Coach using SSE streaming
     func streamAdvice(messages: [[String: String]], systemPrompt: String = AICoachPrompt.systemPrompt) -> AsyncThrowingStream<String, Error> {
-        switch provider {
-        case .anthropic:
-            return streamAnthropic(messages: messages, systemPrompt: systemPrompt)
-        case .openai:
-            return streamOpenAI(messages: messages, systemPrompt: systemPrompt)
-        }
+        // Fix I2: Both providers now route through the same proxy
+        return streamViaProxy(messages: messages, systemPrompt: systemPrompt)
     }
     
-    // MARK: - OpenAI Streaming
-    private func streamOpenAI(messages: [[String: String]], systemPrompt: String) -> AsyncThrowingStream<String, Error> {
-        AsyncThrowingStream<String, Error> { continuation in
-            Task {
-                do {
-                    let url = URL(string: "https://api.openai.com/v1/chat/completions")!
-                    var request = URLRequest(url: url)
-                    request.httpMethod = "POST"
-                    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-                    request.setValue("Bearer \(openaiApiKey)", forHTTPHeaderField: "Authorization")
-                    
-                    var payloadMessages = [["role": "system", "content": systemPrompt]]
-                    payloadMessages.append(contentsOf: messages)
-                    
-                    let body: [String: Any] = [
-                        "model": "gpt-4o-mini", // Cost management as per spec
-                        "messages": payloadMessages,
-                        "stream": true
-                    ]
-                    
-                    request.httpBody = try JSONSerialization.data(withJSONObject: body)
-                    
-                    let (result, response) = try await URLSession.shared.bytes(for: request)
-                    
-                    guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
-                        var errorBody = ""
-                        for try await line in result.lines {
-                            errorBody += line
-                        }
-                        if let data = errorBody.data(using: .utf8),
-                           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                           let errorObj = json["error"] as? [String: Any],
-                           let message = errorObj["message"] as? String {
-                            let statusCode = (response as? HTTPURLResponse)?.statusCode ?? 500
-                            continuation.finish(throwing: NSError(domain: "OpenAIAPI", code: statusCode, userInfo: [NSLocalizedDescriptionKey: "API Error: \(message)"]))
-                        } else {
-                            continuation.finish(throwing: URLError(.badServerResponse))
-                        }
-                        return
-                    }
-                    
-                    for try await line in result.lines {
-                        guard line.hasPrefix("data: ") else { continue }
-                        let jsonString = line.dropFirst(6)
-                        if jsonString == "[DONE]" { break }
-                        
-                        guard let data = jsonString.data(using: .utf8),
-                              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                              let choices = json["choices"] as? [[String: Any]],
-                              let firstChoice = choices.first,
-                              let delta = firstChoice["delta"] as? [String: Any],
-                              let content = delta["content"] as? String else { continue }
-                        
-                        continuation.yield(content)
-                    }
-                    continuation.finish()
-                } catch {
-                    continuation.finish(throwing: error)
-                }
-            }
-        }
-    }
+    // MARK: - Supabase Edge Function Proxy (Fix I2)
+    // All LLM requests go through the ai-proxy Edge Function which:
+    // 1. Verifies the user's Supabase auth token
+    // 2. Enforces subscription/quota limits
+    // 3. Holds API keys server-side (never shipped in the client bundle)
+    // 4. Proxies SSE streaming responses back to the client
     
-    // MARK: - Anthropic Streaming
-    private func streamAnthropic(messages: [[String: String]], systemPrompt: String) -> AsyncThrowingStream<String, Error> {
-        AsyncThrowingStream<String, Error> { continuation in
+    private func streamViaProxy(messages: [[String: String]], systemPrompt: String) -> AsyncThrowingStream<String, Error> {
+        let currentProvider = provider
+        
+        return AsyncThrowingStream<String, Error> { continuation in
             Task {
                 do {
-                    let url = URL(string: "https://api.anthropic.com/v1/messages")!
-                    var request = URLRequest(url: url)
+                    let proxyURL = URL(string: "\(Secrets.supabaseURL)/functions/v1/ai-proxy")!
+                    var request = URLRequest(url: proxyURL)
                     request.httpMethod = "POST"
                     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-                    request.setValue(AIConfig.anthropicVersion, forHTTPHeaderField: "anthropic-version")
-                    request.setValue(anthropicApiKey, forHTTPHeaderField: "x-api-key")
+                    
+                    // Auth: user's Supabase session token
+                    if let session = try? await SupabaseManager.shared.client.auth.session {
+                        request.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
+                    }
+                    
+                    let providerName: String
+                    let modelName: String
+                    
+                    switch currentProvider {
+                    case .anthropic:
+                        providerName = "anthropic"
+                        modelName = AIConfig.haikuModel
+                    case .openai:
+                        providerName = "openai"
+                        modelName = "gpt-4o-mini"
+                    }
                     
                     let body: [String: Any] = [
-                        "model": AIConfig.haikuModel, // Cost management
+                        "provider": providerName,
+                        "model": modelName,
                         "max_tokens": 1024,
                         "system": systemPrompt,
                         "messages": messages,
@@ -123,26 +81,40 @@ class AICoachClient {
                            let errorObj = json["error"] as? [String: Any],
                            let message = errorObj["message"] as? String {
                             let statusCode = (response as? HTTPURLResponse)?.statusCode ?? 500
-                            continuation.finish(throwing: NSError(domain: "AnthropicAPI", code: statusCode, userInfo: [NSLocalizedDescriptionKey: "API Error: \(message)"]))
+                            continuation.finish(throwing: NSError(domain: "AIProxy", code: statusCode, userInfo: [NSLocalizedDescriptionKey: "API Error: \(message)"]))
                         } else {
                             continuation.finish(throwing: URLError(.badServerResponse))
                         }
                         return
                     }
                     
+                    // The proxy streams back SSE events in the provider's native format
                     for try await line in result.lines {
                         guard line.hasPrefix("data: ") else { continue }
                         let jsonString = line.dropFirst(6)
-                        guard let data = jsonString.data(using: .utf8),
-                              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                              let type = json["type"] as? String else { continue }
                         
-                        if type == "content_block_delta",
-                           let delta = json["delta"] as? [String: Any],
-                           let text = delta["text"] as? String {
-                            continuation.yield(text)
-                        } else if type == "message_stop" {
-                            break
+                        // Handle OpenAI-style [DONE]
+                        if jsonString == "[DONE]" { break }
+                        
+                        guard let data = jsonString.data(using: .utf8),
+                              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { continue }
+                        
+                        // Anthropic format
+                        if let type = json["type"] as? String {
+                            if type == "content_block_delta",
+                               let delta = json["delta"] as? [String: Any],
+                               let text = delta["text"] as? String {
+                                continuation.yield(text)
+                            } else if type == "message_stop" {
+                                break
+                            }
+                        }
+                        // OpenAI format
+                        else if let choices = json["choices"] as? [[String: Any]],
+                                let firstChoice = choices.first,
+                                let delta = firstChoice["delta"] as? [String: Any],
+                                let content = delta["content"] as? String {
+                            continuation.yield(content)
                         }
                     }
                     continuation.finish()

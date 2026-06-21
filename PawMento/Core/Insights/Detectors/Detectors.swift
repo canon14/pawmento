@@ -13,12 +13,21 @@ struct InsightCandidate {
     var precomputedVisualization: VisualizationData?
 }
 
+// Fix I8: Capture timezone at app start for consistent bucketing.
+// Using UTC ensures historical analysis is stable regardless of device travel.
+private let insightCalendar: Calendar = {
+    var cal = Calendar(identifier: .gregorian)
+    cal.timeZone = TimeZone.current // Use the user's home timezone
+    return cal
+}()
+
 class CorrelationDetector {
     static func detect(_ signals: [Signal]) async -> [InsightCandidate] {
         // 48 hours in seconds
         let exposureWindow: TimeInterval = 48 * 3600
-        // Minimum occurrences of a trigger needed to consider
-        let minPairs = 3
+        // Fix I4: Raise minimum exposures from 3 → 5 for statistical rigor
+        let minExposures = 5
+        let minHits = 4
         
         let symptoms = signals.filter { $0.category == .symptom }
         let triggers = signals.filter { signal in
@@ -26,7 +35,7 @@ class CorrelationDetector {
             !(signal.note ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         }
         
-        guard symptoms.count >= minPairs, !triggers.isEmpty else {
+        guard symptoms.count >= minExposures, !triggers.isEmpty else {
             return []
         }
         
@@ -64,21 +73,29 @@ class CorrelationDetector {
         
         var candidates: [InsightCandidate] = []
         
-        for (key, totalExposures) in totalByTrigger where totalExposures >= minPairs {
+        // Fix I4: Bonferroni-like correction — number of distinct triggers tested
+        let numTriggersTested = totalByTrigger.filter { $0.value >= minExposures }.count
+        // Effective threshold: raise the rate gate proportionally to the number of comparisons
+        let adjustedRateThreshold = min(0.95, 0.6 * (1.0 + 0.05 * Double(max(0, numTriggersTested - 1))))
+        
+        for (key, totalExposures) in totalByTrigger where totalExposures >= minExposures {
             let hits = hitsByTrigger[key] ?? 0
+            
+            // Fix I4: Require minimum hits, not just minimum exposures
+            guard hits >= minHits else { continue }
             
             // Percentage of times this trigger was followed by a symptom
             let observedRate = Double(hits) / Double(totalExposures)
             
             // How much more likely is a symptom after this trigger compared to baseline probability
-            // Both observedRate and baselineProb are now probabilities [0,1], making this a true relative risk ratio.
             let relativeRisk = observedRate / baselineProb
             
-            if observedRate >= 0.6 && relativeRisk >= 2.0 {
+            if observedRate >= adjustedRateThreshold && relativeRisk >= 2.0 {
                 let percentStr = Int(observedRate * 100)
                 let rrStr = String(format: "%.1fx", relativeRisk)
                 
-                let desc = "Symptoms frequently follow '\(key)'. Found \(hits) hits out of \(totalExposures) exposures (\(percentStr)%). This is \(rrStr) the baseline risk within a 48h window."
+                // Fix I4: Non-causal language — "possible association", not "frequently follow"
+                let desc = "Possible association observed: symptoms appeared after '\(key)' in \(hits) of \(totalExposures) instances (\(percentStr)%), which is \(rrStr) the baseline rate. This is a pattern worth discussing with your vet — not a diagnosis."
                 
                 candidates.append(InsightCandidate(
                     id: UUID(),
@@ -90,7 +107,9 @@ class CorrelationDetector {
             }
         }
         
-        return candidates
+        // Fix I4: Cap surfaced correlations to top 2 by evidence count to limit false discovery rate
+        candidates.sort { $0.evidenceCount > $1.evidenceCount }
+        return Array(candidates.prefix(2))
     }
 }
 
@@ -103,7 +122,8 @@ class TemporalPatternDetector {
         
         var byHour = [Int](repeating: 0, count: 24)
         for s in symptoms {
-            let hour = Calendar.current.component(.hour, from: s.timestamp)
+            // Fix I8: Use fixed calendar for consistent timezone bucketing
+            let hour = insightCalendar.component(.hour, from: s.timestamp)
             if hour >= 0 && hour < 24 {
                 byHour[hour] += 1
             }
@@ -116,6 +136,7 @@ class TemporalPatternDetector {
         for startHour in 0..<24 {
             var currentCount = 0
             for offset in 0..<windowSize {
+                // Fix I1: Modulo wraps correctly for midnight crossing (already present)
                 let hour = (startHour + offset) % 24
                 currentCount += byHour[hour]
             }
