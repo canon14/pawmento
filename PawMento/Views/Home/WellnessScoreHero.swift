@@ -11,6 +11,9 @@ struct WellnessScoreHero: View {
     @State private var score: Int = 0
     @State private var yesterdayScore: Int = 0
     @State private var showDelta: Bool = false
+    // Fix W1: Track data confidence for UI rendering
+    @State private var confidence: WellnessResult.DataConfidence = .insufficient
+    @State private var yesterdayConfidence: WellnessResult.DataConfidence = .insufficient
     
     var body: some View {
         let petName = petStore.activePet?.name ?? "Your pet"
@@ -42,14 +45,25 @@ struct WellnessScoreHero: View {
                             .shadow(color: ringColor.opacity(0.4), radius: 8, x: 0, y: 0)
                             .animation(.easeOut(duration: 1.0).delay(0.1), value: progress)
                         
-                        // Score Text
-                        HStack(alignment: .firstTextBaseline, spacing: 0) {
-                            Text("\(score)")
-                                .font(.headlineXL)
-                                .foregroundColor(.primary)
-                            Text("/100")
-                                .font(.labelMD)
-                                .foregroundColor(.onSurfaceVariant)
+                        // Score Text — Fix W1: show "?" for insufficient data
+                        if confidence == .insufficient {
+                            VStack(spacing: 2) {
+                                Text("—")
+                                    .font(.headlineXL)
+                                    .foregroundColor(.onSurfaceVariant)
+                                Text("/100")
+                                    .font(.labelMD)
+                                    .foregroundColor(.onSurfaceVariant)
+                            }
+                        } else {
+                            HStack(alignment: .firstTextBaseline, spacing: 0) {
+                                Text("\(score)")
+                                    .font(.headlineXL)
+                                    .foregroundColor(.primary)
+                                Text("/100")
+                                    .font(.labelMD)
+                                    .foregroundColor(.onSurfaceVariant)
+                            }
                         }
                     }
                     .frame(width: 160, height: 160)
@@ -110,29 +124,34 @@ struct WellnessScoreHero: View {
     }
     
     private func calculateDynamicScore() {
-        let relevantLogs = logStore.logs // In MVP, LogStore fetches logs for the household/pet
-        let computedScore = WellnessCalculator.calculateScore(logs: relevantLogs, medications: medicationStore.medications)
+        let relevantLogs = logStore.logs
+        let result = WellnessCalculator.calculateScore(logs: relevantLogs, medications: medicationStore.medications)
         
         let yesterday = Date().addingTimeInterval(-24 * 3600)
-        let yesterdayComputedScore = WellnessCalculator.calculateScore(logs: relevantLogs, medications: medicationStore.medications, upTo: yesterday)
+        let yesterdayResult = WellnessCalculator.calculateScore(logs: relevantLogs, medications: medicationStore.medications, upTo: yesterday)
         
-        self.score = computedScore
-        self.yesterdayScore = yesterdayComputedScore
-        self.progress = CGFloat(computedScore) / 100.0
+        self.score = result.score
+        self.confidence = result.confidence
+        self.yesterdayScore = yesterdayResult.score
+        self.yesterdayConfidence = yesterdayResult.confidence
+        self.progress = confidence == .insufficient ? 0 : CGFloat(result.score) / 100.0
         
         withAnimation(.spring(response: 0.5, dampingFraction: 0.7).delay(0.5)) {
-            self.showDelta = true
+            self.showDelta = confidence != .insufficient
         }
     }
     
     // Dynamic Properties
     private var ringColor: Color {
+        if confidence == .insufficient { return Color(hex: "#F5F3EF") }
         if score >= 80 { return .sage }
         if score >= 60 { return .warmTan }
         return .warmCoral
     }
     
     private func subtitleText(for name: String) -> String {
+        if confidence == .insufficient { return "Log more to see \(name)'s score" }
+        if confidence == .low { return "Building \(name)'s score…" }
         if score >= 80 { return "\(name)'s having a great day ✨" }
         if score >= 60 { return "\(name) is having a steady day" }
         return "\(name) needs some attention ❤️"
@@ -143,18 +162,21 @@ struct WellnessScoreHero: View {
     }
     
     private var deltaIcon: String {
+        if confidence == .insufficient || yesterdayConfidence == .insufficient { return "ellipsis" }
         if deltaValue > 0 { return "arrow.up.right" }
         if deltaValue < 0 { return "arrow.down.right" }
         return "arrow.right"
     }
     
     private var deltaText: String {
+        if confidence == .insufficient || yesterdayConfidence == .insufficient { return "Gathering data" }
         if deltaValue > 0 { return "Up \(deltaValue) points from yesterday" }
         if deltaValue < 0 { return "Down \(abs(deltaValue)) points from yesterday" }
         return "Stable from yesterday"
     }
     
     private var deltaColor: Color {
+        if confidence == .insufficient || yesterdayConfidence == .insufficient { return .warmTan }
         if deltaValue > 0 { return .sage }
         if deltaValue < 0 { return .warmCoral }
         return .warmTan

@@ -27,15 +27,14 @@ class PetProfileViewModel: ObservableObject {
         
         self.medications = fetchedMedications
         
-        let score = WellnessCalculator.calculateScore(logs: logs, medications: fetchedMedications)
+        let result = WellnessCalculator.calculateScore(logs: logs, medications: fetchedMedications)
         
-        // Fix S11: Compute trend from real session-local deltas only.
-        // No fabricated "+4/-5" numbers. If we have no prior score, say "Gathering data".
-        if logs.count < 3 {
+        // Fix W1: Use data confidence to gate score display
+        if result.confidence == .insufficient {
             scoreTrend = "Need more logs"
             scoreDelta = "Gathering data"
         } else if let oldScore = previousScore {
-            let delta = score - oldScore
+            let delta = result.score - oldScore
             if delta > 0 {
                 scoreTrend = "Trending ↗"
                 scoreDelta = "+\(delta) since last check"
@@ -48,9 +47,9 @@ class PetProfileViewModel: ObservableObject {
             }
         } else {
             // First calculation this session — no prior baseline to compare
-            if score >= 80 {
+            if result.score >= 80 {
                 scoreTrend = "Trending ↗"
-            } else if score >= 60 {
+            } else if result.score >= 60 {
                 scoreTrend = "Trending →"
             } else {
                 scoreTrend = "Trending ↘"
@@ -58,8 +57,8 @@ class PetProfileViewModel: ObservableObject {
             scoreDelta = "Gathering data"
         }
         
-        previousScore = score
-        self.wellnessScore = score
+        previousScore = result.score
+        self.wellnessScore = result.score
         
         // Fix S13: Generate AI Insight — support forceRefresh to bypass nil-guard and cache
         if aiInsight == nil || forceRefresh {
