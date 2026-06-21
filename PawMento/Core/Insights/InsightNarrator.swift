@@ -86,14 +86,27 @@ class InsightNarrator {
         
         var candidateDict: [String: InsightCandidate] = [:]
         for c in candidates {
-            candidateDict[c.id.uuidString] = c
+            candidateDict[c.id.uuidString.lowercased()] = c
         }
         
         var finalInsights: [Insight] = []
-        for var dto in dtos {
-            guard let candidate = candidateDict[dto.id] else {
+        var matchedCandidateIds = Set<String>()
+        
+        for (index, var dto) in dtos.enumerated() {
+            var matchedCandidate: InsightCandidate? = candidateDict[dto.id.lowercased()]
+            
+            if matchedCandidate == nil {
+                print("Warning: InsightNarrator failed to match DTO id \(dto.id). Falling back to index \(index).")
+                if index < candidates.count {
+                    matchedCandidate = candidates[index]
+                }
+            }
+            
+            guard let candidate = matchedCandidate else {
                 continue
             }
+            
+            matchedCandidateIds.insert(candidate.id.uuidString.lowercased())
             
             // Validate decoded confidence is finite and within 0...1
             if !dto.confidence.isFinite { dto.confidence = 0.5 }
@@ -131,6 +144,13 @@ class InsightNarrator {
                 generatedAt: Date()
             )
             finalInsights.append(insight)
+        }
+        
+        // Ensure every candidate produces an Insight
+        let unmatchedCandidates = candidates.filter { !matchedCandidateIds.contains($0.id.uuidString.lowercased()) }
+        if !unmatchedCandidates.isEmpty {
+            let fallbackInsights = localFallback(candidates: unmatchedCandidates)
+            finalInsights.append(contentsOf: fallbackInsights)
         }
         
         return finalInsights
