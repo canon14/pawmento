@@ -52,8 +52,15 @@ class CorrelationDetector {
         let maxTime = timestamps.max()?.timeIntervalSince1970 ?? 0
         let totalSpan = maxTime - minTime
         
-        // Expected symptoms in any random 48h window based on overall density
-        let baselineRate = (Double(symptoms.count) * exposureWindow) / max(totalSpan, exposureWindow)
+        // Statistical Model:
+        // We model symptom occurrences as a Poisson process.
+        // lambda = expected number of symptoms in a 48h window
+        // baselineProb = Probability of at least one symptom in a random 48h window: 1 - exp(-lambda)
+        let lambda = Double(symptoms.count) * (exposureWindow / max(totalSpan, exposureWindow))
+        var baselineProb = 1.0 - exp(-lambda)
+        
+        // Clamp to sensible floor/ceiling to avoid divide-by-zero or overly sensitive triggers
+        baselineProb = max(0.02, min(baselineProb, 0.95))
         
         var candidates: [InsightCandidate] = []
         
@@ -63,8 +70,9 @@ class CorrelationDetector {
             // Percentage of times this trigger was followed by a symptom
             let observedRate = Double(hits) / Double(totalExposures)
             
-            // How much more likely is a symptom after this trigger compared to baseline
-            let relativeRisk = observedRate / max(baselineRate, 0.05)
+            // How much more likely is a symptom after this trigger compared to baseline probability
+            // Both observedRate and baselineProb are now probabilities [0,1], making this a true relative risk ratio.
+            let relativeRisk = observedRate / baselineProb
             
             if observedRate >= 0.6 && relativeRisk >= 2.0 {
                 let percentStr = Int(observedRate * 100)
