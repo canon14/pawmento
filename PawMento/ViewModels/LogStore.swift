@@ -6,17 +6,34 @@ import Supabase
 @MainActor
 class LogStore: ObservableObject {
     @Published var logs: [LogEntry] = []
+    @Published var isFetching = false
+    @Published var fetchError: String? = nil
     
-    // Online-only save logic
+    // Fix S1: Track which pet's logs are currently loaded so we don't
+    // contaminate the visible list with logs from a different pet.
+    private(set) var loadedPetId: UUID?
+    
+    // Fix S2: Latest-wins token to prevent stale fetch responses from
+    // overwriting fresh data when the user rapidly switches pets.
+    private var fetchRequestId: UUID?
+    
+    // Fix S8: Shared path builder so upload and delete paths can't drift.
+    static func logPhotoPath(userId: UUID, logId: UUID) -> String {
+        "logs/\(userId.uuidString)/\(logId.uuidString).jpg"
+    }
+    
+    // MARK: - Save
+    
     @MainActor
     func saveLog(_ log: LogEntry, userId: UUID) async throws {
         // 1. Upload photo if exists
         var finalLog = log
         if let image = log.photoImage {
-            let path = "logs/\(userId.uuidString)/\(log.id.uuidString).jpg"
-            // Fix 2: uploadImage returns bucket-relative path; derive public URL for display
+            let path = Self.logPhotoPath(userId: userId, logId: log.id)
             let relativePath = try await StorageManager.shared.uploadImage(image, path: path)
             finalLog.photoLocalURL = StorageManager.shared.publicURL(forPath: relativePath)
+            // Fix S3: Clear the in-memory image so subsequent updates don't re-upload
+            finalLog.photoImage = nil
         }
         
         // 2. Sync to Supabase
@@ -28,24 +45,31 @@ class LogStore: ObservableObject {
             
         finalLog.syncedAt = Date()
         
-        // 3. Update local array after success to prevent race condition with fetchLogs
-        logs.append(finalLog)
-        logs.sort(by: { $0.recordedAt > $1.recordedAt })
+        // 3. Fix S1: Only mutate the local array if this log belongs to the
+        // currently-loaded pet. Otherwise it'll show up on next fetchLogs.
+        if finalLog.petId == loadedPetId {
+            logs.append(finalLog)
+            // Fix S7: Sort by recordedAt (maps to DB "timestamp" column)
+            logs.sort(by: { $0.recordedAt > $1.recordedAt })
+        }
         
         // 4. Remember last used category for this pet
         let key = "lastUsedCategory_\(log.petId.uuidString)"
         UserDefaults.standard.set(log.category.rawValue, forKey: key)
     }
     
+    // MARK: - Update
+    
     @MainActor
     func updateLog(_ log: LogEntry, userId: UUID) async throws {
         // 1. Upload photo if it's new/updated
         var finalLog = log
         if let image = log.photoImage {
-            let path = "logs/\(userId.uuidString)/\(log.id.uuidString).jpg"
-            // Fix 2: uploadImage returns bucket-relative path; derive public URL for display
+            let path = Self.logPhotoPath(userId: userId, logId: log.id)
             let relativePath = try await StorageManager.shared.uploadImage(image, path: path)
             finalLog.photoLocalURL = StorageManager.shared.publicURL(forPath: relativePath)
+            // Fix S3: Clear the in-memory image so subsequent updates don't re-upload
+            finalLog.photoImage = nil
         }
         
         // 2. Sync to Supabase
@@ -58,12 +82,17 @@ class LogStore: ObservableObject {
             
         finalLog.syncedAt = Date()
         
-        // 3. Update local array after success
-        if let index = logs.firstIndex(where: { $0.id == log.id }) {
-            logs[index] = finalLog
-            logs.sort(by: { $0.recordedAt > $1.recordedAt })
+        // 3. Fix S1: Only mutate the local array if this log belongs to the
+        // currently-loaded pet.
+        if finalLog.petId == loadedPetId {
+            if let index = logs.firstIndex(where: { $0.id == log.id }) {
+                logs[index] = finalLog
+                logs.sort(by: { $0.recordedAt > $1.recordedAt })
+            }
         }
     }
+    
+    // MARK: - Delete
     
     @MainActor
     func deleteLog(_ log: LogEntry, userId: UUID) async throws {
@@ -74,9 +103,9 @@ class LogStore: ObservableObject {
             .eq("id", value: log.id.uuidString)
             .execute()
             
-        // 2. Clean up remote photo if exists
+        // 2. Fix S8: Clean up remote photo using the shared path builder
         if log.photoLocalURL != nil {
-            let path = "logs/\(userId.uuidString)/\(log.id.uuidString).jpg"
+            let path = Self.logPhotoPath(userId: userId, logId: log.id)
             try? await StorageManager.shared.deleteImage(path: path)
         }
         
@@ -84,8 +113,18 @@ class LogStore: ObservableObject {
         logs.removeAll { $0.id == log.id }
     }
     
+    // MARK: - Fetch
+    
     @MainActor
     func fetchLogs(for petId: UUID) async {
+        // Fix S2: Latest-wins guard — capture a token so stale responses are discarded.
+        let requestId = UUID()
+        fetchRequestId = requestId
+        loadedPetId = petId
+        
+        isFetching = true
+        fetchError = nil
+        
         do {
             let dtos: [LogDTO] = try await SupabaseManager.shared.client
                 .from("logs")
@@ -95,11 +134,23 @@ class LogStore: ObservableObject {
                 .execute()
                 .value
             
+            // Fix S2: Only apply results if this is still the latest request
+            guard fetchRequestId == requestId else { return }
+            
             self.logs = dtos.map { $0.toLogEntry() }
         } catch {
+            guard fetchRequestId == requestId else { return }
             print("Failed to fetch logs: \(error)")
+            fetchError = error.localizedDescription
+        }
+        
+        // Only clear isFetching if we're still the latest request
+        if fetchRequestId == requestId {
+            isFetching = false
         }
     }
+    
+    // MARK: - Helpers
     
     func getLastUsedCategory(for petId: UUID) -> LogCategory? {
         let key = "lastUsedCategory_\(petId.uuidString)"
@@ -112,5 +163,9 @@ class LogStore: ObservableObject {
     @MainActor
     func reset() {
         logs = []
+        loadedPetId = nil
+        fetchRequestId = nil
+        isFetching = false
+        fetchError = nil
     }
 }
