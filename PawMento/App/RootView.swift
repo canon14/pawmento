@@ -3,6 +3,9 @@ import SwiftUI
 struct RootView: View {
     @EnvironmentObject var authManager: AuthManager
     @EnvironmentObject var petStore: PetStore
+    @EnvironmentObject var coachViewModel: CoachViewModel
+    @EnvironmentObject var logStore: LogStore
+    @EnvironmentObject var medicationStore: MedicationStore
     
     var body: some View {
         ZStack {
@@ -26,11 +29,19 @@ struct RootView: View {
                 if newValue {
                     Task {
                         await authManager.checkOnboardingState()
+                        if let ownerId = await authManager.getCurrentUserId() {
+                            await coachViewModel.initializeQuotaAndSubscription(ownerId: ownerId)
+                        }
                         await petStore.fetchPets()
                         if !petStore.pets.isEmpty {
                             await authManager.completeOnboarding()
                         }
                     }
+                } else if oldValue == true && newValue == false {
+                    petStore.reset()
+                    coachViewModel.reset()
+                    logStore.reset()
+                    medicationStore.reset()
                 }
             }
             

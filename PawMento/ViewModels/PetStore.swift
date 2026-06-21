@@ -133,4 +133,12 @@ class PetStore: ObservableObject {
             throw error
         }
     }
+    
+    @MainActor
+    func reset() {
+        pets = []
+        activePet = nil
+        isFetching = false
+        fetchError = nil
+    }
 }

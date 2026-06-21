@@ -31,4 +31,10 @@ class MedicationStore: ObservableObject {
             ]
         }
     }
+    
+    @MainActor
+    func reset() {
+        medications = []
+        isLoading = false
+    }
 }

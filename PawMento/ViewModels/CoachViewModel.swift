@@ -15,10 +15,57 @@ class CoachViewModel: ObservableObject {
         }
     }
     private var hasShownLowQuotaWarning = false
+    @Published var isPremium: Bool = false
     @Published var showPremiumWall: Bool = false
     
     // Quick Replies context
     @Published var quickReplies: [String] = []
+    
+    // MARK: - Quota & Subscription
+    
+    private func quotaKey(ownerId: UUID, month: String) -> String {
+        return "coach_quota_\(ownerId.uuidString)_\(month)"
+    }
+    
+    private func currentMonthString() -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy_MM"
+        return formatter.string(from: Date())
+    }
+    
+    func initializeQuotaAndSubscription(ownerId: UUID) async {
+        // 1. Fetch Subscription Status
+        do {
+            struct SubscriptionDTO: Codable {
+                let status: String
+                let plan_type: String
+            }
+            let sub: SubscriptionDTO = try await SupabaseManager.shared.client
+                .from("subscriptions")
+                .select()
+                .eq("user_id", value: ownerId.uuidString)
+                .single()
+                .execute()
+                .value
+            
+            self.isPremium = (sub.status == "active" || sub.plan_type == "premium")
+        } catch {
+            print("Failed to fetch subscription: \(error)")
+            self.isPremium = false
+        }
+        
+        // 2. Initialize Quota
+        let month = currentMonthString()
+        let key = quotaKey(ownerId: ownerId, month: month)
+        
+        if UserDefaults.standard.object(forKey: key) != nil {
+            self.freeQuestionsRemaining = UserDefaults.standard.integer(forKey: key)
+        } else {
+            // New month or new user
+            self.freeQuestionsRemaining = 5
+            UserDefaults.standard.set(5, forKey: key)
+        }
+    }
     
     // Fetch previous messages for a pet
     func fetchMessages(for petId: UUID?, ownerId: UUID, forceRefresh: Bool = false) async {
@@ -47,9 +94,11 @@ class CoachViewModel: ObservableObject {
     
     // Send a message and stream the response
     func sendMessage(_ text: String, pet: Pet?, ownerId: UUID?) async {
-        guard freeQuestionsRemaining > 0 else {
-            showPremiumWall = true
-            return
+        if !isPremium {
+            guard freeQuestionsRemaining > 0 else {
+                showPremiumWall = true
+                return
+            }
         }
         
         let userMessage = ChatMessage(role: .user, content: text, petId: pet?.id)
@@ -81,7 +130,14 @@ class CoachViewModel: ObservableObject {
         }
         
         // 2. Decrement Counter (Gate 1)
-        freeQuestionsRemaining -= 1
+        if !isPremium {
+            freeQuestionsRemaining -= 1
+            if let ownerId = ownerId {
+                let month = currentMonthString()
+                let key = quotaKey(ownerId: ownerId, month: month)
+                UserDefaults.standard.set(freeQuestionsRemaining, forKey: key)
+            }
+        }
         
         // 3. Prepare Context Window (Last 8 messages)
         let recentMessages = Array(messages.suffix(8)).map { $0.toAPIFormat() }
@@ -110,7 +166,7 @@ class CoachViewModel: ObservableObject {
             }
             
             // Post-Stream Premium Gating (Gate 2: Coach Warning)
-            if freeQuestionsRemaining <= 2 && freeQuestionsRemaining > 0 && !hasShownLowQuotaWarning {
+            if !isPremium && freeQuestionsRemaining <= 2 && freeQuestionsRemaining > 0 && !hasShownLowQuotaWarning {
                 hasShownLowQuotaWarning = true
                 let warningMessage = ChatMessage(
                     role: .assistant,
@@ -137,7 +193,14 @@ class CoachViewModel: ObservableObject {
             print("Coach stream failed: \(error)") // Log raw technical error for devs
             
             // Refund the question quota if we failed
-            freeQuestionsRemaining += 1
+            if !isPremium {
+                freeQuestionsRemaining += 1
+                if let ownerId = ownerId {
+                    let month = currentMonthString()
+                    let key = quotaKey(ownerId: ownerId, month: month)
+                    UserDefaults.standard.set(freeQuestionsRemaining, forKey: key)
+                }
+            }
             
             if let index = messages.firstIndex(where: { $0.id == assistantMessageId }) {
                 if let urlError = error as? URLError, urlError.code == .notConnectedToInternet {
@@ -147,5 +210,14 @@ class CoachViewModel: ObservableObject {
                 }
             }
         }
+    }
+    
+    @MainActor
+    func reset() {
+        messages = []
+        isTyping = false
+        showPremiumWall = false
+        quickReplies = []
+        // we deliberately keep freeQuestionsRemaining so we don't reset until initializeQuotaAndSubscription runs.
     }
 }

@@ -106,4 +106,9 @@ class LogStore: ObservableObject {
         }
         return nil
     }
+    
+    @MainActor
+    func reset() {
+        logs = []
+    }
 }
