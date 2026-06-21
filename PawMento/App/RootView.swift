@@ -33,6 +33,7 @@ struct RootView: View {
                             await coachViewModel.initializeQuotaAndSubscription(ownerId: ownerId)
                         }
                         await petStore.fetchPets()
+                        await ReminderStore.shared.fetchReminders()
                         if !petStore.pets.isEmpty {
                             await authManager.completeOnboarding()
                         }
@@ -42,6 +43,7 @@ struct RootView: View {
                     coachViewModel.reset()
                     logStore.reset()
                     medicationStore.reset()
+                    ReminderStore.shared.reset()
                 }
             }
             

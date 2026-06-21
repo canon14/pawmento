@@ -56,12 +56,12 @@ CREATE TABLE public.logs (
 -- 6. Reminders Table
 CREATE TABLE public.reminders (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    pet_id UUID NOT NULL REFERENCES public.pets(id) ON DELETE CASCADE,
+    pet_id UUID REFERENCES public.pets(id) ON DELETE CASCADE,
     title TEXT NOT NULL,
-    due_date TIMESTAMP WITH TIME ZONE NOT NULL,
-    is_recurring BOOLEAN DEFAULT FALSE,
-    recurrence_rule TEXT,
-    is_completed BOOLEAN DEFAULT FALSE,
+    reminder_time TIMESTAMPTZ NOT NULL,
+    frequency TEXT NOT NULL DEFAULT 'Once',
+    category_id TEXT NOT NULL DEFAULT 'other',
+    is_enabled BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 

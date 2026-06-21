@@ -1,6 +1,7 @@
 import Foundation
 import SwiftUI
 import Combine
+import Supabase
 
 @MainActor
 class ReminderStore: ObservableObject {
@@ -24,6 +25,21 @@ class ReminderStore: ObservableObject {
         }
     }
     
+    func fetchReminders() async {
+        do {
+            let dtos: [ReminderDTO] = try await SupabaseManager.shared.client
+                .from("reminders")
+                .select()
+                .execute()
+                .value
+            
+            self.reminders = dtos.map { $0.toReminder() }
+            saveReminders() // Update local cache
+        } catch {
+            print("Failed to fetch reminders from server: \(error)")
+        }
+    }
+    
     func saveReminders() {
         do {
             let encoded = try JSONEncoder().encode(reminders)
@@ -37,6 +53,14 @@ class ReminderStore: ObservableObject {
         reminders.append(reminder)
         saveReminders()
         Task {
+            do {
+                try await SupabaseManager.shared.client
+                    .from("reminders")
+                    .insert(reminder.toDTO())
+                    .execute()
+            } catch {
+                print("Failed to sync new reminder to server: \(error)")
+            }
             await NotificationManager.shared.scheduleReminder(reminder)
         }
     }
@@ -45,6 +69,18 @@ class ReminderStore: ObservableObject {
         reminders.removeAll { $0.id == reminder.id }
         saveReminders()
         NotificationManager.shared.removeReminder(reminder)
+        
+        Task {
+            do {
+                try await SupabaseManager.shared.client
+                    .from("reminders")
+                    .delete()
+                    .eq("id", value: reminder.id.uuidString)
+                    .execute()
+            } catch {
+                print("Failed to delete reminder from server: \(error)")
+            }
+        }
     }
     
     func updateReminder(_ reminder: Reminder) {
@@ -52,6 +88,15 @@ class ReminderStore: ObservableObject {
             reminders[idx] = reminder
             saveReminders()
             Task {
+                do {
+                    try await SupabaseManager.shared.client
+                        .from("reminders")
+                        .update(reminder.toDTO())
+                        .eq("id", value: reminder.id.uuidString)
+                        .execute()
+                } catch {
+                    print("Failed to update reminder on server: \(error)")
+                }
                 await NotificationManager.shared.scheduleReminder(reminder)
             }
         }
@@ -73,5 +118,9 @@ class ReminderStore: ObservableObject {
     
     func reminders(for petId: UUID) -> [Reminder] {
         return reminders.filter { $0.petId == petId }.sorted { $0.nextOccurrence < $1.nextOccurrence }
+    }
+    
+    func reset() {
+        reminders = []
     }
 }
