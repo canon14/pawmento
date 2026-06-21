@@ -137,9 +137,21 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
                     note: "Logged from Reminder"
                 )
                 
-                await OfflineSyncManager.shared.enqueueTask(.createLog(newLog, userId))
-                await OfflineSyncManager.shared.flushQueue()
-                print("Successfully logged \(categoryId) from background notification!")
+                do {
+                    let dto = newLog.toDTO(userId: userId)
+                    try await SupabaseManager.shared.client
+                        .from("logs")
+                        .insert(dto)
+                        .execute()
+                    print("Successfully logged \(categoryId) from background notification!")
+                } catch {
+                    print("Error saving log from notification: \(error)")
+                    let errorContent = UNMutableNotificationContent()
+                    errorContent.title = "Failed to Save Log"
+                    errorContent.body = "We couldn't save your \(categoryId) log. Please make sure you are online."
+                    let request = UNNotificationRequest(identifier: UUID().uuidString, content: errorContent, trigger: nil)
+                    try? await UNUserNotificationCenter.current().add(request)
+                }
             }
         }
     }

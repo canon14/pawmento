@@ -33,10 +33,6 @@ struct PawMentoApp: App {
                 .environmentObject(medicationStore)
                 .environmentObject(toastManager)
         }
-        .onChange(of: scenePhase) { _, newPhase in
-            if newPhase == .active {
-                OfflineSyncManager.shared.flushQueue()
-            }
-        }
+
     }
 }
