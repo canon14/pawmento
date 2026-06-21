@@ -140,7 +140,7 @@ struct HomeScreen: View {
             if petReminders.isEmpty {
                 Button(action: { showCreateReminder = true }) {
                     HStack {
-                        Image(systemName: "bell.badge.plus")
+                        Image(systemName: "bell.badge")
                             .foregroundColor(.sage)
                         Text("Add a reminder for \(petStore.activePet?.name ?? PetStore.fallbackPetName)")
                             .font(.system(size: 14, weight: .medium))

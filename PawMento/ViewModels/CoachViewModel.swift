@@ -49,18 +49,13 @@ class CoachViewModel: ObservableObject {
                 // Fix S18: Reset warning flag on actual period reset, not via didSet
                 self.hasShownLowQuotaWarning = false
                 
-                // Reset quota on server (init-time, non-concurrent — direct UPDATE is fine here)
-                struct UpdateQuotaDTO: Codable {
-                    let questions_used: Int
-                    let period_start: Date
-                }
+                // Reset quota on server via RPC (SECURITY DEFINER bypasses SELECT-only RLS)
                 do {
-                    let update = UpdateQuotaDTO(questions_used: 0, period_start: now)
-                    try await SupabaseManager.shared.client
-                        .from("subscriptions")
-                        .update(update)
-                        .eq("user_id", value: ownerId.uuidString)
+                    let remaining: Int = try await SupabaseManager.shared.client
+                        .rpc("reset_question_period")
                         .execute()
+                        .value
+                    self.freeQuestionsRemaining = remaining
                 } catch {
                     print("Failed to reset quota on server: \(error)")
                 }

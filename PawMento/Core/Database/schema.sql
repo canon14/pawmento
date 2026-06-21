@@ -302,3 +302,18 @@ $$;
 REVOKE EXECUTE ON FUNCTION public.decrement_question_usage() FROM public;
 GRANT EXECUTE ON FUNCTION public.decrement_question_usage() TO authenticated;
 
+-- Reset question period: zeros out questions_used and sets period_start to now.
+-- Used by CoachViewModel when the 30-day period has expired.
+CREATE OR REPLACE FUNCTION public.reset_question_period()
+RETURNS INTEGER
+LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+  UPDATE public.subscriptions
+    SET questions_used = 0, period_start = NOW()
+    WHERE user_id = auth.uid();
+  RETURN 5; -- Full quota
+END;
+$$;
+
+REVOKE EXECUTE ON FUNCTION public.reset_question_period() FROM public;
+GRANT EXECUTE ON FUNCTION public.reset_question_period() TO authenticated;
