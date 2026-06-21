@@ -64,13 +64,9 @@ actor InsightEngine {
         if !llmCandidates.isEmpty {
             let speciesStr = pet != nil ? String(describing: pet!.species) : "pet"
             let petContext = "Pet is a \(speciesStr) named \(pet?.name ?? "Buddy")."
-            do {
-                let scored = try await InsightNarrator.scoreAndNarrate(candidates: llmCandidates, petContext: petContext)
-                finalInsights.append(contentsOf: scored)
-            } catch {
-                print("InsightNarrator failed: \(error)")
-                // Fallback gracefully: if LLM fails, we just don't show the advanced patterns
-            }
+            // The narrator guarantees insights are returned (either via LLM or a local fallback).
+            let scored = await InsightNarrator.scoreAndNarrate(candidates: llmCandidates, petContext: petContext)
+            finalInsights.append(contentsOf: scored)
         }
         
         // 6. Sort and Cache
