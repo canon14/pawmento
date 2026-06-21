@@ -45,6 +45,7 @@ CREATE TABLE public.logs (
     title TEXT NOT NULL,
     description TEXT,
     photo_url TEXT,
+    severity INTEGER CHECK (severity >= 1 AND severity <= 5),
     timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     created_by UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE
 );

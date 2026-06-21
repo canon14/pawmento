@@ -15,6 +15,7 @@ struct LogDTO: Codable, Identifiable {
     // We should either add `photo_url` to `logs` table in schema.sql OR store it in description.
     // For now, let's assume we can add `photo_url` to `logs` table.
     let photo_url: String?
+    let severity: Int?
     
     func toLogEntry() -> LogEntry {
         let category = LogCategory(rawValue: log_type) ?? .other
@@ -23,7 +24,7 @@ struct LogDTO: Codable, Identifiable {
             id: id,
             petId: pet_id,
             category: category,
-            severity: nil, // If we parse title/description we could infer this
+            severity: severity,
             note: description,
             photoLocalURL: photo_url.flatMap { URL(string: $0) },
             photoImage: nil,
@@ -44,7 +45,8 @@ extension LogEntry {
             description: note,
             timestamp: recordedAt,
             created_by: userId,
-            photo_url: photoLocalURL?.absoluteString
+            photo_url: photoLocalURL?.absoluteString,
+            severity: severity
         )
     }
 }
