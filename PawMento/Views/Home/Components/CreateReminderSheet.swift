@@ -72,7 +72,13 @@ struct CreateReminderSheet: View {
             reminder.categoryId = selectedCategory.rawValue
             reminder.time = time
             reminder.frequency = frequency
-            ReminderStore.shared.updateReminder(reminder)
+            Task {
+                do {
+                    try await ReminderStore.shared.updateReminder(reminder)
+                } catch {
+                    ToastManager.shared.show("Failed to update reminder. Check your connection.", duration: 4.0)
+                }
+            }
         } else {
             let newReminder = Reminder(
                 petId: petId,
@@ -81,7 +87,13 @@ struct CreateReminderSheet: View {
                 frequency: frequency,
                 categoryId: selectedCategory.rawValue
             )
-            ReminderStore.shared.addReminder(newReminder)
+            Task {
+                do {
+                    try await ReminderStore.shared.addReminder(newReminder)
+                } catch {
+                    ToastManager.shared.show("Failed to save reminder. Check your connection.", duration: 4.0)
+                }
+            }
         }
         
         dismiss()

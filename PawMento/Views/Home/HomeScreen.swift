@@ -181,7 +181,13 @@ struct HomeScreen: View {
                             }, onEditTapped: {
                                 reminderToEdit = reminder
                             }, onDeleteTapped: {
-                                reminderStore.deleteReminder(reminder)
+                                Task {
+                                    do {
+                                        try await reminderStore.deleteReminder(reminder)
+                                    } catch {
+                                        ToastManager.shared.show("Failed to delete reminder.", duration: 3.0)
+                                    }
+                                }
                             })
                         }
                     }
