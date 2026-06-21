@@ -9,6 +9,7 @@ struct LoginScreen: View {
     @State private var password = ""
     @State private var isSignUp = false
     @State private var currentNonce: String?
+    @State private var confirmationResent = false
     
     var body: some View {
         VStack(spacing: AppSpacing.lg) {
@@ -29,87 +30,176 @@ struct LoginScreen: View {
                     .padding(.horizontal, AppSpacing.lg)
             }
             
-            // Auth Form
-            VStack(spacing: AppSpacing.md) {
-                
-                // Apple Sign In Button
-                SignInWithAppleButton(.signIn) { request in
-                    let nonce = randomNonceString()
-                    currentNonce = nonce
-                    request.requestedScopes = [.fullName, .email]
-                    request.nonce = sha256(nonce)
-                } onCompletion: { result in
-                    Task {
-                        await authManager.handleAppleSignInCompletion(result: result, currentNonce: currentNonce)
-                    }
-                }
-                .signInWithAppleButtonStyle(.black)
-                .frame(height: 56)
-                .cornerRadius(AppRadius.input)
-                
-                // Divider
-                HStack {
-                    VStack { Divider().background(Color.outlineVariant) }
-                    Text("or")
-                        .font(.labelMD)
-                        .foregroundColor(.tertiaryText)
-                    VStack { Divider().background(Color.outlineVariant) }
-                }
-                .padding(.vertical, AppSpacing.sm)
-                
-                // Email / Password
-                VStack(spacing: AppSpacing.sm) {
-                    FormTextField(placeholder: "Email address", text: $email)
-                        .keyboardType(.emailAddress)
-                        .textContentType(.emailAddress)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .onChange(of: email) { _ in authManager.authError = nil }
-                        
-                    FormSecureField(placeholder: "Password", text: $password)
-                        .textContentType(isSignUp ? .newPassword : .password)
-                        .onChange(of: password) { _ in authManager.authError = nil }
-                }
-                
-                if let error = authManager.authError {
-                    Text(error)
-                        .font(.labelSM)
-                        .foregroundColor(.error)
-                        .multilineTextAlignment(.center)
-                }
-                
-                Button(action: handleEmailAuth) {
-                    HStack {
-                        if authManager.isLoading {
-                            ProgressView().progressViewStyle(CircularProgressViewStyle(tint: .white))
-                                .padding(.trailing, AppSpacing.xs)
-                        }
-                        Text(isSignUp ? "Sign Up" : "Sign In")
-                    }
-                }
-                .buttonStyle(PrimaryButtonStyle())
-                .disabled(email.isEmpty || password.isEmpty || authManager.isLoading)
-                
+            // Fix A3: Email confirmation banner
+            if authManager.needsEmailConfirmation {
+                emailConfirmationBanner
+            } else {
+                // Auth Form
+                authFormContent
             }
-            .padding(.horizontal, AppSpacing.md)
             
             Spacer()
             
-            // Toggle
-            Button(action: {
-                withAnimation {
-                    isSignUp.toggle()
-                    authManager.authError = nil
+            // Toggle (hidden when showing confirmation banner)
+            if !authManager.needsEmailConfirmation {
+                Button(action: {
+                    withAnimation {
+                        isSignUp.toggle()
+                        authManager.authError = nil
+                        authManager.needsEmailConfirmation = false
+                    }
+                }) {
+                    Text(isSignUp ? "Already have an account? Sign In" : "Don't have an account? Sign Up")
+                        .font(.labelMD)
+                        .foregroundColor(.sage)
                 }
-            }) {
-                Text(isSignUp ? "Already have an account? Sign In" : "Don't have an account? Sign Up")
-                    .font(.labelMD)
-                    .foregroundColor(.sage)
+                .padding(.bottom, AppSpacing.lg)
             }
-            .padding(.bottom, AppSpacing.lg)
             
         }
         .background(Color.warmCream.ignoresSafeArea())
+    }
+    
+    // MARK: - Auth Form
+    
+    private var authFormContent: some View {
+        VStack(spacing: AppSpacing.md) {
+            
+            // Apple Sign In Button
+            SignInWithAppleButton(.signIn) { request in
+                let nonce = randomNonceString()
+                currentNonce = nonce
+                request.requestedScopes = [.fullName, .email]
+                request.nonce = sha256(nonce)
+            } onCompletion: { result in
+                Task {
+                    await authManager.handleAppleSignInCompletion(result: result, currentNonce: currentNonce)
+                }
+            }
+            .signInWithAppleButtonStyle(.black)
+            .frame(height: 56)
+            .cornerRadius(AppRadius.input)
+            
+            // Divider
+            HStack {
+                VStack { Divider().background(Color.outlineVariant) }
+                Text("or")
+                    .font(.labelMD)
+                    .foregroundColor(.tertiaryText)
+                VStack { Divider().background(Color.outlineVariant) }
+            }
+            .padding(.vertical, AppSpacing.sm)
+            
+            // Email / Password
+            VStack(spacing: AppSpacing.sm) {
+                FormTextField(placeholder: "Email address", text: $email)
+                    .keyboardType(.emailAddress)
+                    .textContentType(.emailAddress)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .onChange(of: email) { _ in
+                        authManager.authError = nil
+                        // Reset confirmation state when email changes
+                        authManager.needsEmailConfirmation = false
+                        confirmationResent = false
+                    }
+                    
+                FormSecureField(placeholder: "Password", text: $password)
+                    .textContentType(isSignUp ? .newPassword : .password)
+                    .onChange(of: password) { _ in authManager.authError = nil }
+            }
+            
+            if let error = authManager.authError {
+                Text(error)
+                    .font(.labelSM)
+                    .foregroundColor(.error)
+                    .multilineTextAlignment(.center)
+            }
+            
+            Button(action: handleEmailAuth) {
+                HStack {
+                    if authManager.isLoading {
+                        ProgressView().progressViewStyle(CircularProgressViewStyle(tint: .white))
+                            .padding(.trailing, AppSpacing.xs)
+                    }
+                    Text(isSignUp ? "Sign Up" : "Sign In")
+                }
+            }
+            .buttonStyle(PrimaryButtonStyle())
+            .disabled(email.isEmpty || password.isEmpty || authManager.isLoading)
+            
+        }
+        .padding(.horizontal, AppSpacing.md)
+    }
+    
+    // MARK: - Email Confirmation Banner (Fix A3)
+    
+    private var emailConfirmationBanner: some View {
+        VStack(spacing: AppSpacing.md) {
+            Image(systemName: "envelope.badge")
+                .font(.system(size: 48))
+                .foregroundColor(.sage)
+                .padding(.bottom, AppSpacing.xs)
+            
+            Text("Check Your Email")
+                .font(.headlineMD)
+                .foregroundColor(.primaryText)
+            
+            Text("We sent a confirmation link to **\(email)**. Tap the link to activate your account, then come back to sign in.")
+                .font(.bodyMD)
+                .foregroundColor(.secondaryText)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, AppSpacing.md)
+            
+            if confirmationResent {
+                Text("Confirmation email resent!")
+                    .font(.labelSM)
+                    .foregroundColor(.sage)
+            }
+            
+            if let error = authManager.authError {
+                Text(error)
+                    .font(.labelSM)
+                    .foregroundColor(.error)
+                    .multilineTextAlignment(.center)
+            }
+            
+            // Resend confirmation button
+            Button(action: {
+                Task {
+                    await authManager.resendConfirmation(email: email)
+                    if authManager.authError == nil {
+                        confirmationResent = true
+                    }
+                }
+            }) {
+                HStack {
+                    if authManager.isLoading {
+                        ProgressView().progressViewStyle(CircularProgressViewStyle(tint: .white))
+                            .padding(.trailing, AppSpacing.xs)
+                    }
+                    Text("Resend Confirmation Email")
+                }
+            }
+            .buttonStyle(PrimaryButtonStyle())
+            .disabled(authManager.isLoading)
+            
+            // Back to sign-in button
+            Button(action: {
+                withAnimation {
+                    authManager.needsEmailConfirmation = false
+                    authManager.authError = nil
+                    confirmationResent = false
+                    isSignUp = false
+                }
+            }) {
+                Text("Back to Sign In")
+                    .font(.labelMD)
+                    .foregroundColor(.sage)
+            }
+            .padding(.top, AppSpacing.sm)
+        }
+        .padding(.horizontal, AppSpacing.md)
     }
     
     private func handleEmailAuth() {
@@ -123,10 +213,11 @@ struct LoginScreen: View {
     }
     
     // MARK: - Apple Sign In Helpers
+    // Fix A5: Added missing 'W' to charset (was STUV_XYZ, now STUVWXYZ)
     private func randomNonceString(length: Int = 32) -> String {
         precondition(length > 0)
         let charset: [Character] =
-            Array("0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._")
+            Array("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-._")
         var result = ""
         var remainingLength = length
         
