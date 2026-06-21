@@ -123,9 +123,11 @@ CREATE TRIGGER on_auth_user_created
 -- ==========================================
 CREATE TABLE public.chat_messages (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    pet_id UUID NOT NULL REFERENCES public.pets(id) ON DELETE CASCADE,
+    owner_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+    pet_id UUID REFERENCES public.pets(id) ON DELETE CASCADE,
     role TEXT NOT NULL CHECK (role IN ('user', 'assistant', 'system')),
     content TEXT NOT NULL,
+    is_emergency BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -133,7 +135,7 @@ ALTER TABLE public.chat_messages ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Users can manage chat messages for their pets" ON public.chat_messages 
     FOR ALL USING (
-        EXISTS (SELECT 1 FROM public.pets WHERE id = public.chat_messages.pet_id AND owner_id = auth.uid())
+        owner_id = auth.uid() AND (pet_id IS NULL OR EXISTS (SELECT 1 FROM public.pets WHERE id = public.chat_messages.pet_id AND owner_id = auth.uid()))
     );
 
 -- ==========================================
