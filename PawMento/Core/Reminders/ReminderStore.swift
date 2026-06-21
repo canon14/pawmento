@@ -61,7 +61,9 @@ class ReminderStore: ObservableObject {
             } catch {
                 print("Failed to sync new reminder to server: \(error)")
             }
-            await NotificationManager.shared.scheduleReminder(reminder)
+            if reminder.isEnabled {
+                await NotificationManager.shared.scheduleReminder(reminder)
+            }
         }
     }
     
@@ -97,7 +99,12 @@ class ReminderStore: ObservableObject {
                 } catch {
                     print("Failed to update reminder on server: \(error)")
                 }
-                await NotificationManager.shared.scheduleReminder(reminder)
+                
+                if reminder.isEnabled {
+                    await NotificationManager.shared.scheduleReminder(reminder)
+                } else {
+                    NotificationManager.shared.removeReminder(reminder)
+                }
             }
         }
     }
@@ -106,14 +113,6 @@ class ReminderStore: ObservableObject {
         var updated = reminder
         updated.isEnabled.toggle()
         updateReminder(updated)
-        
-        if updated.isEnabled {
-            Task {
-                await NotificationManager.shared.scheduleReminder(updated)
-            }
-        } else {
-            NotificationManager.shared.removeReminder(updated)
-        }
     }
     
     func reminders(for petId: UUID) -> [Reminder] {

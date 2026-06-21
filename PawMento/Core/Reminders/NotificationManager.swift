@@ -116,7 +116,10 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
     }
     
     func removeReminder(_ reminder: Reminder) {
-        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [reminder.id.uuidString])
+        let center = UNUserNotificationCenter.current()
+        let identifier = [reminder.id.uuidString]
+        center.removePendingNotificationRequests(withIdentifiers: identifier)
+        center.removeDeliveredNotifications(withIdentifiers: identifier)
     }
     
     // MARK: - UNUserNotificationCenterDelegate
