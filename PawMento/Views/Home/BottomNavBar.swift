@@ -2,9 +2,11 @@ import SwiftUI
 
 struct BottomNavBar: View {
     @Binding var selectedTab: Tab
+    var onLogTap: () -> Void
+    var onCoachTap: () -> Void
     
     enum Tab {
-        case home, log, coach, pet
+        case home, pet
     }
     
     var body: some View {
@@ -21,8 +23,8 @@ struct BottomNavBar: View {
             NavBarItem(
                 icon: "plus.circle.fill",
                 title: "Log",
-                isSelected: selectedTab == .log,
-                action: { selectedTab = .log }
+                isSelected: false,
+                action: onLogTap
             )
             
             Spacer()
@@ -30,9 +32,9 @@ struct BottomNavBar: View {
             NavBarItem(
                 icon: "brain.head.profile",
                 title: "Coach",
-                isSelected: selectedTab == .coach,
+                isSelected: false,
                 hasPulse: true,
-                action: { selectedTab = .coach }
+                action: onCoachTap
             )
             
             Spacer()
@@ -109,5 +111,5 @@ struct RoundedCorner: Shape {
 }
 
 #Preview {
-    BottomNavBar(selectedTab: .constant(.home))
+    BottomNavBar(selectedTab: .constant(.home), onLogTap: {}, onCoachTap: {})
 }

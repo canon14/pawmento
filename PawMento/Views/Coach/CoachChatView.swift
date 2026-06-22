@@ -20,19 +20,62 @@ struct CoachChatView: View {
             ScrollViewReader { proxy in
                 ScrollView {
                     LazyVStack(spacing: 16) {
-                        ForEach(viewModel.messages) { message in
-                            MessageBubbleView(message: message)
-                                .id(message.id)
+                        if viewModel.messages.isEmpty {
+                            VStack(spacing: 16) {
+                                Image(systemName: "brain.head.profile")
+                                    .font(.system(size: 48))
+                                    .foregroundColor(.primary)
+                                    .padding(.bottom, 8)
+                                Text("Welcome to Coach")
+                                    .font(.headlineLG)
+                                    .foregroundColor(.primaryText)
+                                Text("I'm here to help you understand \(petName)'s health, behavior, and daily needs.")
+                                    .font(.bodyMD)
+                                    .foregroundColor(.secondaryText)
+                                    .multilineTextAlignment(.center)
+                                    .padding(.horizontal, 32)
+                                
+                                if !viewModel.quickReplies.isEmpty {
+                                    VStack(spacing: 12) {
+                                        ForEach(viewModel.quickReplies, id: \.self) { reply in
+                                            Button(action: { send(reply) }) {
+                                                Text(reply)
+                                                    .font(.labelMD)
+                                                    .foregroundColor(.primaryText)
+                                                    .padding(.horizontal, 16)
+                                                    .padding(.vertical, 12)
+                                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                                    .background(Color.surface0)
+                                                    .cornerRadius(AppRadius.md)
+                                                    .overlay(
+                                                        RoundedRectangle(cornerRadius: 16)
+                                                            .stroke(Color.primary.opacity(0.2), lineWidth: 1)
+                                                    )
+                                            }
+                                        }
+                                    }
+                                    .padding(.horizontal, 24)
+                                    .padding(.top, 16)
+                                }
+                            }
+                            .padding(.top, 40)
+                        } else {
+                            ForEach(Array(viewModel.messages.enumerated()), id: \.element.id) { index, message in
+                                let showTimestamp = shouldShowTimestamp(for: index)
+                                MessageBubbleView(message: message, showTimestamp: showTimestamp)
+                                    .id(message.id)
+                            }
                         }
                         
                         if viewModel.isTyping {
                             HStack {
-                                Text("Coach is typing...")
-                                    .font(.labelSM)
-                                    .foregroundColor(.tertiaryText)
-                                    .padding(.horizontal, 24)
+                                Text("🧑‍⚕️")
+                                    .font(.headlineSM)
+                                    .padding(.top, 4)
+                                TypingIndicator()
                                 Spacer()
                             }
+                            .padding(.horizontal, AppSpacing.md)
                             .id("typingIndicator")
                         }
                     }
@@ -56,33 +99,7 @@ struct CoachChatView: View {
             }
             .background(Color.background)
             
-            // Action Chips
-            if !viewModel.quickReplies.isEmpty {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(viewModel.quickReplies, id: \.self) { reply in
-                            Button(action: {
-                                send(reply)
-                            }) {
-                                Text(reply)
-                                    .font(.labelMD)
-                                    .foregroundColor(.primaryText)
-                                    .padding(.horizontal, 16)
-                                    .padding(.vertical, 10)
-                                    .background(Color.surface0)
-                                    .cornerRadius(AppRadius.md)
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 16)
-                                            .stroke(Color.primary.opacity(0.2), lineWidth: 1)
-                                    )
-                            }
-                        }
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 8)
-                }
-                .background(Color.background)
-            }
+
             
             // Composer
             ComposerView(
@@ -199,12 +216,7 @@ struct CoachChatView: View {
         .padding(.horizontal, 16)
         .frame(height: 56)
         .background(Color.warmCream)
-        .overlay(
-            Rectangle()
-                .frame(height: 0.5)
-                .foregroundColor(Color.outline.opacity(0.12)),
-            alignment: .bottom
-        )
+
     }
     
     private func send(_ text: String) {
@@ -223,6 +235,37 @@ struct CoachChatView: View {
             "What should I feed \(petName)?",
             "How often should I walk them?"
         ]
+    }
+    private func shouldShowTimestamp(for index: Int) -> Bool {
+        if index == 0 { return true }
+        let current = viewModel.messages[index]
+        let previous = viewModel.messages[index - 1]
+        return current.timestamp.timeIntervalSince(previous.timestamp) > 300
+    }
+}
+
+struct TypingIndicator: View {
+    @State private var offset1: CGFloat = 0
+    @State private var offset2: CGFloat = 0
+    @State private var offset3: CGFloat = 0
+    
+    var body: some View {
+        HStack(spacing: 4) {
+            Circle().frame(width: 6, height: 6).offset(y: offset1)
+            Circle().frame(width: 6, height: 6).offset(y: offset2)
+            Circle().frame(width: 6, height: 6).offset(y: offset3)
+        }
+        .foregroundColor(.tertiaryText)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(Color.surfaceBright)
+        .clipShape(BubbleShape(isUser: false))
+        .onAppear {
+            let baseAnimation = Animation.easeInOut(duration: 0.6).repeatForever()
+            withAnimation(baseAnimation.delay(0.0)) { offset1 = -4 }
+            withAnimation(baseAnimation.delay(0.2)) { offset2 = -4 }
+            withAnimation(baseAnimation.delay(0.4)) { offset3 = -4 }
+        }
     }
 }
 

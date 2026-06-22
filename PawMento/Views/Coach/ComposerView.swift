@@ -16,7 +16,7 @@ struct ComposerView: View {
                         .font(.headlineMD)
                         .foregroundColor(.tertiaryText)
                 }
-                .frame(width: 32, height: 40)
+                .frame(width: 44, height: 44)
                 
                 // Text Field
                 TextField(placeholderText(), text: $text, axis: .vertical)
@@ -36,7 +36,7 @@ struct ComposerView: View {
                     Image(systemName: "arrow.up")
                         .font(.bodyMD)
                         .foregroundColor(.white)
-                        .frame(width: 40, height: 40)
+                        .frame(width: 44, height: 44)
                         .background(Color.primary)
                         .clipShape(Circle())
                         .opacity(text.isEmpty ? 0.3 : 1.0)

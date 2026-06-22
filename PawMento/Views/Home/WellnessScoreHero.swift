@@ -32,6 +32,7 @@ struct WellnessScoreHero: View {
                 VStack(spacing: 0) {
                     
                     ZStack {
+
                         // Progress Ring Background
                         Circle()
                             .stroke(Color(hex: "#F5F3EF"), style: StrokeStyle(lineWidth: 12, lineCap: .round))
@@ -67,6 +68,9 @@ struct WellnessScoreHero: View {
                         }
                     }
                     .frame(width: 160, height: 160)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel("Wellness score is \(score) out of 100. \(subtitleText(for: petName))")
+                    .accessibilityValue(confidence == .insufficient ? "Data insufficient" : "\(score)")
                     .padding(.top, 40)
                     .padding(.bottom, 20)
                     
@@ -109,16 +113,13 @@ struct WellnessScoreHero: View {
         .background(Color.surfaceContainerLowest)
         .cornerRadius(AppRadius.card)
         .warmShadow()
-        .onAppear {
+        .onChange(of: logStore.logs.count, initial: true) { old, new in
             calculateDynamicScore()
         }
-        .onChange(of: logStore.logs.count) { _ in
+        .onChange(of: medicationStore.medications.count, initial: true) { old, new in
             calculateDynamicScore()
         }
-        .onChange(of: medicationStore.medications.count) { _ in
-            calculateDynamicScore()
-        }
-        .onChange(of: petStore.activePet?.id) { _ in
+        .onChange(of: petStore.activePet?.id, initial: true) { old, new in
             calculateDynamicScore()
         }
     }

@@ -20,6 +20,8 @@ struct BubbleShape: Shape {
 
 struct MessageBubbleView: View {
     let message: ChatMessage
+    var showTimestamp: Bool = true
+    @State private var isRevealed: Bool = false
     
     var body: some View {
         HStack {
@@ -51,12 +53,17 @@ struct MessageBubbleView: View {
                 .clipShape(BubbleShape(isUser: true))
             
             // Timestamp
-            Text(message.timestamp, style: .time)
-                .font(.labelSM)
-                .foregroundColor(.tertiaryText)
+            if showTimestamp || isRevealed {
+                Text(message.timestamp, style: .time)
+                    .font(.labelSM)
+                    .foregroundColor(.tertiaryText)
+            }
         }
-        .frame(maxWidth: 300, alignment: .trailing)
+        .padding(.leading, 48)
         .textSelection(.enabled)
+        .onTapGesture {
+            withAnimation { isRevealed.toggle() }
+        }
     }
     
     var coachBubble: some View {
@@ -68,9 +75,12 @@ struct MessageBubbleView: View {
             
             VStack(alignment: .leading, spacing: 8) {
                 if message.isEmergency {
-                    Text("This sounds urgent")
-                        .font(.headlineSM)
-                        .foregroundColor(.error)
+                    HStack(spacing: 4) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                        Text("This sounds urgent")
+                    }
+                    .font(.headlineSM)
+                    .foregroundColor(.error)
                 }
                 
                 Text(message.content.isEmpty ? "..." : message.content)
@@ -84,10 +94,13 @@ struct MessageBubbleView: View {
             .clipShape(BubbleShape(isUser: false))
             .overlay(
                 BubbleShape(isUser: false)
-                    .stroke(message.isEmergency ? Color.error : Color.outline.opacity(0.08), lineWidth: message.isEmergency ? 3 : 1)
+                    .stroke(message.isEmergency ? Color.error : Color.outline.opacity(0.08), lineWidth: message.isEmergency ? 2 : 1)
             )
         }
-        .frame(maxWidth: 300, alignment: .leading)
+        .padding(.trailing, 48)
         .textSelection(.enabled)
+        .onTapGesture {
+            withAnimation { isRevealed.toggle() }
+        }
     }
 }

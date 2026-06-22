@@ -15,6 +15,7 @@ struct HomeScreen: View {
     @State private var showCreateReminder = false
     @State private var reminderToEdit: Reminder? = nil
     @State private var showFullTimeline = false
+    @State private var isFetchingLogs = false
     
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -32,24 +33,31 @@ struct HomeScreen: View {
                         VStack(spacing: 16) {
                             PetSelectorCard(onAddPet: { showAddPetSheet = true })
                             
-                            upNextRemindersSection
+                            // Promoted clinical card
                             WellnessScoreHero(onViewTrendsTapped: {
                                 showFullTimeline = true
                             })
-
-                            PatternAlertCard(action: {
-                                showInsights = true
-                            })
+                            
+                            upNextRemindersSection
                             
                             TodayLogGrid(onLogAction: {
                                 showQuickLog = true
                             })
                             
-                            AskCoachCard(action: {
-                                showCoachChat = true
-                            })
-                            
                             RecentActivityTimeline()
+                            
+                            // Deemphasized secondary/marketing cards
+                            HStack(spacing: 12) {
+                                PatternAlertCard(action: {
+                                    showInsights = true
+                                })
+                                .scaleEffect(0.9)
+                                
+                                AskCoachCard(action: {
+                                    showCoachChat = true
+                                })
+                                .scaleEffect(0.9)
+                            }
                             
                         }
                         .padding(.horizontal, 20)
@@ -64,29 +72,15 @@ struct HomeScreen: View {
             // Bottom Navigation
             VStack {
                 Spacer()
-                BottomNavBar(selectedTab: $selectedTab)
+                BottomNavBar(selectedTab: $selectedTab, onLogTap: { showQuickLog = true }, onCoachTap: { showCoachChat = true })
             }
             .edgesIgnoringSafeArea(.bottom)
         }
-        .onChange(of: selectedTab) { _, newValue in
-            if newValue == .coach {
-                showCoachChat = true
-            } else if newValue == .log {
-                showQuickLog = true
-            }
-        }
-        .fullScreenCover(isPresented: $showCoachChat, onDismiss: {
-            if selectedTab == .coach {
-                selectedTab = .home
-            }
-        }) {
+        
+        .fullScreenCover(isPresented: $showCoachChat) {
             CoachChatView()
         }
-        .sheet(isPresented: $showQuickLog, onDismiss: {
-            if selectedTab == .log {
-                selectedTab = .home
-            }
-        }) {
+        .sheet(isPresented: $showQuickLog) {
             QuickLogSheetView()
                 .presentationDetents([.fraction(0.75), .large])
                 .presentationCornerRadius(28)
@@ -99,10 +93,11 @@ struct HomeScreen: View {
             AddPetSheet()
         }
         .onChange(of: petStore.activePet?.id) { _, newPetId in
-            if let petId = newPetId {
-                Task {
-                    await logStore.fetchLogs(for: petId)
-                }
+            guard let petId = newPetId, !isFetchingLogs else { return }
+            Task {
+                isFetchingLogs = true
+                await logStore.fetchLogs(for: petId)
+                isFetchingLogs = false
             }
         }
         .sheet(isPresented: $showCreateReminder) {
@@ -194,8 +189,8 @@ struct HomeScreen: View {
                     // padding so shadow doesn't clip
                     .padding(.vertical, 8) 
                 }
-                .padding(.horizontal, -20)
-                .padding(.leading, 20)
+                .contentMargins(.horizontal, 20, for: .scrollContent)
+                
             }
         }
     }
