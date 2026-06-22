@@ -37,21 +37,21 @@ struct PetProfileTopBar: View {
             Spacer()
             
             HStack(spacing: 16) {
-                Button(action: { showActionMenu = true }) {
-                    Image(systemName: "ellipsis")
-                        .font(.bodyLG)
-                        .foregroundColor(.secondaryText)
-                }
-                .confirmationDialog("Profile Actions", isPresented: $showActionMenu, titleVisibility: .hidden) {
-                    if FeatureFlags.isEllipsisActionsEnabled {
+                if FeatureFlags.isEllipsisActionsEnabled {
+                    Button(action: { showActionMenu = true }) {
+                        Image(systemName: "ellipsis")
+                            .font(.bodyLG)
+                            .foregroundColor(.secondaryText)
+                    }
+                    .confirmationDialog("Profile Actions", isPresented: $showActionMenu, titleVisibility: .hidden) {
                         Button("Share Profile") {
                             // Implement sharing
                         }
                         Button("Export Medical History") {
                             // Implement export
                         }
+                        Button("Cancel", role: .cancel) {}
                     }
-                    Button("Cancel", role: .cancel) {}
                 }
                 
                 Button("Edit") {
