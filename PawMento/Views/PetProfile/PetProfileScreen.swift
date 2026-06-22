@@ -49,7 +49,7 @@ struct PetProfileScreen: View {
                 }
             }
         }
-        .background(Color.warmCream.ignoresSafeArea())
+        .background(Color.background.ignoresSafeArea())
         .onAppear {
             if let pet = petStore.activePet {
                 Task {

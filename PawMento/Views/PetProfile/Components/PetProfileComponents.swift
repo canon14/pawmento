@@ -63,7 +63,10 @@ struct PetProfileTopBar: View {
         }
         .padding(.horizontal, 16)
         .frame(height: 56)
-        .background(Color.cream)
+        .background(
+            Color.surfaceContainerLowest.opacity(0.8)
+                .background(.ultraThinMaterial)
+        )
         .sheet(isPresented: $showEditSheet) {
             if let activePet = petStore.activePet {
                 EditPetSheet(editingPet: activePet)
@@ -104,12 +107,12 @@ struct HeroCardView: View {
                 .overlay(
                     Circle().stroke(Color.warmSand, lineWidth: 4)
                 )
-                .shadow(color: viewModel.wellnessScore >= 80 ? Color.primary.opacity(0.4) : Color.clear, radius: 10, x: 0, y: 0)
+                .shadow(color: viewModel.wellnessScore >= 80 ? Color.primary.opacity(0.4) : Color.clear, radius: 16, x: 0, y: 8)
                 
                 // Identity Stack
                 VStack(alignment: .leading, spacing: 2) {
                     Text(pet.name)
-                        .font(.headlineMD)
+                        .font(.title2.weight(.bold))
                         .foregroundColor(.primaryText)
                     
                     Text(pet.breed ?? "Mixed Breed")
@@ -131,10 +134,10 @@ struct HeroCardView: View {
             HStack {
                 ZStack {
                     Circle()
-                        .stroke(Color.warmSand, lineWidth: 8)
+                        .stroke(Color.primary.opacity(0.05), lineWidth: 10)
                     Circle()
                         .trim(from: 0, to: CGFloat(viewModel.wellnessScore) / 100.0)
-                        .stroke(ringColor, style: StrokeStyle(lineWidth: 8, lineCap: .round))
+                        .stroke(LinearGradient(colors: [ringColor, ringColor.opacity(0.6)], startPoint: .topLeading, endPoint: .bottomTrailing), style: StrokeStyle(lineWidth: 10, lineCap: .round))
                         .rotationEffect(.degrees(-90))
                         .animation(.easeOut(duration: 0.8), value: viewModel.wellnessScore)
                     
@@ -238,8 +241,12 @@ struct AICoachCardView: View {
                         .foregroundColor(.primary)
                     Spacer()
                     Text("Premium 🔒")
-                        .font(.captionTabular)
-                        .foregroundColor(.primary)
+                        .font(.caption.weight(.bold))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(LinearGradient(colors: [Color.primary, Color.primary.opacity(0.8)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                        .clipShape(Capsule())
                 }
                 .frame(height: 48)
                 .background(Color.surfaceContainerLowest)
@@ -254,16 +261,27 @@ struct AICoachCardView: View {
             }
             
             Button(action: { showCoach = true }) {
-                Text("Ask the Coach about \(pet.name) →")
-                    .font(.bodyS)
-                    .foregroundColor(.primary)
+                HStack {
+                    Text("Ask the Coach about \(pet.name)")
+                    Spacer()
+                    Image(systemName: "arrow.right")
+                }
+                .font(.labelSemibold)
+                .foregroundColor(.white)
+                .padding()
+                .background(Color.primary)
+                .cornerRadius(16)
             }
+            .buttonStyle(SquishyCardStyle())
             .fullScreenCover(isPresented: $showCoach) {
                 CoachChatView()
             }
         }
         .padding(20)
-        .background(Color.cream)
+        .background(
+            Color.surfaceContainerLowest.opacity(0.8)
+                .background(.ultraThinMaterial)
+        )
         .cornerRadius(AppRadius.card)
     }
 }
@@ -401,7 +419,10 @@ struct VetPDFCTACard: View {
                     .overlay(Capsule().stroke(Color.primary, lineWidth: 1))
             }
             .padding(18)
-            .background(Color.cream)
+            .background(
+            Color.surfaceContainerLowest.opacity(0.8)
+                .background(.ultraThinMaterial)
+        )
             .cornerRadius(AppRadius.card)
         }
         .alert("PawMento Premium", isPresented: $showPaywall) {
@@ -447,8 +468,12 @@ struct MedicationsCard: View {
                                 
                                 if med.loggedToday {
                                     Text("Logged today · \(med.streakCount) day streak ✓")
-                                        .font(.captionTabular)
+                                        .font(.caption.weight(.bold))
                                         .foregroundColor(.primary)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 4)
+                                        .background(Color.primary.opacity(0.1))
+                                        .clipShape(Capsule())
                                 } else if let nextDue = med.nextDueDate {
                                     if nextDue < Date() {
                                         Text("Overdue: \(nextDue, formatter: shortDateAndTimeFormatter)")
@@ -545,8 +570,10 @@ struct ArchiveButton: View {
                 .foregroundColor(.error)
                 .frame(maxWidth: .infinity)
                 .frame(height: 52)
-                .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.error, lineWidth: 1))
+                .background(Color.error.opacity(0.1))
+                .cornerRadius(16)
         }
+        .buttonStyle(SquishyCardStyle())
         .disabled(isArchiving)
         .alert("Archive \(pet.name)?", isPresented: $showingFirstAlert) {
             Button("Cancel", role: .cancel) { }
