@@ -8,9 +8,6 @@ class PetProfileViewModel: ObservableObject {
     @Published var isGeneratingInsight: Bool = false
     
     // Extracted Mock Data for Care Team and Meds
-    @Published var careTeam: [MockCareProvider] = [
-        MockCareProvider(name: "Dr. Sarah Chen", role: "Primary vet", clinic: "Westside Animal Hospital", phone: "(555) 123-4567", distance: "0.8 mi away")
-    ]
     
     @Published var medications: [Medication] = []
     
@@ -122,12 +119,4 @@ class PetProfileViewModel: ObservableObject {
     }
 }
 
-// Mock Models
-struct MockCareProvider: Identifiable {
-    let id = UUID()
-    let name: String
-    let role: String
-    let clinic: String
-    let phone: String
-    let distance: String
-}
+

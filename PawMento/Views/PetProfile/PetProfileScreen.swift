@@ -23,7 +23,7 @@ struct PetProfileScreen: View {
                         
                         RecentActivityPreview(logs: logStore.logs, petName: pet.name)
                         
-                        CareTeamCard(providers: viewModel.careTeam)
+                        CareTeamCard()
                         
                         // Vet PDF CTA
                         VetPDFCTACard(logCount: logStore.logs.count)

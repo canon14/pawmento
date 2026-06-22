@@ -277,53 +277,16 @@ struct HealthStatsSection: View {
                     .foregroundColor(.tertiaryText)
             }
             
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
-                StatTileView(title: "Energy", value: "6.2", trend: "↘ -18%", isPositive: false)
-                StatTileView(title: "Appetite", value: "8.4", trend: "→ stable", isPositive: true)
-                StatTileView(title: "Sleep", value: "13.2h", trend: "↗ +12%", isPositive: false)
-                StatTileView(title: "Hydration", value: "1.4L", trend: "→ stable", isPositive: true)
+            VStack(spacing: 8) {
+                Text("Not enough data yet")
+                    .font(.system(size: 15))
+                    .foregroundColor(.secondaryText)
             }
+            .frame(maxWidth: .infinity, alignment: .center)
+            .padding(20)
+            .background(Color.white)
+            .cornerRadius(16)
         }
-    }
-}
-
-struct StatTileView: View {
-    let title: String
-    let value: String
-    let trend: String
-    let isPositive: Bool
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(title)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundColor(.primaryText)
-            
-            // Mock Sparkline
-            Path { path in
-                path.move(to: CGPoint(x: 0, y: 20))
-                path.addLine(to: CGPoint(x: 20, y: 10))
-                path.addLine(to: CGPoint(x: 40, y: 15))
-                path.addLine(to: CGPoint(x: 60, y: 5))
-                path.addLine(to: CGPoint(x: 80, y: 20))
-            }
-            .stroke(Color.warmTan, lineWidth: 2)
-            .frame(height: 24)
-            
-            HStack(spacing: 4) {
-                Text(value)
-                    .font(.system(size: 17, weight: .semibold, design: .rounded))
-                    .foregroundColor(.primaryText)
-                
-                Text(trend)
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(isPositive ? .sage : .warmCoral)
-            }
-        }
-        .padding(14)
-        .background(Color.white)
-        .cornerRadius(16)
-        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.warmSand, lineWidth: 0.5))
     }
 }
 
@@ -387,52 +350,17 @@ struct RecentActivityPreview: View {
 }
 
 struct CareTeamCard: View {
-    let providers: [MockCareProvider]
-    
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Care Team")
                 .font(.system(size: 17, weight: .semibold, design: .rounded))
             
             VStack(alignment: .leading, spacing: 12) {
-                if let vet = providers.first {
-                    HStack(alignment: .top) {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(vet.name)
-                                .font(.system(size: 16, weight: .semibold))
-                            Text(vet.role)
-                                .font(.system(size: 13))
-                                .foregroundColor(.tertiaryText)
-                            
-                            HStack {
-                                if let url = URL(string: "tel://\(vet.phone.filter { "0123456789".contains($0) })") {
-                                    Link("📞 \(vet.phone)", destination: url)
-                                        .foregroundColor(.warmTan)
-                                } else {
-                                    Text("📞 \(vet.phone)")
-                                        .foregroundColor(.warmTan)
-                                }
-                                Text("📍 \(vet.distance)")
-                                    .foregroundColor(.primaryText)
-                            }
-                            .font(.system(size: 14))
-                            .padding(.top, 4)
-                        }
-                        Spacer()
-                        Text(vet.clinic)
-                            .font(.system(size: 14, weight: .medium))
-                    }
-                    
-                    // Hidden mock strings for now to keep UI clean
-                    // Divider().background(Color.warmSand.opacity(0.3)).padding(.vertical, 4)
-                    // Text("Emergency: BluePearl 24/7 · (555) 999-0000")
-                    //     .font(.system(size: 14))
-                    // Text("Insurance: Trupanion · Policy #TR-449821")
-                    //     .font(.system(size: 14))
-                    // Text("Microchip: 985 113 003 882 471")
-                    //     .font(.system(size: 14))
-                }
+                Text("No care team added yet")
+                    .font(.system(size: 15))
+                    .foregroundColor(.secondaryText)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
             .padding(20)
             .background(Color.white)
             .cornerRadius(20)
@@ -537,13 +465,6 @@ let shortDateFormatter: DateFormatter = {
     return formatter
 }()
 struct VitalRecordsList: View {
-    let records = [
-        "Vaccinations · Up to date · Next Aug 14",
-        "Weight history · 68 lbs (stable)",
-        "Allergies · Chicken, environmental",
-        "Conditions · Atopic dermatitis"
-    ]
-    
     @State private var showManageRecords = false
     
     var body: some View {
@@ -560,17 +481,14 @@ struct VitalRecordsList: View {
             }
             
             VStack(alignment: .leading, spacing: 12) {
-                ForEach(records, id: \.self) { record in
-                    HStack(alignment: .top, spacing: 8) {
-                        Text("•")
-                            .foregroundColor(.warmTan)
-                            .font(.system(size: 16, weight: .bold))
-                        Text(record)
-                            .font(.system(size: 15))
-                            .foregroundColor(.primaryText)
-                    }
-                }
+                Text("No vital records added yet")
+                    .font(.system(size: 15))
+                    .foregroundColor(.secondaryText)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(16)
+            .background(Color.white)
+            .cornerRadius(16)
         }
         .sheet(isPresented: $showManageRecords) {
             ManageRecordsSheet()
