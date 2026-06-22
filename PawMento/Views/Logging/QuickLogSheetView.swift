@@ -11,6 +11,7 @@ struct QuickLogSheetView: View {
     @State private var selectedCategory: LogCategory?
     @State private var severity: Int = 1
     @State private var note: String = ""
+    @State private var dose: String = ""
     @State private var photo: UIImage?
     
     @State private var isSaving = false
@@ -29,6 +30,10 @@ struct QuickLogSheetView: View {
     
     private var draftKey: String {
         "quickLogDraft_\(petStore.activePet?.id.uuidString ?? "")"
+    }
+    
+    private var hasContent: Bool {
+        !note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || (selectedCategory == .med && !dose.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
     }
     
     var body: some View {
@@ -78,6 +83,7 @@ struct QuickLogSheetView: View {
                             }
                             note = draft.note ?? ""
                             severity = draft.severity ?? 1
+                            dose = ""
                             showDraftBanner = false
                             UserDefaults.standard.removeObject(forKey: draftKey)
                         }
@@ -110,6 +116,20 @@ struct QuickLogSheetView: View {
                             SeveritySliderView(severity: $severity)
                                 .padding(.horizontal, 20)
                         }
+                        
+                        if selectedCategory == .med {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Medication Dose")
+                                    .font(.labelSemibold)
+                                    .foregroundColor(.primaryText)
+                                TextField("e.g. 16mg, 1 tablet", text: $dose)
+                                    .padding()
+                                    .background(Color.white)
+                                    .cornerRadius(12)
+                                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.warmSand, lineWidth: 1))
+                            }
+                            .padding(.horizontal, 20)
+                        }
                     }
                     .padding(.bottom, 24) // Spacing before the sticky footer
                 }
@@ -138,9 +158,9 @@ struct QuickLogSheetView: View {
                             selectedCategory == nil ? Color.primary.opacity(0.4) : Color.primary
                         )
                         .cornerRadius(14)
-                        .shadow(color: Color.primary.opacity((selectedCategory == nil || note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) ? 0 : 0.2), radius: 8, x: 0, y: 4)
+                        .shadow(color: Color.primary.opacity((selectedCategory == nil || !hasContent) ? 0 : 0.2), radius: 8, x: 0, y: 4)
                     }
-                    .disabled(selectedCategory == nil || note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSaving || showSuccess)
+                    .disabled(selectedCategory == nil || !hasContent || isSaving || showSuccess)
                     .offset(x: showErrorShake && !reduceMotion ? 10 : -10)
                     .animation(showErrorShake && !reduceMotion ? Animation.default.repeatCount(3).speed(4) : .default, value: showErrorShake)
                     
@@ -222,7 +242,7 @@ struct QuickLogSheetView: View {
     }
     
     private func saveLog() {
-        guard let category = selectedCategory, let petId = petStore.activePet?.id, !note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+        guard let category = selectedCategory, let petId = petStore.activePet?.id, hasContent else {
             showErrorShake = true
             let generator = UINotificationFeedbackGenerator()
             generator.notificationOccurred(.error)
@@ -250,11 +270,18 @@ struct QuickLogSheetView: View {
                 compressedPhoto = UIImage(data: compressedData)
             }
             
+            var finalNote = note
+            if category == .med && !dose.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                let doseText = "Dose: \(dose.trimmingCharacters(in: .whitespacesAndNewlines))"
+                finalNote = note.isEmpty ? doseText : "\(doseText)\n\n\(note)"
+            }
+            let noteToSave = finalNote.trimmingCharacters(in: .whitespacesAndNewlines)
+            
             let log = LogEntry(
                 petId: petId,
                 category: category,
                 severity: category == .symptom ? severity : nil,
-                note: note.isEmpty ? nil : note,
+                note: noteToSave.isEmpty ? nil : noteToSave,
                 photoLocalURL: nil,
                 photoImage: compressedPhoto
             )
