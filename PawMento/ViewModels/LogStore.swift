@@ -19,7 +19,7 @@ class LogStore: ObservableObject {
     
     // Fix S8: Shared path builder so upload and delete paths can't drift.
     static func logPhotoPath(userId: UUID, logId: UUID) -> String {
-        "logs/\(userId.uuidString)/\(logId.uuidString).jpg"
+        "\(userId.uuidString)/logs/\(logId.uuidString).jpg"
     }
     
     // MARK: - Save

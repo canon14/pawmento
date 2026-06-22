@@ -55,7 +55,7 @@ class PetStore: ObservableObject {
     
     // Shared path builder for pet photos (mirrors LogStore.logPhotoPath)
     static func petPhotoPath(ownerId: UUID, petId: UUID) -> String {
-        "pets/\(ownerId.uuidString)/\(petId.uuidString).jpg"
+        "\(ownerId.uuidString)/pets/\(petId.uuidString).jpg"
     }
     
     private func uploadPhoto(for pet: Pet, ownerId: UUID) async throws -> URL? {
