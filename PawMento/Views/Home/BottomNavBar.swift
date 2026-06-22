@@ -65,7 +65,7 @@ struct NavBarItem: View {
             VStack(spacing: 4) {
                 ZStack(alignment: .topTrailing) {
                     Image(systemName: icon)
-                        .font(.system(size: 24))
+                        .font(.headlineLG)
                         .foregroundColor(isSelected ? .onPrimaryContainer : .onSurfaceVariant)
                         .padding(.horizontal, 16)
                         .padding(.vertical, 4)

@@ -77,7 +77,7 @@ struct WellnessScoreHero: View {
                     
                     HStack(spacing: 4) {
                         Image(systemName: deltaIcon)
-                            .font(.system(size: 14, weight: .bold))
+                            .font(.bodySM)
                         Text(deltaText)
                             .font(.labelMD)
                     }
@@ -97,7 +97,7 @@ struct WellnessScoreHero: View {
                             Text("View trends")
                                 .font(.labelMD)
                             Image(systemName: "chevron.right")
-                                .font(.system(size: 14))
+                                .font(.bodySM)
                         }
                         .foregroundColor(.secondary)
                     }
@@ -107,7 +107,7 @@ struct WellnessScoreHero: View {
             }
         }
         .background(Color.surfaceContainerLowest)
-        .cornerRadius(24)
+        .cornerRadius(AppRadius.card)
         .warmShadow()
         .onAppear {
             calculateDynamicScore()

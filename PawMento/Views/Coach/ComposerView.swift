@@ -13,7 +13,7 @@ struct ComposerView: View {
                 // Attachments
                 Button(action: onCameraTap) {
                     Image(systemName: "camera")
-                        .font(.system(size: 20))
+                        .font(.headlineMD)
                         .foregroundColor(.tertiaryText)
                 }
                 .frame(width: 32, height: 40)
@@ -25,7 +25,7 @@ struct ComposerView: View {
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
                     .background(Color(hex: "#F4F1EC"))
-                    .cornerRadius(20)
+                    .cornerRadius(AppRadius.md)
                     .overlay(
                         RoundedRectangle(cornerRadius: 20)
                             .stroke(Color.primary.opacity(text.isEmpty ? 0 : 1), lineWidth: 1)
@@ -34,7 +34,7 @@ struct ComposerView: View {
                 // Send Button
                 Button(action: onSend) {
                     Image(systemName: "arrow.up")
-                        .font(.system(size: 16, weight: .bold))
+                        .font(.bodyMD)
                         .foregroundColor(.white)
                         .frame(width: 40, height: 40)
                         .background(Color.primary)
@@ -52,7 +52,7 @@ struct ComposerView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
-        .background(Color.white)
+        .background(Color.surface0)
         .overlay(
             Rectangle()
                 .frame(height: 0.5)

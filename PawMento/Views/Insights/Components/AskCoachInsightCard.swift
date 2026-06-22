@@ -15,7 +15,7 @@ struct AskCoachInsightCard: View {
                 HStack(spacing: 8) {
                     Text("💬")
                     Text("Ask \(petName)'s AI Coach")
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(.labelLG)
                         .foregroundColor(.ink900)
                     Spacer()
                 }
@@ -27,7 +27,7 @@ struct AskCoachInsightCard: View {
                             onSuggestionTapped?(suggestion)
                         }) {
                             Text("\"\(suggestion)\"")
-                                .font(.system(size: 14, weight: .regular))
+                                .font(.bodySM)
                                 .foregroundColor(Color.primary)
                                 .lineLimit(1)
                         }
@@ -39,14 +39,14 @@ struct AskCoachInsightCard: View {
                 HStack {
                     Spacer()
                     Text("Open chat ›")
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.bodySM)
                         .foregroundColor(Color.primary)
                 }
                 .padding(.top, 4)
             }
             .padding(20)
             .background(Color(hex: "E8F1EF")) // Sage 50
-            .cornerRadius(16)
+            .cornerRadius(AppRadius.md)
             .overlay(
                 RoundedRectangle(cornerRadius: 16)
                     .stroke(Color.primary.opacity(0.3), lineWidth: 1) // roughly sage-200

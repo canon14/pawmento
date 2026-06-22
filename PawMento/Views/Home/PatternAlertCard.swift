@@ -21,7 +21,7 @@ struct PatternAlertCard: View {
                     Image(systemName: hasAlert ? "exclamationmark.triangle.fill" : "checkmark.shield.fill")
                         .foregroundColor(hasAlert ? Color.warning : Color.primary)
                         .padding(8)
-                        .background(Color.white)
+                        .background(Color.surface0)
                         .clipShape(Circle())
                         .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
                     
@@ -42,12 +42,12 @@ struct PatternAlertCard: View {
                         HStack(spacing: 4) {
                             if hasAlert {
                                 Image(systemName: "lock.fill")
-                                    .font(.system(size: 12))
+                                    .font(.caption)
                             }
                             Text(hasAlert ? "See full analysis" : "View Insights")
                                 .font(.labelMD)
                             Image(systemName: "chevron.right")
-                                .font(.system(size: 14))
+                                .font(.bodySM)
                         }
                         .foregroundColor(hasAlert ? Color.warning : Color.primary)
                     }
@@ -57,7 +57,7 @@ struct PatternAlertCard: View {
             .padding(20)
         }
         .background(hasAlert ? Color.warningBackground : Color.primary.opacity(0.1))
-        .cornerRadius(24)
+        .cornerRadius(AppRadius.card)
         .overlay(
             RoundedRectangle(cornerRadius: 24)
                 .stroke(hasAlert ? Color.warningBorder : Color.primary.opacity(0.3), lineWidth: 1)

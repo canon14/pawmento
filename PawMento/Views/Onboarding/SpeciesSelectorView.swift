@@ -52,14 +52,14 @@ struct SpeciesPill: View {
     var body: some View {
         Button(action: action) {
             HStack {
-                Text(icon).font(.system(size: 20))
+                Text(icon).font(.headlineMD)
                 Text(label).font(.labelLarge)
             }
             .frame(maxWidth: .infinity)
             .frame(height: 52)
-            .background(isSelected ? Color.primary : Color.white)
+            .background(isSelected ? Color.primary : Color.surface0)
             .foregroundColor(isSelected ? .white : .primaryText)
-            .cornerRadius(12)
+            .cornerRadius(AppRadius.input)
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
                     .stroke(isSelected ? Color.clear : Color.warmSand, lineWidth: 1)

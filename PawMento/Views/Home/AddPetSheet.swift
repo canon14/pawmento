@@ -115,7 +115,7 @@ struct AddPetSheet: View {
                                         }
                                     }
                                     .background(Color.surfaceContainerLow)
-                                    .cornerRadius(12)
+                                    .cornerRadius(AppRadius.input)
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 12)
                                             .stroke(Color.warmSand, lineWidth: 1)
@@ -187,7 +187,7 @@ struct AddPetSheet: View {
                         ProgressView("Adding \(name)...")
                             .padding()
                             .background(Color.surfaceBright)
-                            .cornerRadius(12)
+                            .cornerRadius(AppRadius.input)
                             .shadow(radius: 10)
                     }
                 }

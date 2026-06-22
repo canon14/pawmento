@@ -27,7 +27,7 @@ struct PetPhotoWellView: View {
                                 .fill(Color.primary)
                                 .frame(width: 24, height: 24)
                             Image(systemName: "pencil")
-                                .font(.system(size: 12, weight: .bold))
+                                .font(.caption)
                                 .foregroundColor(.white)
                         }
                         .offset(x: 32, y: 32)
@@ -41,7 +41,7 @@ struct PetPhotoWellView: View {
                             .frame(width: 96, height: 96)
                         
                         Image(systemName: "camera.fill")
-                            .font(.system(size: 28))
+                            .font(.displaySM)
                             .foregroundColor(Color.primary)
                     }
                 }
@@ -57,7 +57,7 @@ struct PetPhotoWellView: View {
             
             if selectedImage == nil {
                 Text("Tap to add a photo")
-                    .font(.custom("PlusJakartaSans-Regular", size: 12))
+                    .font(.caption)
                     .foregroundColor(.tertiaryText)
             }
         }

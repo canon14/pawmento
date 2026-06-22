@@ -100,7 +100,7 @@ struct LogDetailSheet: View {
                             }
                                 .frame(height: 200)
                                 .frame(maxWidth: .infinity)
-                                .cornerRadius(12)
+                                .cornerRadius(AppRadius.input)
                                 .padding(.horizontal, 20)
                         }
                     }
@@ -115,7 +115,7 @@ struct LogDetailSheet: View {
                             if isSaving {
                                 ProgressView().tint(.white).padding(.trailing, 8)
                             } else if showSuccess {
-                                Image(systemName: "checkmark").font(.system(size: 18, weight: .bold))
+                                Image(systemName: "checkmark").font(.headlineSM)
                             } else {
                                 Text("Save Details").font(.ctaOnboarding)
                             }
@@ -124,7 +124,7 @@ struct LogDetailSheet: View {
                         .frame(maxWidth: .infinity)
                         .frame(height: 56)
                         .background(selectedCategory == nil ? Color.primary.opacity(0.4) : Color.primary)
-                        .cornerRadius(14)
+                        .cornerRadius(AppRadius.input)
                     }
                     .disabled(selectedCategory == nil || isSaving || showSuccess)
                     .offset(x: showErrorShake && !reduceMotion ? 10 : -10)

@@ -12,10 +12,10 @@ struct InsightDetailScreen: View {
                 // Tier Pill
                 HStack(spacing: 4) {
                     Image(systemName: "bolt.fill") // Simplified for demo
-                        .font(.system(size: 10, weight: .bold))
+                        .font(.caption)
                         .foregroundColor(pillColor)
                     Text(insight.tier.rawValue.uppercased())
-                        .font(.system(size: 10, weight: .bold))
+                        .font(.caption)
                         .foregroundColor(pillColor)
                 }
                 .padding(.horizontal, 8)
@@ -25,7 +25,7 @@ struct InsightDetailScreen: View {
                 
                 // Headline
                 Text(insight.headline)
-                    .font(.system(size: 28, weight: .bold))
+                    .font(.displaySM)
                     .foregroundColor(.ink900)
                 
                 // Unblurred Chart
@@ -36,11 +36,11 @@ struct InsightDetailScreen: View {
                 // Narrative
                 VStack(alignment: .leading, spacing: 12) {
                     Text("AI Analysis")
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.bodySM)
                         .foregroundColor(.ink900.opacity(0.6))
                     
                     Text(insight.narrative)
-                        .font(.system(size: 16, weight: .regular))
+                        .font(.bodyMD)
                         .foregroundColor(.ink900)
                         .lineSpacing(6)
                 }
@@ -53,13 +53,13 @@ struct InsightDetailScreen: View {
                     Image(systemName: "doc.text.magnifyingglass")
                         .foregroundColor(.primary)
                     Text("Based on \(insight.evidenceCount) logged events")
-                        .font(.system(size: 14, weight: .medium))
+                        .font(.bodySM)
                         .foregroundColor(.ink900.opacity(0.8))
                     Spacer()
                 }
                 .padding(16)
                 .background(Color.primary.opacity(0.1))
-                .cornerRadius(12)
+                .cornerRadius(AppRadius.input)
                 
                 // Actions
                 VStack(spacing: 12) {
@@ -68,12 +68,12 @@ struct InsightDetailScreen: View {
                             onActionTapped?(action)
                         }) {
                             Text(action.title)
-                                .font(.system(size: 16, weight: .semibold))
+                                .font(.bodyMD)
                                 .frame(maxWidth: .infinity)
                                 .frame(height: 56)
-                                .background(action.isPrimary ? Color.primary : Color.white)
+                                .background(action.isPrimary ? Color.primary : Color.surface0)
                                 .foregroundColor(action.isPrimary ? .white : .ink900)
-                                .cornerRadius(16)
+                                .cornerRadius(AppRadius.md)
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 16)
                                         .stroke(Color.ink900.opacity(0.1), lineWidth: action.isPrimary ? 0 : 1)
@@ -90,7 +90,7 @@ struct InsightDetailScreen: View {
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Text("Insight Details")
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.bodyMD)
             }
         }
     }

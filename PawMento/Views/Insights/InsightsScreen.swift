@@ -40,7 +40,7 @@ struct InsightsScreen: View {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button(action: { dismiss() }) {
                         Image(systemName: "chevron.left")
-                            .font(.system(size: 16, weight: .semibold))
+                            .font(.bodyMD)
                             .foregroundColor(.ink900)
                     }
                 }
@@ -48,11 +48,11 @@ struct InsightsScreen: View {
                 ToolbarItem(placement: .principal) {
                     HStack(spacing: 4) {
                         Image(systemName: "pawprint.fill")
-                            .font(.system(size: 12))
+                            .font(.caption)
                         Text(petStore.activePet?.name ?? PetStore.fallbackPetName)
-                            .font(.system(size: 16, weight: .semibold))
+                            .font(.bodyMD)
                         Image(systemName: "chevron.down")
-                            .font(.system(size: 10, weight: .bold))
+                            .font(.caption)
                     }
                     .foregroundColor(.ink900)
                 }
@@ -68,12 +68,12 @@ struct InsightsScreen: View {
                         Task { await viewModel.changeTimeRange(to: range, for: petStore.activePet) }
                     }) {
                         Text(range.rawValue)
-                            .font(.system(size: 14, weight: .medium))
+                            .font(.bodySM)
                             .padding(.horizontal, 14)
                             .frame(height: 32)
                             .background(viewModel.timeRange == range ? Color.ink900 : Color(hex: "F7F9F9"))
                             .foregroundColor(viewModel.timeRange == range ? .white : Color.ink900.opacity(0.8))
-                            .cornerRadius(16)
+                            .cornerRadius(AppRadius.md)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 16)
                                     .stroke(viewModel.timeRange == range ? Color.clear : Color.ink900.opacity(0.1), lineWidth: 1)
@@ -85,7 +85,7 @@ struct InsightsScreen: View {
             .padding(.vertical, 6)
         }
         .frame(height: 44)
-        .background(Color.white)
+        .background(Color.surface0)
     }
     
     private var comparePetsChip: some View {
@@ -94,15 +94,15 @@ struct InsightsScreen: View {
         }) {
             HStack(spacing: 6) {
                 Image(systemName: "square.split.2x1")
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.caption)
                 Text("Compare with your other pets")
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.bodyXS)
             }
             .foregroundColor(.ink900.opacity(0.7))
             .padding(.horizontal, 16)
             .padding(.vertical, 8)
             .background(Color.ink900.opacity(0.05))
-            .cornerRadius(16)
+            .cornerRadius(AppRadius.md)
         }
         .padding(.top, 12)
     }
@@ -194,7 +194,7 @@ struct InsightsScreen: View {
         if let hero = viewModel.heroInsight {
             VStack(alignment: .leading, spacing: 12) {
                 Text("─── THIS WEEK'S HEADLINE ───")
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.caption)
                     .foregroundColor(Color.ink900.opacity(0.6))
                     .kerning(0.5)
                 
@@ -220,7 +220,7 @@ struct InsightsScreen: View {
         if !viewModel.patternCards.isEmpty {
             VStack(alignment: .leading, spacing: 12) {
                 Text("─── OTHER PATTERNS ───")
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.caption)
                     .foregroundColor(Color.ink900.opacity(0.6))
                     .kerning(0.5)
                 
@@ -246,7 +246,7 @@ struct InsightsScreen: View {
         if let benchmark = viewModel.breedBenchmark {
             VStack(alignment: .leading, spacing: 12) {
                 Text("─── HEALTH BENCHMARKS ───")
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.caption)
                     .foregroundColor(Color.ink900.opacity(0.6))
                     .kerning(0.5)
                 
@@ -265,7 +265,7 @@ struct InsightsScreen: View {
     private var askCoachSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("─── ASK \(petStore.activePet?.name.uppercased() ?? PetStore.fallbackPetName.uppercased())'S AI COACH ───")
-                .font(.system(size: 12, weight: .semibold))
+                .font(.caption)
                 .foregroundColor(Color.ink900.opacity(0.6))
                 .kerning(0.5)
             

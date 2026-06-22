@@ -28,7 +28,7 @@ struct SettingsView: View {
                             .frame(width: 60, height: 60)
                             .overlay(
                                 Text(userEmail.prefix(1).uppercased())
-                                    .font(.system(size: 24, weight: .semibold))
+                                    .font(.headlineLG)
                                     .foregroundColor(.onPrimaryContainer)
                             )
                         
@@ -56,7 +56,7 @@ struct SettingsView: View {
                                 .foregroundColor(.primaryText)
                             Spacer()
                             Text("Free")
-                                .font(.system(size: 13, weight: .semibold))
+                                .font(.bodyXS)
                                 .foregroundColor(.secondaryText)
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 4)
@@ -73,7 +73,7 @@ struct SettingsView: View {
                                 .foregroundColor(.primaryText)
                             Spacer()
                             Image(systemName: "chevron.right")
-                                .font(.system(size: 14))
+                                .font(.bodySM)
                                 .foregroundColor(.secondaryText)
                         }
                     }
@@ -147,7 +147,7 @@ struct SettingsView: View {
                         ProgressView("Deleting Account...")
                             .padding()
                             .background(Color.surfaceBright)
-                            .cornerRadius(12)
+                            .cornerRadius(AppRadius.input)
                             .shadow(radius: 10)
                     }
                 }

@@ -59,7 +59,7 @@ struct BreedBenchmarkDetailScreen: View {
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
                         .background(Color.ink900)
-                        .cornerRadius(16)
+                        .cornerRadius(AppRadius.md)
                     }
                     .padding(.top, 24)
                 }
@@ -105,7 +105,7 @@ struct BreedBenchmarkDetailScreen: View {
                     
                     // Indicator dot
                     Circle()
-                        .fill(Color.white)
+                        .fill(Color.surface0)
                         .shadow(radius: 2)
                         .frame(width: 24, height: 24)
                         .offset(x: max(0, (geo.size.width * CGFloat(percentile) / 100.0) - 12))

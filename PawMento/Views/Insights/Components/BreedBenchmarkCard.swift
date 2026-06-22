@@ -17,13 +17,13 @@ struct BreedBenchmarkCard: View {
                 // Header
                 HStack(alignment: .top) {
                     Text("🐕 vs other \(benchmark.breed), age \(benchmark.age)")
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(.labelLG)
                         .foregroundColor(.ink900)
                     
                     Spacer()
                     
                     Text("Premium")
-                        .font(.system(size: 8, weight: .bold))
+                        .font(.caption)
                         .padding(.horizontal, 6)
                         .frame(height: 14)
                         .background(Color.ink900)
@@ -41,14 +41,14 @@ struct BreedBenchmarkCard: View {
                 
                 // Footer
                 Text("See full breakdown ›")
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.bodySM)
                     .foregroundColor(Color.primary)
                     .padding(.top, 4)
                     .blur(radius: isLocked ? 2 : 0)
             }
             .padding(20)
-            .background(Color.white)
-            .cornerRadius(16)
+            .background(Color.surface0)
+            .cornerRadius(AppRadius.md)
             .overlay(
                 RoundedRectangle(cornerRadius: 16)
                     .stroke(Color.ink900.opacity(0.1), lineWidth: 1)
@@ -58,15 +58,15 @@ struct BreedBenchmarkCard: View {
                     if isLocked {
                         VStack(spacing: 8) {
                             Image(systemName: "lock.fill")
-                                .font(.system(size: 24))
+                                .font(.headlineLG)
                                 .foregroundColor(.ink900)
                             Text("Unlock Benchmarks")
-                                .font(.system(size: 15, weight: .semibold))
+                                .font(.labelLG)
                                 .foregroundColor(.ink900)
                         }
                         .padding(16)
-                        .background(Color.white.opacity(0.8))
-                        .cornerRadius(12)
+                        .background(Color.surface0.opacity(0.8))
+                        .cornerRadius(AppRadius.input)
                     }
                 }
             )
@@ -78,7 +78,7 @@ struct BreedBenchmarkCard: View {
     private func benchmarkRow(label: String, percentile: Int, isLocked: Bool) -> some View {
         HStack(spacing: 12) {
             Text(label)
-                .font(.system(size: 14, weight: .medium))
+                .font(.bodySM)
                 .foregroundColor(.ink900)
                 .frame(width: 80, alignment: .leading)
             

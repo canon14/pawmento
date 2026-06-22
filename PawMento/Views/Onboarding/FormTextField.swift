@@ -10,8 +10,8 @@ struct FormTextField: View {
             .font(.bodyMD)
             .padding(.horizontal, 16)
             .frame(height: 52)
-            .background(Color.white)
-            .cornerRadius(12)
+            .background(Color.surface0)
+            .cornerRadius(AppRadius.input)
             .overlay(
                 RoundedRectangle(cornerRadius: 12)
                     .stroke(isError ? Color.error : Color.warmSand, lineWidth: isError ? 2 : 1)

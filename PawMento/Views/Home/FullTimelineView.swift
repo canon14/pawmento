@@ -85,7 +85,7 @@ struct FullTimelineView: View {
                         withAnimation(.easeInOut(duration: 0.2)) { expandedImage = nil }
                     }) {
                         Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 32))
+                            .font(.displayMD)
                             .foregroundColor(.white.opacity(0.8))
                             .padding()
                             .padding(.top, 30) // Safety for notch
@@ -122,7 +122,7 @@ struct FullTimelineView: View {
         HStack {
             Button(action: { dismiss() }) {
                 Image(systemName: "chevron.left")
-                    .font(.system(size: 24, weight: .medium))
+                    .font(.headlineLG)
                     .foregroundColor(.ink900)
                     .frame(width: 44, height: 44)
             }
@@ -140,7 +140,7 @@ struct FullTimelineView: View {
                     withAnimation { isSearching.toggle() }
                 }) {
                     Image(systemName: "magnifyingglass")
-                        .font(.system(size: 24))
+                        .font(.headlineLG)
                         .foregroundColor(.ink900)
                         .frame(width: 44, height: 44)
                 }
@@ -148,7 +148,7 @@ struct FullTimelineView: View {
                 Button(action: { showFilterSheet = true }) {
                     ZStack(alignment: .topTrailing) {
                         Image(systemName: "line.3.horizontal.decrease")
-                            .font(.system(size: 24))
+                            .font(.headlineLG)
                             .foregroundColor(.ink900)
                             .frame(width: 44, height: 44)
                         
@@ -178,7 +178,7 @@ struct FullTimelineView: View {
                     .font(.bodyLG)
                     .padding(12)
                     .background(Color.surface1)
-                    .cornerRadius(12)
+                    .cornerRadius(AppRadius.input)
                     .padding(.top, 8)
             } else {
                 Text("Timeline")
@@ -199,7 +199,7 @@ struct FullTimelineView: View {
     private func aiPatternBanner(insight: Insight) -> some View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: insight.tier.iconName)
-                .font(.system(size: 24))
+                .font(.headlineLG)
                 .foregroundColor(.sage700)
             
             VStack(alignment: .leading, spacing: 4) {
@@ -210,7 +210,7 @@ struct FullTimelineView: View {
                     Spacer()
                     if insight.isPremiumGated {
                         Text("Premium")
-                            .font(.system(size: 10, weight: .semibold))
+                            .font(.caption)
                             .foregroundColor(.white)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
@@ -234,7 +234,7 @@ struct FullTimelineView: View {
         }
         .padding(16)
         .background(Color.sage50)
-        .cornerRadius(14)
+        .cornerRadius(AppRadius.input)
         .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.sage200, lineWidth: 1))
         .padding(.horizontal, 20)
         .padding(.bottom, 12)
@@ -349,17 +349,17 @@ struct FullTimelineView: View {
                 Spacer()
                 
                 Text("Premium")
-                    .font(.system(size: 10, weight: .semibold))
+                    .font(.caption)
                     .foregroundColor(.white)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
-                    .background(Color.white.opacity(0.2))
+                    .background(Color.surface0.opacity(0.2))
                     .clipShape(Capsule())
             }
             .padding(.horizontal, 20)
             .frame(height: 56)
             .background(Color.ink900)
-            .cornerRadius(14)
+            .cornerRadius(AppRadius.input)
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 24)
@@ -369,7 +369,7 @@ struct FullTimelineView: View {
         VStack(spacing: 16) {
             Spacer()
             Image(systemName: "pawprint.circle")
-                .font(.system(size: 64))
+                .font(.displayLG)
                 .foregroundColor(.ink300)
             
             Text("\(petStore.activePet?.name ?? "Your pet")'s timeline starts here. Log your first symptom, meal, or walk to begin building their health story.")
@@ -386,7 +386,7 @@ struct FullTimelineView: View {
         VStack(spacing: 16) {
             Spacer()
             Image(systemName: "line.3.horizontal.decrease.circle")
-                .font(.system(size: 64))
+                .font(.displayLG)
                 .foregroundColor(.ink300)
             
             Text("No \(viewModel.selectedFilter.lowercased()) events in this range.")
@@ -411,7 +411,7 @@ struct ScaleButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .background(configuration.isPressed ? Color.surface1 : Color.surface0)
-            .cornerRadius(14)
+            .cornerRadius(AppRadius.input)
             .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.ink100, lineWidth: 1))
             .animation(.easeIn(duration: 0.05), value: configuration.isPressed)
             .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
@@ -459,7 +459,7 @@ struct TimelineItemRowV2: View {
                     if isSymptom, let badge = badgeText {
                         HStack(spacing: 4) {
                             Image(systemName: "chart.line.uptrend.xyaxis")
-                                .font(.system(size: 10))
+                                .font(.caption)
                             Text(badge)
                         }
                         .font(.captionSemibold)
@@ -514,19 +514,19 @@ struct TimelineItemRowV2: View {
                     .frame(width: 32, height: 32)
                 
                 Text(log.category.emoji)
-                    .font(.system(size: 16))
+                    .font(.bodyMD)
             } else {
                 Circle()
                     .stroke(Color.ink500, lineWidth: 1.5)
                     .frame(width: 32, height: 32)
                 
                 Text(log.category.emoji)
-                    .font(.system(size: 16))
+                    .font(.bodyMD)
             }
             
             if log.photoImage != nil {
                 Image(systemName: "camera.fill")
-                    .font(.system(size: 8))
+                    .font(.caption)
                     .foregroundColor(.white)
                     .padding(3)
                     .background(Color.ink900)

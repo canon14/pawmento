@@ -22,14 +22,14 @@ struct CategoryScrollerView: View {
                     }) {
                         VStack(spacing: 8) {
                             Text("···")
-                                .font(.system(size: 24))
+                                .font(.headlineLG)
                                 .padding(.top, 8)
                             Text("More")
                                 .font(.labelMD)
                         }
                         .frame(width: 64, height: 76)
-                        .background(Color.white)
-                        .cornerRadius(16)
+                        .background(Color.surface0)
+                        .cornerRadius(AppRadius.md)
                         .overlay(
                             RoundedRectangle(cornerRadius: 16)
                                 .stroke(Color.warmSand, lineWidth: 1)
@@ -62,7 +62,7 @@ struct CategoryScrollerView: View {
         }) {
             VStack(spacing: 8) {
                 Text(category.emoji)
-                    .font(.system(size: 24))
+                    .font(.headlineLG)
                     .padding(.top, 8)
                 
                 Text(category.rawValue)
@@ -71,8 +71,8 @@ struct CategoryScrollerView: View {
                     .lineLimit(1)
             }
             .frame(width: 64, height: 76)
-            .background(isSelected ? Color.primary : Color.white)
-            .cornerRadius(16)
+            .background(isSelected ? Color.primary : Color.surface0)
+            .cornerRadius(AppRadius.md)
             .overlay(
                 RoundedRectangle(cornerRadius: 16)
                     .stroke(isSelected ? Color.primary : Color.warmSand, lineWidth: 1)
@@ -112,7 +112,7 @@ struct FullCategoryGridView: View {
                         }) {
                             VStack(spacing: 8) {
                                 Text(category.emoji)
-                                    .font(.system(size: 24))
+                                    .font(.headlineLG)
                                 
                                 Text(category.rawValue)
                                     .font(.labelSM)
@@ -121,8 +121,8 @@ struct FullCategoryGridView: View {
                             }
                             .frame(maxWidth: .infinity)
                             .frame(height: 76)
-                            .background(isSelected ? Color.primary : Color.white)
-                            .cornerRadius(16)
+                            .background(isSelected ? Color.primary : Color.surface0)
+                            .cornerRadius(AppRadius.md)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 16)
                                     .stroke(isSelected ? Color.primary : Color.warmSand, lineWidth: 1)

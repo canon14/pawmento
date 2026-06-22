@@ -35,7 +35,7 @@ struct Slide2Illustration: View {
             RoundedRectangle(cornerRadius: 16)
                 .stroke(Color.primaryText, lineWidth: 3)
                 .frame(width: 120, height: 200)
-                .background(Color.white.cornerRadius(16))
+                .background(Color.surface0.cornerRadius(AppRadius.md))
             
             // Arc motion path
             Path { path in
@@ -46,13 +46,13 @@ struct Slide2Illustration: View {
             
             // Camera
             Image(systemName: "camera.fill")
-                .font(.system(size: 24))
+                .font(.headlineLG)
                 .foregroundColor(.primaryText)
                 .offset(x: -60, y: 0)
             
             // Checkmark
             Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 32))
+                .font(.displayMD)
                 .foregroundColor(Color.warmTanHue)
                 .offset(x: 60, y: 0)
             
@@ -89,27 +89,27 @@ struct Slide3Illustration: View {
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
                     Image(systemName: "arrow.up.right")
-                        .font(.system(size: 12, weight: .bold))
+                        .font(.caption)
                     Text("scratching pattern noticed")
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.caption)
                 }
                 .foregroundColor(.primary)
                 
                 HStack {
                     Image(systemName: "magnifyingglass")
-                        .font(.system(size: 10))
+                        .font(.caption)
                     Text("14 days")
-                        .font(.system(size: 10, weight: .semibold))
+                        .font(.caption)
                 }
                 .foregroundColor(.secondary)
                 .padding(.horizontal, 8)
                 .padding(.vertical, 4)
                 .background(Color.secondaryContainer)
-                .cornerRadius(4)
+                .cornerRadius(AppRadius.sm)
             }
             .padding(12)
-            .background(Color.white)
-            .cornerRadius(12)
+            .background(Color.surface0)
+            .cornerRadius(AppRadius.input)
             .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.warmTanHue, lineWidth: 1))
             .shadow(color: .black.opacity(0.05), radius: 10, y: 5)
             .offset(y: -30)
@@ -121,24 +121,24 @@ struct Slide4Illustration: View {
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 40)
-                .fill(Color.warmCoralTintBg)
+                .fill(Color.errorTintBg)
                 .frame(width: 280, height: 280)
             
             // Paw prints
             Image(systemName: "pawprint.fill")
-                .font(.system(size: 24))
+                .font(.headlineLG)
                 .foregroundColor(Color.warmTanHue.opacity(0.2))
                 .offset(x: -80, y: -80)
                 .rotationEffect(.degrees(-20))
             
             Image(systemName: "pawprint.fill")
-                .font(.system(size: 24))
+                .font(.headlineLG)
                 .foregroundColor(Color.warmTanHue.opacity(0.4))
                 .offset(x: -40, y: -40)
                 .rotationEffect(.degrees(-10))
             
             Image(systemName: "pawprint.fill")
-                .font(.system(size: 24))
+                .font(.headlineLG)
                 .foregroundColor(Color.warmTanHue.opacity(0.6))
                 .offset(x: -10, y: -10)
             

@@ -63,7 +63,7 @@ struct MessageBubbleView: View {
         HStack(alignment: .top, spacing: 8) {
             // Coach Avatar
             Text("🧑‍⚕️")
-                .font(.system(size: 18))
+                .font(.headlineSM)
                 .padding(.top, 4)
             
             VStack(alignment: .leading, spacing: 8) {
@@ -80,7 +80,7 @@ struct MessageBubbleView: View {
             }
             .padding(.vertical, 14)
             .padding(.horizontal, 16)
-            .background(message.isEmergency ? Color.warmCoralTintBg : Color.surfaceBright)
+            .background(message.isEmergency ? Color.errorTintBg : Color.surfaceBright)
             .clipShape(BubbleShape(isUser: false))
             .overlay(
                 BubbleShape(isUser: false)

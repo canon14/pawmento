@@ -70,7 +70,7 @@ struct PetSelectorCard: View {
             Button(action: onAddPet) {
                 HStack(spacing: 4) {
                     Image(systemName: "plus.circle.fill")
-                        .font(.system(size: 14))
+                        .font(.bodySM)
                     Text("Add another pet")
                         .font(.labelSM)
                 }
@@ -79,7 +79,7 @@ struct PetSelectorCard: View {
         }
         .padding(20)
         .background(Color.surfaceContainerLowest)
-        .cornerRadius(24)
+        .cornerRadius(AppRadius.card)
         .overlay(
             RoundedRectangle(cornerRadius: 24)
                 .stroke(Color.surfaceContainerLow, lineWidth: 1)

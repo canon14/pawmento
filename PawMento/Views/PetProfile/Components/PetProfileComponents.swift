@@ -139,6 +139,8 @@ struct HeroCardView: View {
                         .animation(.easeOut(duration: 0.8), value: viewModel.wellnessScore)
                     
                     Text("\(viewModel.wellnessScore)")
+                        .monospacedDigit()
+                        .contentTransition(.numericText())
                         .font(.headlineOnboarding)
                         .foregroundColor(.primaryText)
                 }
@@ -357,7 +359,7 @@ struct CareTeamCard: View {
                 .font(.ctaOnboarding)
             
             VStack(alignment: .leading, spacing: 12) {
-                Text("No care team added yet")
+                Text("No care team added yet.")
                     .font(.labelLarge)
                     .foregroundColor(.secondaryText)
             }
@@ -426,7 +428,7 @@ struct MedicationsCard: View {
                 .font(.ctaOnboarding)
             
             if medications.isEmpty {
-                Text("No medications or routines added yet")
+                Text("No medications or routines added yet.")
                     .font(.labelLarge)
                     .foregroundColor(.secondaryText)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -504,7 +506,7 @@ struct VitalRecordsList: View {
             }
             
             VStack(alignment: .leading, spacing: 12) {
-                Text("No vital records added yet")
+                Text("No vital records added yet.")
                     .font(.labelLarge)
                     .foregroundColor(.secondaryText)
             }

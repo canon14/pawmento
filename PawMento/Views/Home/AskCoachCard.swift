@@ -29,7 +29,7 @@ struct AskCoachCard: View {
                 }
                 .padding(12)
                 .background(Color.surfaceContainerLow)
-                .cornerRadius(12)
+                .cornerRadius(AppRadius.input)
             }
             
             HStack {
@@ -42,7 +42,7 @@ struct AskCoachCard: View {
         }
         .padding(20)
         .background(Color.surfaceBright)
-        .cornerRadius(24)
+        .cornerRadius(AppRadius.card)
         .overlay(
             RoundedRectangle(cornerRadius: 24)
                 .stroke(Color.surfaceContainerLow, lineWidth: 1)

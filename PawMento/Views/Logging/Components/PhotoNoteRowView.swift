@@ -38,8 +38,8 @@ struct PhotoNoteRowView: View {
                                 Button(action: { photo = nil }) {
                                     Image(systemName: "xmark.circle.fill")
                                         .foregroundColor(.error)
-                                        .background(Color.white.clipShape(Circle()))
-                                        .font(.system(size: 20))
+                                        .background(Color.surface0.clipShape(Circle()))
+                                        .font(.headlineMD)
                                 }
                                 .offset(x: 8, y: -8)
                             }
@@ -56,7 +56,7 @@ struct PhotoNoteRowView: View {
                             .overlay(
                                 Image(systemName: "camera.fill")
                                     .foregroundColor(.primary)
-                                    .font(.system(size: 24))
+                                    .font(.headlineLG)
                             )
                     }
                 }

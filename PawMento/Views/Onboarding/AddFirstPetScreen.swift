@@ -92,7 +92,7 @@ struct AddFirstPetScreen: View {
                             FormTextField(placeholder: "e.g. Max", text: $name, isError: showError && name.isEmpty)
                             if showError && name.isEmpty {
                                 Text("Give your pet a name first")
-                                    .font(.custom("PlusJakartaSans-Regular", size: 12))
+                                    .font(.caption)
                                     .foregroundColor(.error)
                                     .padding(.leading, 4)
                             }
@@ -107,7 +107,7 @@ struct AddFirstPetScreen: View {
                             SpeciesSelectorView(selectedSpecies: $selectedSpecies)
                             if showError && selectedSpecies == nil {
                                 Text("Select a species to continue")
-                                    .font(.custom("PlusJakartaSans-Regular", size: 12))
+                                    .font(.caption)
                                     .foregroundColor(.error)
                                     .padding(.leading, 4)
                             }
@@ -167,7 +167,7 @@ struct AddFirstPetScreen: View {
                                     }
                                 }
                                 .background(Color.surfaceContainerLow)
-                                .cornerRadius(12)
+                                .cornerRadius(AppRadius.input)
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 12)
                                         .stroke(Color.warmSand, lineWidth: 1)
@@ -176,7 +176,7 @@ struct AddFirstPetScreen: View {
                             }
                             
                             Text("You can always add this later")
-                                .font(.custom("PlusJakartaSans-Regular", size: 12))
+                                .font(.caption)
                                 .foregroundColor(.tertiaryText)
                         }
                         .padding(.bottom, 24)

@@ -42,10 +42,10 @@ struct PatternCard: View {
                     // Tier Pill
                     HStack(spacing: 4) {
                         Image(systemName: pillIcon)
-                            .font(.system(size: 10, weight: .bold))
+                            .font(.caption)
                             .foregroundColor(pillConfig.fg)
                         Text(pillConfig.text)
-                            .font(.system(size: 10, weight: .bold))
+                            .font(.caption)
                             .foregroundColor(pillConfig.fg)
                     }
                     .padding(.horizontal, 8)
@@ -57,7 +57,7 @@ struct PatternCard: View {
                     
                     if insight.isPremiumGated {
                         Text("Premium")
-                            .font(.system(size: 8, weight: .bold))
+                            .font(.caption)
                             .padding(.horizontal, 6)
                             .frame(height: 14)
                             .background(Color.ink900)
@@ -70,13 +70,13 @@ struct PatternCard: View {
                 // Content
                 VStack(alignment: .leading, spacing: 6) {
                     Text(insight.headline)
-                        .font(.system(size: 17, weight: .semibold))
+                        .font(.bodyMD)
                         .foregroundColor(.ink900)
                         .lineLimit(1)
                         .blur(radius: isLocked ? 2 : 0)
                     
                     Text(insight.narrative)
-                        .font(.system(size: 14, weight: .regular))
+                        .font(.bodySM)
                         .foregroundColor(.ink900.opacity(0.8))
                         .lineLimit(2)
                         .blur(radius: isLocked ? 4 : 0)
@@ -91,8 +91,8 @@ struct PatternCard: View {
                     .padding(.horizontal, 16)
                     .blur(radius: isLocked ? 6 : 0)
             }
-            .background(Color.white)
-            .cornerRadius(16)
+            .background(Color.surface0)
+            .cornerRadius(AppRadius.md)
             .overlay(
                 RoundedRectangle(cornerRadius: 16)
                     .stroke(Color.ink900.opacity(0.1), lineWidth: 1)
@@ -102,15 +102,15 @@ struct PatternCard: View {
                     if isLocked {
                         VStack(spacing: 4) {
                             Image(systemName: "lock.fill")
-                                .font(.system(size: 20))
+                                .font(.headlineMD)
                                 .foregroundColor(.ink900)
                             Text("Unlock insight")
-                                .font(.system(size: 14, weight: .semibold))
+                                .font(.bodySM)
                                 .foregroundColor(.ink900)
                         }
                         .padding(12)
-                        .background(Color.white.opacity(0.8))
-                        .cornerRadius(12)
+                        .background(Color.surface0.opacity(0.8))
+                        .cornerRadius(AppRadius.input)
                     }
                 }
             )

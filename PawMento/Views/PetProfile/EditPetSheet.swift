@@ -107,8 +107,8 @@ struct EditPetSheet: View {
                                             }
                                         }
                                     }
-                                    .background(Color.white)
-                                    .cornerRadius(12)
+                                    .background(Color.surface0)
+                                    .cornerRadius(AppRadius.input)
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 12)
                                             .stroke(Color.warmSand, lineWidth: 1)
@@ -181,7 +181,7 @@ struct EditPetSheet: View {
                         ProgressView("Saving...")
                             .padding()
                             .background(Color.surfaceBright)
-                            .cornerRadius(12)
+                            .cornerRadius(AppRadius.input)
                             .shadow(radius: 10)
                     }
                 }

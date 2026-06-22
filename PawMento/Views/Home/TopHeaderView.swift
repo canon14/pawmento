@@ -30,7 +30,7 @@ struct TopHeaderView: View {
                         .frame(width: 40, height: 40)
                         .overlay(
                             Text(emoji)
-                                .font(.system(size: 20))
+                                .font(.headlineMD)
                         )
                         .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
                 }

@@ -22,10 +22,10 @@ struct HeroInsightCard: View {
                     // Confidence Pill
                     HStack(spacing: 4) {
                         Image(systemName: insight.tier.iconName)
-                            .font(.system(size: 10, weight: .bold))
+                            .font(.caption)
                             .foregroundColor(insight.tier.accentColor)
                         Text(insight.tier.label)
-                            .font(.system(size: 10, weight: .bold))
+                            .font(.caption)
                     }
                     .padding(.horizontal, 8)
                     .frame(height: 24)
@@ -37,7 +37,7 @@ struct HeroInsightCard: View {
                     
                     if insight.isPremiumGated {
                         Text("Premium")
-                            .font(.system(size: 8, weight: .bold))
+                            .font(.caption)
                             .padding(.horizontal, 6)
                             .frame(height: 14) // Slightly larger than 11pt for touch/render
                             .background(Color.ink900)
@@ -50,13 +50,13 @@ struct HeroInsightCard: View {
                 // Content
                 VStack(alignment: .leading, spacing: 8) {
                     Text(insight.headline)
-                        .font(.system(size: 22, weight: .semibold))
+                        .font(.headlineMD)
                         .foregroundColor(.ink900)
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
                     
                     Text(insight.narrative)
-                        .font(.system(size: 15, weight: .regular))
+                        .font(.labelLG)
                         .foregroundColor(.ink900.opacity(0.8))
                         .lineSpacing(4) // approx 1.5 line height
                         .lineLimit(3)
@@ -76,7 +76,7 @@ struct HeroInsightCard: View {
                 // Footer
                 VStack(alignment: .leading, spacing: 16) {
                     Text("Based on \(insight.evidenceCount) logged events · Confidence: \(Int(insight.confidence * 100))%")
-                        .font(.system(size: 12, weight: .regular))
+                        .font(.caption)
                         .foregroundColor(.ink900.opacity(0.5))
                     
                     HStack(spacing: 12) {
@@ -84,12 +84,12 @@ struct HeroInsightCard: View {
                             let primary = insight.actions[0]
                             Button(action: { onActionTapped?(primary) }) {
                                 Text(primary.title)
-                                    .font(.system(size: 14, weight: .semibold))
+                                    .font(.bodySM)
                                     .frame(maxWidth: .infinity)
                                     .frame(height: 44)
                                     .background(isLocked ? Color.primary.opacity(0.3) : Color.primary)
                                     .foregroundColor(.white)
-                                    .cornerRadius(12)
+                                    .cornerRadius(AppRadius.input)
                             }
                             .disabled(isLocked)
                         }
@@ -98,12 +98,12 @@ struct HeroInsightCard: View {
                             let secondary = insight.actions[1]
                             Button(action: { onActionTapped?(secondary) }) {
                                 Text(secondary.title)
-                                    .font(.system(size: 14, weight: .semibold))
+                                    .font(.bodySM)
                                     .frame(maxWidth: .infinity)
                                     .frame(height: 44)
-                                    .background(Color.white)
+                                    .background(Color.surface0)
                                     .foregroundColor(.ink900)
-                                    .cornerRadius(12)
+                                    .cornerRadius(AppRadius.input)
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 12)
                                             .stroke(Color.ink900.opacity(0.2), lineWidth: 1)
@@ -115,8 +115,8 @@ struct HeroInsightCard: View {
                 .padding(20)
                 .blur(radius: isLocked ? 4 : 0)
             }
-            .background(Color.white)
-            .cornerRadius(20)
+            .background(Color.surface0)
+            .cornerRadius(AppRadius.md)
             .overlay(
                 RoundedRectangle(cornerRadius: 20)
                     .stroke(Color.primary.opacity(0.5), lineWidth: 2)
@@ -128,15 +128,15 @@ struct HeroInsightCard: View {
                     if isLocked {
                         VStack(spacing: 8) {
                             Image(systemName: "lock.fill")
-                                .font(.system(size: 24))
+                                .font(.headlineLG)
                                 .foregroundColor(.ink900)
                             Text("Unlock this insight for \(petName)")
-                                .font(.system(size: 15, weight: .semibold))
+                                .font(.labelLG)
                                 .foregroundColor(.ink900)
                         }
                         .padding(16)
-                        .background(Color.white.opacity(0.8))
-                        .cornerRadius(12)
+                        .background(Color.surface0.opacity(0.8))
+                        .cornerRadius(AppRadius.input)
                     }
                 }
             )

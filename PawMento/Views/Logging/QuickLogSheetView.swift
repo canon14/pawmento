@@ -99,7 +99,7 @@ struct QuickLogSheetView: View {
                     }
                     .padding()
                     .background(Color.cream)
-                    .cornerRadius(12)
+                    .cornerRadius(AppRadius.input)
                     .padding(.horizontal, 20)
                     .padding(.bottom, 16)
                 }
@@ -124,8 +124,8 @@ struct QuickLogSheetView: View {
                                     .foregroundColor(.primaryText)
                                 TextField("e.g. 16mg, 1 tablet", text: $dose)
                                     .padding()
-                                    .background(Color.white)
-                                    .cornerRadius(12)
+                                    .background(Color.surface0)
+                                    .cornerRadius(AppRadius.input)
                                     .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.warmSand, lineWidth: 1))
                             }
                             .padding(.horizontal, 20)
@@ -145,7 +145,7 @@ struct QuickLogSheetView: View {
                                     .padding(.trailing, 8)
                             } else if showSuccess {
                                 Image(systemName: "checkmark")
-                                    .font(.system(size: 18, weight: .bold))
+                                    .font(.headlineSM)
                             } else {
                                 Text(AppStrings.QuickLog.save)
                                     .font(.ctaOnboarding)
@@ -157,7 +157,7 @@ struct QuickLogSheetView: View {
                         .background(
                             selectedCategory == nil ? Color.primary.opacity(0.4) : Color.primary
                         )
-                        .cornerRadius(14)
+                        .cornerRadius(AppRadius.input)
                         .shadow(color: Color.primary.opacity((selectedCategory == nil || !hasContent) ? 0 : 0.2), radius: 8, x: 0, y: 4)
                     }
                     .disabled(selectedCategory == nil || !hasContent || isSaving || showSuccess)

@@ -68,7 +68,7 @@ class FullTimelineViewModel: ObservableObject {
     }
     
     var lastLoggedTimeText: String {
-        guard let last = allLogs.max(by: { $0.recordedAt < $1.recordedAt }) else { return "No logs yet" }
+        guard let last = allLogs.max(by: { $0.recordedAt < $1.recordedAt }) else { return "No logs added yet." }
         let formatter = RelativeDateTimeFormatter()
         formatter.unitsStyle = .abbreviated
         return "last logged \(formatter.localizedString(for: last.recordedAt, relativeTo: Date()))"

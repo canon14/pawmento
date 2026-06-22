@@ -137,7 +137,7 @@ struct LoginScreen: View {
     private var emailConfirmationBanner: some View {
         VStack(spacing: AppSpacing.md) {
             Image(systemName: "envelope.badge")
-                .font(.system(size: 48))
+                .font(.displayLG)
                 .foregroundColor(.primary)
                 .padding(.bottom, AppSpacing.xs)
             

@@ -89,7 +89,7 @@ struct OnboardingCarouselView: View {
                             .frame(maxWidth: .infinity)
                             .frame(height: 56)
                             .background(Color.primary)
-                            .cornerRadius(14)
+                            .cornerRadius(AppRadius.input)
                     }
                     .padding(.horizontal, 20)
                     .padding(.bottom, 32)

@@ -37,8 +37,8 @@ struct ManageRecordsSheet: View {
                             Divider()
                             RecordRow(title: "Conditions", value: "Atopic dermatitis", subtitle: nil)
                         }
-                        .background(Color.white)
-                        .cornerRadius(16)
+                        .background(Color.surface0)
+                        .cornerRadius(AppRadius.md)
                         .padding(.horizontal, 24)
                         
                         Button(action: {}) {
@@ -46,12 +46,12 @@ struct ManageRecordsSheet: View {
                                 Image(systemName: "plus.circle.fill")
                                 Text("Add Record")
                             }
-                            .font(.system(size: 16, weight: .semibold))
+                            .font(.bodyMD)
                             .foregroundColor(.primary)
                             .frame(maxWidth: .infinity)
                             .padding()
                             .background(Color.cream)
-                            .cornerRadius(12)
+                            .cornerRadius(AppRadius.input)
                         }
                         .padding(.horizontal, 24)
                         .padding(.top, 10)
@@ -82,20 +82,20 @@ struct RecordRow: View {
         HStack {
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
-                    .font(.system(size: 15, weight: .semibold))
+                    .font(.labelLG)
                 Text(value)
-                    .font(.system(size: 14))
+                    .font(.bodySM)
                     .foregroundColor(.primaryText)
                 if let subtitle = subtitle {
                     Text(subtitle)
-                        .font(.system(size: 12))
+                        .font(.caption)
                         .foregroundColor(.secondaryText)
                 }
             }
             Spacer()
             Image(systemName: "chevron.right")
                 .foregroundColor(.secondaryText)
-                .font(.system(size: 14))
+                .font(.bodySM)
         }
         .padding()
         .contentShape(Rectangle())

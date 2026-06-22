@@ -3,38 +3,33 @@ import SwiftUI
 // MARK: - Design Tokens
 struct AppSpacing {
     static let base: CGFloat = 8
-    static let xs: CGFloat = 4
-    static let sm: CGFloat = 12
-    static let md: CGFloat = 20
+    static let xs: CGFloat = 8
+    static let sm: CGFloat = 16
+    static let md: CGFloat = 24
     static let lg: CGFloat = 32
     static let xl: CGFloat = 48
     static let gutter: CGFloat = 16
 }
 
 struct AppRadius {
-    static let sm: CGFloat = 4
+    static let sm: CGFloat = 8
     static let input: CGFloat = 12
     static let md: CGFloat = 16
     static let card: CGFloat = 24
     static let pill: CGFloat = 999
 }
 
-// MARK: - Components
-struct PrimaryButtonStyle: ButtonStyle {
-    @Environment(\.isEnabled) var isEnabled
-    
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.ctaOnboarding)
-            .foregroundColor(.white)
-            .frame(maxWidth: .infinity)
-            .frame(height: 56)
-            .background(
-                isEnabled ? Color.primary : Color.primary.opacity(0.4)
-            )
-            .cornerRadius(AppRadius.input)
-            .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
-            .animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
+// MARK: - Modifiers
+struct WarmShadowModifier: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .shadow(color: Color(hex: "6b5e51").opacity(0.08), radius: 30, x: 0, y: 10)
+    }
+}
+
+extension View {
+    func warmShadow() -> some View {
+        self.modifier(WarmShadowModifier())
     }
 }
 
@@ -75,30 +70,21 @@ extension Color {
     static let warningBackground = Color(hex: "#FFF8E1")
     static let warningBorder = Color(hex: "#FFE082")
     
-    // Onboarding Colors
+    // Core Semantic Tints
     static let warmCream = Color(hex: "#FBF7F1")
     static let tertiaryText = Color(hex: "#A8968A")
-    static let warmTanHue = Color(hex: "#C89968")
-    static let warmTanDarkHue = Color(hex: "#B88858")
-    static let sageHue = Color(hex: "#7A9E7E")
-    
-    static let warmTanTintBg = Color(hex: "#F5E8D3")
-    static let sageTintBg = Color(hex: "#EAF2EB")
-    static let warmCreamTintBg = Color(hex: "#FDF4E7")
-    static let warmCoralTintBg = Color(hex: "#FDF0EC")
-    
     static let primaryText = Color(hex: "#2A2520")
     static let secondaryText = Color(hex: "#6B5B4F")
     
-    // Add First Pet Colors
-    static let warmSand = Color(hex: "#D4C4B0")
-    static let warmCoralHue = Color(hex: "#E47A6B")
-    static let cream = Color(hex: "#F5EFE4")
+    // Extracted Tints (Consolidated)
+    static let warmTanTintBg = Color(hex: "#F5E8D3")
+    static let sageTintBg = Color(hex: "#EAF2EB")
+    static let warmCreamTintBg = Color(hex: "#FDF4E7")
+    static let errorTintBg = Color(hex: "#FDF0EC") // Replaced warmCoralTintBg
     
-    // Timeline v2 Colors
-    static let sage50 = Color(hex: "#E8F1EF")
-    static let sage200 = Color(hex: "#B3D1C9")
-    static let sage700 = Color(hex: "#4A7369")
+    // Replaced warmCoralHue with coral500 for non-error distinct branding
+    static let coral500 = Color(hex: "#E07856")
+    static let amber = Color(hex: "#E8A547")
     
     static let ink900 = Color(hex: "#1B1C1A")
     static let ink700 = Color(hex: "#444842")
@@ -108,10 +94,7 @@ extension Color {
     static let ink200 = Color(hex: "#E4E2DE")
     static let ink100 = Color(hex: "#EAE8E4")
     
-    static let amber = Color(hex: "#E8A547")
-    static let red500 = Color(hex: "#C8412B")
-    static let coral500 = Color(hex: "#E07856")
-    
+    // Surface aliases
     static let surface0 = Color(hex: "#FFFFFF")
     static let surface1 = Color(hex: "#F5F3EF")
 }
@@ -146,48 +129,135 @@ extension Color {
 
 // MARK: - Typography
 extension Font {
-    static let headlineXL = Font.custom("PlusJakartaSans-Bold", size: 40)
-    static let headlineLG = Font.custom("PlusJakartaSans-SemiBold", size: 32)
-    static let headlineMD = Font.custom("PlusJakartaSans-SemiBold", size: 24)
-    static let headlineSM = Font.custom("PlusJakartaSans-SemiBold", size: 20)
+    // Displays
+    static let displayLG = Font.custom("PlusJakartaSans-Bold", size: 40)
+    static let displayMD = Font.custom("PlusJakartaSans-Bold", size: 32)
+    static let displaySM = Font.custom("PlusJakartaSans-Bold", size: 28) // Replaces headlineOnboarding / displayM
     
+    // Headlines
+    static let headlineLG = Font.custom("PlusJakartaSans-SemiBold", size: 24)
+    static let headlineMD = Font.custom("PlusJakartaSans-SemiBold", size: 20)
+    static let headlineSM = Font.custom("PlusJakartaSans-SemiBold", size: 18)
+    
+    // Body (Regular)
     static let bodyLG = Font.custom("PlusJakartaSans-Regular", size: 18)
-    static let bodyMD = Font.custom("PlusJakartaSans-Regular", size: 16)
+    static let bodyMD = Font.custom("PlusJakartaSans-Regular", size: 16) // Replaces bodyOnboarding
+    static let bodySM = Font.custom("PlusJakartaSans-Regular", size: 14) // Replaces bodyS
+    static let bodyXS = Font.custom("PlusJakartaSans-Regular", size: 13) // Replaces labelRegular, caption
     
-    static let labelMD = Font.custom("PlusJakartaSans-Medium", size: 14)
-    static let labelSM = Font.custom("PlusJakartaSans-SemiBold", size: 12)
+    // Labels (Medium/SemiBold)
+    static let labelLG = Font.custom("PlusJakartaSans-SemiBold", size: 16)
+    static let labelMD = Font.custom("PlusJakartaSans-Medium", size: 14) // Replaces skipOnboarding, bodySMedium
+    static let labelSM = Font.custom("PlusJakartaSans-SemiBold", size: 13) // Replaces labelSemibold
+    static let labelXS = Font.custom("PlusJakartaSans-SemiBold", size: 12) // Replaces captionSemibold
     
-    // Onboarding Fonts
-    static let headlineOnboarding = Font.custom("PlusJakartaSans-Bold", size: 28)
-    static let bodyOnboarding = Font.custom("PlusJakartaSans-Regular", size: 16)
-    static let ctaOnboarding = Font.custom("PlusJakartaSans-SemiBold", size: 17)
-    static let skipOnboarding = Font.custom("PlusJakartaSans-Medium", size: 14)
+    // Captions & Specialties
+    static let caption = Font.custom("PlusJakartaSans-Regular", size: 12)
+    static let captionTabular = Font.custom("PlusJakartaSans-Regular", size: 12).monospacedDigit()
+    static let cta = Font.custom("PlusJakartaSans-SemiBold", size: 17) // Replaces ctaOnboarding
     
-    // Add First Pet Fonts
-    static let labelSemibold = Font.custom("PlusJakartaSans-SemiBold", size: 13)
-    static let labelRegular = Font.custom("PlusJakartaSans-Regular", size: 13)
-    static let labelLarge = Font.custom("PlusJakartaSans-Medium", size: 15)
-    
-    // Timeline v2 Fonts
+    // Aliases for backwards compatibility during migration (Will be cleaned up via script)
+    static let headlineXL = displayLG
+    static let headlineOnboarding = displaySM
     static let displayM = Font.custom("PlusJakartaSans-SemiBold", size: 28)
-    static let caption = Font.custom("PlusJakartaSans-Regular", size: 13)
-    static let captionSemibold = Font.custom("PlusJakartaSans-SemiBold", size: 12)
-    static let captionTabular = Font.custom("PlusJakartaSans-Regular", size: 12) // Tabular spacing is usually a modifier on standard font, but we'll use this
-    static let bodyS = Font.custom("PlusJakartaSans-Regular", size: 14)
-    static let bodySMedium = Font.custom("PlusJakartaSans-Medium", size: 14)
+    static let bodyOnboarding = bodyMD
+    static let ctaOnboarding = cta
+    static let skipOnboarding = labelMD
+    static let labelSemibold = labelSM
+    static let labelRegular = bodyXS
+    static let labelLarge = Font.custom("PlusJakartaSans-Medium", size: 15)
+    static let captionSemibold = labelXS
+    static let bodyS = bodySM
+    static let bodySMedium = labelMD
     static let bodySSemibold = Font.custom("PlusJakartaSans-SemiBold", size: 14)
 }
 
-// MARK: - Modifiers
-struct WarmShadowModifier: ViewModifier {
-    func body(content: Content) -> some View {
-        content
-            .shadow(color: Color(hex: "6b5e51").opacity(0.08), radius: 30, x: 0, y: 10)
+// MARK: - Button Styles
+struct PrimaryButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) var isEnabled
+    
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.cta)
+            .foregroundColor(.onPrimary)
+            .frame(maxWidth: .infinity)
+            .frame(height: 56)
+            .background(isEnabled ? Color.primary : Color.primary.opacity(0.4))
+            .cornerRadius(AppRadius.input)
+            .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
+            .animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
+            .onChange(of: configuration.isPressed) { _, pressed in
+                if pressed && isEnabled {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                }
+            }
     }
 }
 
-extension View {
-    func warmShadow() -> some View {
-        self.modifier(WarmShadowModifier())
+struct SecondaryButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) var isEnabled
+    
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.cta)
+            .foregroundColor(isEnabled ? .primary : .primary.opacity(0.4))
+            .frame(maxWidth: .infinity)
+            .frame(height: 56)
+            .background(Color.clear)
+            .cornerRadius(AppRadius.input)
+            .overlay(
+                RoundedRectangle(cornerRadius: AppRadius.input)
+                    .stroke(isEnabled ? Color.primary : Color.primary.opacity(0.4), lineWidth: 1)
+            )
+            .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
+            .animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
     }
+}
+
+struct TertiaryButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) var isEnabled
+    
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.labelMD)
+            .foregroundColor(isEnabled ? .primary : .primary.opacity(0.4))
+            .opacity(configuration.isPressed ? 0.6 : 1.0)
+            .animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
+    }
+}
+
+struct DestructiveButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) var isEnabled
+    
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.cta)
+            .foregroundColor(.onError)
+            .frame(maxWidth: .infinity)
+            .frame(height: 56)
+            .background(isEnabled ? Color.error : Color.error.opacity(0.4))
+            .cornerRadius(AppRadius.input)
+            .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
+            .animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
+            .onChange(of: configuration.isPressed) { _, pressed in
+                if pressed && isEnabled {
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                }
+            }
+    }
+}
+
+extension Color {
+    static let warmSand = Color(hex: "#D4C4B0")
+    static let cream = Color(hex: "#F5EFE4")
+    static let warmTanDarkHue = Color(hex: "#B88858")
+    static let sageHue = Color(hex: "#7A9E7E")
+    static let warmTanHue = Color(hex: "#C89968")
+}
+
+extension Color {
+    static let sage50 = Color(hex: "#E8F1EF")
+    static let sage200 = Color(hex: "#B3D1C9")
+    static let sage700 = Color(hex: "#4A7369")
+    static let red500 = Color(hex: "#C8412B")
 }

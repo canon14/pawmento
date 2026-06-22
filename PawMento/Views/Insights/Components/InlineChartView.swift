@@ -64,7 +64,7 @@ private struct SimpleBarChart: View {
                     y: .value("Count", value)
                 )
                 .foregroundStyle(Color.amber)
-                .cornerRadius(4)
+                .cornerRadius(AppRadius.sm)
             }
         }
         .chartXAxis {

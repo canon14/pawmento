@@ -70,7 +70,7 @@ struct TodayLogGrid: View {
                 Button(action: onLogAction) {
                     HStack(spacing: 4) {
                         Image(systemName: "plus")
-                            .font(.system(size: 16, weight: .bold))
+                            .font(.bodyMD)
                         Text("Log")
                             .font(.labelMD)
                     }
@@ -112,7 +112,7 @@ struct LogItemCard: View {
     var body: some View {
         VStack(alignment: .leading) {
             Text(icon)
-                .font(.system(size: 24))
+                .font(.headlineLG)
                 .grayscale(isLogged ? 0 : 1.0)
                 .opacity(isLogged ? 1.0 : 0.5)
             
@@ -125,7 +125,7 @@ struct LogItemCard: View {
                 
                 HStack(spacing: 2) {
                     Image(systemName: subtitleIcon)
-                        .font(.system(size: 12))
+                        .font(.caption)
                     Text(subtitle)
                         .font(.labelSM)
                 }
@@ -136,7 +136,7 @@ struct LogItemCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .aspectRatio(1, contentMode: .fill)
         .background(isLogged ? Color.primaryContainer.opacity(0.4) : Color.surfaceBright)
-        .cornerRadius(20)
+        .cornerRadius(AppRadius.md)
         .overlay(
             RoundedRectangle(cornerRadius: 20)
                 .stroke(isLogged ? Color.clear : Color.surfaceContainerLow, lineWidth: 1)

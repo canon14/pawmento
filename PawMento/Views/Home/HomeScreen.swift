@@ -124,7 +124,7 @@ struct HomeScreen: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text("UP NEXT")
-                    .font(.system(size: 13, weight: .bold))
+                    .font(.bodyXS)
                     .foregroundColor(.ink900.opacity(0.6))
                     .kerning(1.2)
                 
@@ -132,7 +132,7 @@ struct HomeScreen: View {
                 
                 Button(action: { showCreateReminder = true }) {
                     Image(systemName: "plus.circle.fill")
-                        .font(.system(size: 20))
+                        .font(.headlineMD)
                         .foregroundColor(.primary)
                 }
             }
@@ -143,13 +143,13 @@ struct HomeScreen: View {
                         Image(systemName: "bell.badge")
                             .foregroundColor(.primary)
                         Text("Add a reminder for \(petStore.activePet?.name ?? PetStore.fallbackPetName)")
-                            .font(.system(size: 14, weight: .medium))
+                            .font(.bodySM)
                             .foregroundColor(.ink900)
                         Spacer()
                     }
                     .padding(16)
                     .background(Color.primary.opacity(0.1))
-                    .cornerRadius(16)
+                    .cornerRadius(AppRadius.md)
                     .overlay(
                         RoundedRectangle(cornerRadius: 16)
                             .stroke(Color.primary.opacity(0.3), style: StrokeStyle(lineWidth: 1, dash: [4]))

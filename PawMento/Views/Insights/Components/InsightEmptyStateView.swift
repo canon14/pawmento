@@ -12,29 +12,29 @@ struct InsightEmptyStateView: View {
                 .frame(width: 80, height: 80)
                 .overlay(
                     Image(systemName: iconName)
-                        .font(.system(size: 32))
+                        .font(.displayMD)
                         .foregroundColor(.primary)
                 )
                 .padding(.bottom, 8)
             
             Text(title)
-                .font(.system(size: 20, weight: .bold))
+                .font(.headlineMD)
                 .foregroundColor(.ink900)
             
             Text(message)
-                .font(.system(size: 15))
+                .font(.labelLG)
                 .foregroundColor(.ink900.opacity(0.6))
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 32)
             
             Button(action: onAction) {
                 Text(buttonTitle)
-                    .font(.system(size: 14, weight: .semibold))
+                    .font(.bodySM)
                     .foregroundColor(Color.primary)
                     .padding(.horizontal, 24)
                     .padding(.vertical, 12)
                     .background(Color.primary.opacity(0.1))
-                    .cornerRadius(20)
+                    .cornerRadius(AppRadius.md)
             }
             .padding(.top, 8)
         }

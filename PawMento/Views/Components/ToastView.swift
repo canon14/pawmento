@@ -29,7 +29,7 @@ struct ToastView: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
                 .background(Color.primaryText) // Dark background for contrast
-                .cornerRadius(12)
+                .cornerRadius(AppRadius.input)
                 .shadow(color: Color.black.opacity(0.15), radius: 10, x: 0, y: 4)
                 .padding(.horizontal, 20)
                 .padding(.bottom, 20) // Give space for bottom nav

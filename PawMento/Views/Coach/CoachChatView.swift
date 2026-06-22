@@ -69,8 +69,8 @@ struct CoachChatView: View {
                                     .foregroundColor(.primaryText)
                                     .padding(.horizontal, 16)
                                     .padding(.vertical, 10)
-                                    .background(Color.white)
-                                    .cornerRadius(16)
+                                    .background(Color.surface0)
+                                    .cornerRadius(AppRadius.md)
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 16)
                                             .stroke(Color.primary.opacity(0.2), lineWidth: 1)
@@ -143,7 +143,7 @@ struct CoachChatView: View {
         HStack {
             Button(action: { dismiss() }) {
                 Image(systemName: "chevron.left")
-                    .font(.system(size: 20, weight: .semibold))
+                    .font(.headlineMD)
                     .foregroundColor(.primaryText)
             }
             
@@ -166,7 +166,7 @@ struct CoachChatView: View {
                         .font(.labelSM)
                         .foregroundColor(.secondaryText)
                     Image(systemName: "chevron.down")
-                        .font(.system(size: 10))
+                        .font(.caption)
                         .foregroundColor(.secondaryText)
                 }
             }
@@ -181,7 +181,7 @@ struct CoachChatView: View {
                 }
             } label: {
                 Image(systemName: "ellipsis")
-                    .font(.system(size: 20))
+                    .font(.headlineMD)
                     .foregroundColor(.primaryText)
             }
             .confirmationDialog("Start New Conversation?", isPresented: $showWipeConfirmation, titleVisibility: .visible) {

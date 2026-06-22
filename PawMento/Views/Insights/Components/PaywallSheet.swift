@@ -20,7 +20,7 @@ struct PaywallSheet: View {
             // Contextual Hero
             VStack(spacing: 24) {
                 Text(heroTitle)
-                    .font(.system(size: 24, weight: .bold))
+                    .font(.headlineLG)
                     .foregroundColor(.ink900)
                 
                 if let insight = insight {
@@ -31,7 +31,7 @@ struct PaywallSheet: View {
                     // Generic beautiful premium hero
                     VStack(spacing: 16) {
                         Image(systemName: "star.circle.fill")
-                            .font(.system(size: 64))
+                            .font(.displayLG)
                             .foregroundColor(.primary)
                             .shadow(color: .primary.opacity(0.3), radius: 10, x: 0, y: 5)
                         
@@ -44,7 +44,7 @@ struct PaywallSheet: View {
                     .padding(.vertical, 32)
                     .background(
                         RoundedRectangle(cornerRadius: 24)
-                            .fill(Color.white)
+                            .fill(Color.surface0)
                             .shadow(color: .ink900.opacity(0.05), radius: 20, x: 0, y: 10)
                     )
                 }
@@ -54,14 +54,14 @@ struct PaywallSheet: View {
             VStack(spacing: 16) {
                 if insight == nil {
                     Text("Unlock Everything")
-                        .font(.system(size: 20, weight: .bold))
+                        .font(.headlineMD)
                 } else {
                     Text("PawMento Premium")
-                        .font(.system(size: 20, weight: .bold))
+                        .font(.headlineMD)
                 }
                 
                 Text("Get deep-dive AI analysis, historical benchmarks, and unlimited coaching.")
-                    .font(.system(size: 15))
+                    .font(.labelLG)
                     .multilineTextAlignment(.center)
                     .foregroundColor(.ink900.opacity(0.8))
             }
@@ -73,18 +73,18 @@ struct PaywallSheet: View {
                 dismiss()
             }) {
                 Text("Upgrade Now")
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.bodyMD)
                     .frame(maxWidth: .infinity)
                     .frame(height: 56)
                     .background(Color.primary)
                     .foregroundColor(.white)
-                    .cornerRadius(16)
+                    .cornerRadius(AppRadius.md)
             }
             
             Button("Not right now") {
                 dismiss()
             }
-            .font(.system(size: 14, weight: .medium))
+            .font(.bodySM)
             .foregroundColor(.ink900.opacity(0.6))
         }
         .padding(24)

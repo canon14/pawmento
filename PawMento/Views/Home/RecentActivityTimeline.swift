@@ -12,7 +12,7 @@ struct RecentActivityTimeline: View {
             
             ZStack(alignment: .topLeading) {
                 if logStore.logs.isEmpty {
-                    Text("No logs yet. Tap the + button to log your first activity!")
+                    Text("No logs added yet.")
                         .font(.bodyMD)
                         .foregroundColor(.secondaryText)
                         .padding(.vertical, 20)
@@ -50,7 +50,7 @@ struct RecentActivityTimeline: View {
                     .padding()
                     .frame(maxWidth: .infinity)
                     .background(Color.warmCream)
-                    .cornerRadius(12)
+                    .cornerRadius(AppRadius.input)
                 }
                 .accessibilityLabel("See full timeline")
                 .accessibilityHint("Opens your complete logging history")
@@ -58,7 +58,7 @@ struct RecentActivityTimeline: View {
         }
         .padding(20)
         .background(Color.surfaceContainerLowest)
-        .cornerRadius(24)
+        .cornerRadius(AppRadius.card)
         .warmShadow()
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Recent activity. \(logStore.logs.count) logs available. Double tap to see full timeline.")
@@ -92,7 +92,7 @@ struct TimelineItem: View {
     var body: some View {
         HStack(alignment: .top, spacing: 20) {
             Text(iconText)
-                .font(.system(size: 18))
+                .font(.headlineSM)
                 .frame(width: 40, height: 40)
                 .background(Color.primaryContainer)
                 .clipShape(Circle())
