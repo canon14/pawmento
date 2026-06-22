@@ -114,6 +114,13 @@ struct CoachChatView: View {
             }
         }
         .navigationBarHidden(true)
+        .gesture(
+            DragGesture().onEnded { value in
+                if value.startLocation.x < 50 && value.translation.width > 50 {
+                    dismiss()
+                }
+            }
+        )
         // Premium Wall
         .sheet(isPresented: $viewModel.showPremiumWall) {
             VStack(spacing: 24) {
