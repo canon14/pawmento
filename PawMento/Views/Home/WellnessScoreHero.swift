@@ -18,9 +18,12 @@ struct WellnessScoreHero: View {
     var body: some View {
         let petName = petStore.activePet?.name ?? "Your pet"
         
-        VStack(spacing: 0) {
-            ZStack(alignment: .topTrailing) {
-                // Background Gradient
+        Button(action: {
+            onViewTrendsTapped?()
+        }) {
+            VStack(spacing: 0) {
+                ZStack(alignment: .topTrailing) {
+                    // Background Gradient
                 RadialGradient(
                     gradient: Gradient(colors: [Color(hex: "#F7F3ED"), Color(hex: "#FFFDF9")]),
                     center: .top,
@@ -38,12 +41,20 @@ struct WellnessScoreHero: View {
                             .stroke(Color(hex: "#F5F3EF"), style: StrokeStyle(lineWidth: 12, lineCap: .round))
                             .rotationEffect(.degrees(-90))
                         
+                        // Progress Ring Glow
+                        Circle()
+                            .trim(from: 0, to: progress)
+                            .stroke(ringGradient, style: StrokeStyle(lineWidth: 12, lineCap: .round))
+                            .rotationEffect(.degrees(-90))
+                            .blur(radius: 12)
+                            .opacity(0.6)
+                            .animation(.easeOut(duration: 1.0).delay(0.1), value: progress)
+                            
                         // Progress Ring Active
                         Circle()
                             .trim(from: 0, to: progress)
-                            .stroke(ringColor, style: StrokeStyle(lineWidth: 12, lineCap: .round))
+                            .stroke(ringGradient, style: StrokeStyle(lineWidth: 12, lineCap: .round))
                             .rotationEffect(.degrees(-90))
-                            .shadow(color: ringColor.opacity(0.4), radius: 8, x: 0, y: 0)
                             .animation(.easeOut(duration: 1.0).delay(0.1), value: progress)
                         
                         // Score Text — Fix W1: show "?" for insufficient data
@@ -59,8 +70,9 @@ struct WellnessScoreHero: View {
                         } else {
                             HStack(alignment: .firstTextBaseline, spacing: 0) {
                                 Text("\(score)")
-                                    .font(.headlineXL)
+                                    .font(.system(size: 64, weight: .bold, design: .rounded))
                                     .foregroundColor(.primary)
+                                    .contentTransition(.numericText(value: Double(score)))
                                 Text("/100")
                                     .font(.labelMD)
                                     .foregroundColor(.onSurfaceVariant)
@@ -90,29 +102,38 @@ struct WellnessScoreHero: View {
                     .padding(.vertical, 6)
                     .background(deltaColor.opacity(0.15))
                     .clipShape(Capsule())
+                    .overlay(Capsule().stroke(Color.white.opacity(0.6), lineWidth: 1))
+                    .shadow(color: Color.black.opacity(0.05), radius: 2, x: 0, y: 1)
                     .padding(.bottom, 20)
                     .opacity(showDelta ? 1 : 0)
                     .scaleEffect(showDelta ? 1 : 0.8)
                     
-                    Button(action: {
-                        onViewTrendsTapped?()
-                    }) {
-                        HStack(spacing: 4) {
-                            Text("View trends")
-                                .font(.labelMD)
-                            Image(systemName: "chevron.right")
-                                .font(.bodySM)
-                        }
-                        .foregroundColor(.secondary)
+                    HStack(spacing: 4) {
+                        Text("View trends")
+                            .font(.labelMD)
+                        Image(systemName: "chevron.right")
+                            .font(.bodySM)
                     }
+                    .foregroundColor(.secondary)
                     .padding(.bottom, 20)
                 }
                 .frame(maxWidth: .infinity)
             }
         }
-        .background(Color.surfaceContainerLowest)
+        .background(
+            Color.surfaceContainerLowest
+                .overlay(.ultraThinMaterial.opacity(0.5))
+        )
         .cornerRadius(AppRadius.card)
         .warmShadow()
+        }
+        .buttonStyle(SquishyCardStyle())
+        .onChange(of: progress) { old, new in
+            if new == CGFloat(score) / 100.0 && new > 0 {
+                let generator = UIImpactFeedbackGenerator(style: .soft)
+                generator.impactOccurred()
+            }
+        }
         .onChange(of: logStore.logs.count, initial: true) { old, new in
             calculateDynamicScore()
         }
@@ -131,11 +152,14 @@ struct WellnessScoreHero: View {
         let yesterday = Date().addingTimeInterval(-24 * 3600)
         let yesterdayResult = WellnessCalculator.calculateScore(logs: relevantLogs, medications: medicationStore.medications, upTo: yesterday)
         
-        self.score = result.score
         self.confidence = result.confidence
         self.yesterdayScore = yesterdayResult.score
         self.yesterdayConfidence = yesterdayResult.confidence
         self.progress = confidence == .insufficient ? 0 : CGFloat(result.score) / 100.0
+        
+        withAnimation(.spring(response: 1.0, dampingFraction: 1.0).delay(0.1)) {
+            self.score = result.score
+        }
         
         withAnimation(.spring(response: 0.5, dampingFraction: 0.7).delay(0.5)) {
             self.showDelta = confidence != .insufficient
@@ -143,11 +167,19 @@ struct WellnessScoreHero: View {
     }
     
     // Dynamic Properties
-    private var ringColor: Color {
-        if confidence == .insufficient { return Color(hex: "#F5F3EF") }
-        if score >= 80 { return .primary }
-        if score >= 60 { return .primary }
-        return .error
+    private var ringGradient: AngularGradient {
+        let baseColor: Color
+        if confidence == .insufficient { baseColor = Color(hex: "#F5F3EF") }
+        else if score >= 80 { baseColor = .primary }
+        else if score >= 60 { baseColor = .primary }
+        else { baseColor = .error }
+        
+        return AngularGradient(
+            gradient: Gradient(colors: [baseColor.opacity(0.6), baseColor]),
+            center: .center,
+            startAngle: .degrees(-90),
+            endAngle: .degrees(270)
+        )
     }
     
     private func subtitleText(for name: String) -> String {
@@ -189,4 +221,12 @@ struct WellnessScoreHero: View {
         .environmentObject(PetStore())
         .padding()
         .background(Color.background)
+}
+
+struct SquishyCardStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.97 : 1.0)
+            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: configuration.isPressed)
+    }
 }
