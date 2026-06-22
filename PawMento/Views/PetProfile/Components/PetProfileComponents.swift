@@ -1,3 +1,7 @@
+struct FeatureFlags {
+    static let isEllipsisActionsEnabled = false
+}
+
 import SwiftUI
 
 struct PetProfileTopBar: View {
@@ -22,7 +26,7 @@ struct PetProfileTopBar: View {
                         .font(.headlineSM)
                         .foregroundColor(.primaryText)
                     Image(systemName: "chevron.down")
-                        .font(.system(size: 12))
+                        .font(.captionTabular)
                         .foregroundColor(.primary)
                 }
             }
@@ -35,15 +39,17 @@ struct PetProfileTopBar: View {
             HStack(spacing: 16) {
                 Button(action: { showActionMenu = true }) {
                     Image(systemName: "ellipsis")
-                        .font(.system(size: 17))
+                        .font(.bodyLG)
                         .foregroundColor(.secondaryText)
                 }
                 .confirmationDialog("Profile Actions", isPresented: $showActionMenu, titleVisibility: .hidden) {
-                    Button("Share Profile") {
-                        // Implement sharing
-                    }
-                    Button("Export Medical History") {
-                        // Implement export
+                    if FeatureFlags.isEllipsisActionsEnabled {
+                        Button("Share Profile") {
+                            // Implement sharing
+                        }
+                        Button("Export Medical History") {
+                            // Implement export
+                        }
                     }
                     Button("Cancel", role: .cancel) {}
                 }
@@ -51,7 +57,7 @@ struct PetProfileTopBar: View {
                 Button("Edit") {
                     showEditSheet = true
                 }
-                .font(.system(size: 17))
+                .font(.bodyLG)
                 .foregroundColor(.primary)
             }
         }
@@ -103,15 +109,15 @@ struct HeroCardView: View {
                 // Identity Stack
                 VStack(alignment: .leading, spacing: 2) {
                     Text(pet.name)
-                        .font(.system(size: 24, weight: .semibold, design: .rounded))
+                        .font(.headlineMD)
                         .foregroundColor(.primaryText)
                     
                     Text(pet.breed ?? "Mixed Breed")
-                        .font(.system(size: 14))
+                        .font(.bodyS)
                         .foregroundColor(.secondaryText)
                     
                     Text("\(ageString) · \(formattedWeight)")
-                        .font(.system(size: 13))
+                        .font(.labelRegular)
                         .foregroundColor(.tertiaryText)
                 }
                 
@@ -133,20 +139,20 @@ struct HeroCardView: View {
                         .animation(.easeOut(duration: 0.8), value: viewModel.wellnessScore)
                     
                     Text("\(viewModel.wellnessScore)")
-                        .font(.system(size: 28, weight: .bold, design: .rounded))
+                        .font(.headlineOnboarding)
                         .foregroundColor(.primaryText)
                 }
                 .frame(width: 80, height: 80)
                 
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Wellness Score")
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(.labelLarge)
                     HStack(spacing: 8) {
                         Text(viewModel.scoreTrend)
-                            .font(.system(size: 13, weight: .semibold))
+                            .font(.labelSemibold)
                             .foregroundColor(trendColor)
                         Text(viewModel.scoreDelta)
-                            .font(.system(size: 12))
+                            .font(.captionTabular)
                             .foregroundColor(.secondaryText)
                     }
                 }
@@ -156,8 +162,8 @@ struct HeroCardView: View {
             }
         }
         .padding(20)
-        .background(Color.white)
-        .cornerRadius(20)
+        .background(Color.surfaceContainerLowest)
+        .cornerRadius(AppRadius.card)
         .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 2)
         .contentShape(Rectangle())
     }
@@ -203,21 +209,21 @@ struct AICoachCardView: View {
             HStack(spacing: 8) {
                 Image(systemName: "pawprint.fill")
                     .foregroundColor(.primary)
-                    .font(.system(size: 20))
+                    .font(.headlineSM)
                 Text("AI Coach · \(pet.name)")
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.labelSemibold)
             }
             
             if viewModel.isGeneratingInsight {
                 HStack {
                     ProgressView()
                     Text("Thinking...")
-                        .font(.system(size: 15))
+                        .font(.labelLarge)
                         .foregroundColor(.secondaryText)
                 }
             } else {
                 Text(viewModel.aiInsight ?? "Log \(pet.name) for a few more days and I'll start noticing patterns.")
-                    .font(.system(size: 15))
+                    .font(.labelLarge)
                     .foregroundColor(.primaryText)
                     .lineSpacing(4)
             }
@@ -226,16 +232,16 @@ struct AICoachCardView: View {
                 HStack {
                     Spacer()
                     Text("See Full Pattern Analysis")
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(.labelLarge)
                         .foregroundColor(.primary)
                     Spacer()
                     Text("Premium 🔒")
-                        .font(.system(size: 11))
+                        .font(.captionTabular)
                         .foregroundColor(.primary)
                 }
                 .frame(height: 48)
-                .background(Color.white)
-                .cornerRadius(12)
+                .background(Color.surfaceContainerLowest)
+                .cornerRadius(AppRadius.input)
                 .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.primary, lineWidth: 1))
             }
             .alert("PawMento Premium", isPresented: $showPaywall) {
@@ -247,7 +253,7 @@ struct AICoachCardView: View {
             
             Button(action: { showCoach = true }) {
                 Text("Ask the Coach about \(pet.name) →")
-                    .font(.system(size: 14))
+                    .font(.bodyS)
                     .foregroundColor(.primary)
             }
             .fullScreenCover(isPresented: $showCoach) {
@@ -256,7 +262,7 @@ struct AICoachCardView: View {
         }
         .padding(20)
         .background(Color.cream)
-        .cornerRadius(20)
+        .cornerRadius(AppRadius.card)
     }
 }
 
@@ -265,22 +271,22 @@ struct HealthStatsSection: View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
                 Text("Health Stats")
-                    .font(.system(size: 17, weight: .semibold, design: .rounded))
+                    .font(.ctaOnboarding)
                 Spacer()
                 Text("Last 30 d")
-                    .font(.system(size: 13))
+                    .font(.labelRegular)
                     .foregroundColor(.tertiaryText)
             }
             
             VStack(spacing: 8) {
                 Text("Not enough data yet")
-                    .font(.system(size: 15))
+                    .font(.labelLarge)
                     .foregroundColor(.secondaryText)
             }
             .frame(maxWidth: .infinity, alignment: .center)
             .padding(20)
-            .background(Color.white)
-            .cornerRadius(16)
+            .background(Color.surfaceContainerLowest)
+            .cornerRadius(AppRadius.md)
         }
     }
 }
@@ -295,11 +301,11 @@ struct RecentActivityPreview: View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
                 Text("Recent Activity")
-                    .font(.system(size: 17, weight: .semibold, design: .rounded))
+                    .font(.ctaOnboarding)
                 Spacer()
                 Button(action: { showTimeline = true }) {
                     Text("See all \(logs.count) →")
-                        .font(.system(size: 14))
+                        .font(.bodyS)
                         .foregroundColor(.primary)
                 }
             }
@@ -307,20 +313,20 @@ struct RecentActivityPreview: View {
             VStack(spacing: 0) {
                 if logs.isEmpty {
                     Text("Log \(petName)'s first activity to see it here.")
-                        .font(.system(size: 14))
+                        .font(.bodyS)
                         .foregroundColor(.secondaryText)
                         .padding()
                 } else {
                     ForEach(logs.prefix(5)) { log in
                         HStack {
                             Text(log.category.emoji)
-                                .font(.system(size: 24))
+                                .font(.headlineMD)
                             Text(log.category.rawValue)
-                                .font(.system(size: 15))
+                                .font(.labelLarge)
                                 .foregroundColor(.primaryText)
                             Spacer()
                             Text(log.note ?? "")
-                                .font(.system(size: 14))
+                                .font(.bodyS)
                                 .foregroundColor(.secondaryText)
                                 .lineLimit(1)
                                 .truncationMode(.tail)
@@ -335,8 +341,8 @@ struct RecentActivityPreview: View {
                     }
                 }
             }
-            .background(Color.white)
-            .cornerRadius(16)
+            .background(Color.surfaceContainerLowest)
+            .cornerRadius(AppRadius.md)
         }
         .sheet(isPresented: $showTimeline) {
             FullTimelineView()
@@ -348,17 +354,17 @@ struct CareTeamCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Care Team")
-                .font(.system(size: 17, weight: .semibold, design: .rounded))
+                .font(.ctaOnboarding)
             
             VStack(alignment: .leading, spacing: 12) {
                 Text("No care team added yet")
-                    .font(.system(size: 15))
+                    .font(.labelLarge)
                     .foregroundColor(.secondaryText)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(20)
-            .background(Color.white)
-            .cornerRadius(20)
+            .background(Color.surfaceContainerLowest)
+            .cornerRadius(AppRadius.card)
             .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 2)
         }
     }
@@ -372,21 +378,21 @@ struct VetPDFCTACard: View {
         Button(action: { showPaywall = true }) {
             HStack(spacing: 12) {
                 Text("📄")
-                    .font(.system(size: 28))
+                    .font(.displayM)
                 
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Generate Vet PDF")
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.bodyMD)
                         .foregroundColor(.primaryText)
                     Text("Last 30 days · \(logCount) entries")
-                        .font(.system(size: 13))
+                        .font(.labelRegular)
                         .foregroundColor(.secondaryText)
                 }
                 
                 Spacer()
                 
                 Text("Pro")
-                    .font(.system(size: 11, weight: .bold))
+                    .font(.captionTabular)
                     .foregroundColor(.primary)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
@@ -394,7 +400,7 @@ struct VetPDFCTACard: View {
             }
             .padding(18)
             .background(Color.cream)
-            .cornerRadius(20)
+            .cornerRadius(AppRadius.card)
         }
         .alert("PawMento Premium", isPresented: $showPaywall) {
             Button("Maybe Later", role: .cancel) {}
@@ -417,49 +423,49 @@ struct MedicationsCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Medications & Routines")
-                .font(.system(size: 17, weight: .semibold, design: .rounded))
+                .font(.ctaOnboarding)
             
             if medications.isEmpty {
                 Text("No medications or routines added yet")
-                    .font(.system(size: 15))
+                    .font(.labelLarge)
                     .foregroundColor(.secondaryText)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(16)
-                    .background(Color.white)
-                    .cornerRadius(16)
+                    .background(Color.surfaceContainerLowest)
+                    .cornerRadius(AppRadius.md)
             } else {
                 VStack(spacing: 0) {
                     ForEach(medications) { med in
                         HStack {
                             Text(med.form?.lowercased() == "injectable" ? "💉" : "💊")
-                                .font(.system(size: 24))
+                                .font(.headlineMD)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("\(med.name)\(med.dose.map { " · \($0)" } ?? "")")
-                                    .font(.system(size: 15, weight: .medium))
+                                    .font(.labelLarge)
                                 
                                 if med.loggedToday {
                                     Text("Logged today · \(med.streakCount) day streak ✓")
-                                        .font(.system(size: 12))
+                                        .font(.captionTabular)
                                         .foregroundColor(.primary)
                                 } else if let nextDue = med.nextDueDate {
                                     if nextDue < Date() {
                                         Text("Overdue: \(nextDue, formatter: shortDateAndTimeFormatter)")
-                                            .font(.system(size: 12))
+                                            .font(.captionTabular)
                                             .foregroundColor(.error)
                                     } else {
                                         Text("Next: \(nextDue, formatter: shortDateAndTimeFormatter)")
-                                            .font(.system(size: 12))
+                                            .font(.captionTabular)
                                             .foregroundColor(.secondaryText)
                                     }
                                 } else {
                                     Text("No streak")
-                                        .font(.system(size: 12))
+                                        .font(.captionTabular)
                                         .foregroundColor(.secondaryText)
                                 }
                             }
                             Spacer()
                             Text(med.frequency)
-                                .font(.system(size: 14))
+                                .font(.bodyS)
                                 .foregroundColor(.secondaryText)
                         }
                         .padding(16)
@@ -469,8 +475,8 @@ struct MedicationsCard: View {
                         }
                     }
                 }
-                .background(Color.white)
-                .cornerRadius(16)
+                .background(Color.surfaceContainerLowest)
+                .cornerRadius(AppRadius.md)
             }
         }
     }
@@ -488,24 +494,24 @@ struct VitalRecordsList: View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
                 Text("Vital Records")
-                    .font(.system(size: 17, weight: .semibold, design: .rounded))
+                    .font(.ctaOnboarding)
                 Spacer()
                 Button(action: { showManageRecords = true }) {
                     Text("Manage →")
-                        .font(.system(size: 14))
+                        .font(.bodyS)
                         .foregroundColor(.primary)
                 }
             }
             
             VStack(alignment: .leading, spacing: 12) {
                 Text("No vital records added yet")
-                    .font(.system(size: 15))
+                    .font(.labelLarge)
                     .foregroundColor(.secondaryText)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(16)
-            .background(Color.white)
-            .cornerRadius(16)
+            .background(Color.surfaceContainerLowest)
+            .cornerRadius(AppRadius.md)
         }
         .sheet(isPresented: $showManageRecords) {
             ManageRecordsSheet()
@@ -533,7 +539,7 @@ struct ArchiveButton: View {
                 }
                 Text(isArchiving ? "Archiving..." : "Archive \(pet.name)'s profile")
             }
-                .font(.system(size: 15))
+                .font(.labelLarge)
                 .foregroundColor(.error)
                 .frame(maxWidth: .infinity)
                 .frame(height: 52)
@@ -588,11 +594,11 @@ struct PetSwitcherSheet: View {
         VStack(spacing: 24) {
             HStack {
                 Text("Switch Pet")
-                    .font(.system(size: 20, weight: .bold, design: .rounded))
+                    .font(.headlineSM)
                 Spacer()
                 Button(action: { isPresented = false }) {
                     Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 24))
+                        .font(.headlineMD)
                         .foregroundColor(.warmSand)
                 }
             }
@@ -629,7 +635,7 @@ struct PetSwitcherSheet: View {
                                 )
                                 
                                 Text(pet.name)
-                                    .font(.system(size: 14, weight: petStore.activePet?.id == pet.id ? .semibold : .medium))
+                                    .font(.bodyS)
                                     .foregroundColor(.primaryText)
                             }
                         }
