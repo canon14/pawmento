@@ -24,17 +24,23 @@ struct BottomNavBar: View {
             
             Spacer()
             
-            // Floating Action Button (FAB)
+            // Primary Action Button
             Button(action: onLogTap) {
-                Image(systemName: "plus")
-                    .font(.system(size: 24, weight: .bold))
-                    .foregroundColor(.onPrimary)
-                    .frame(width: 56, height: 56)
-                    .background(Color.primary)
-                    .clipShape(Circle())
-                    .shadow(color: Color.primary.opacity(0.4), radius: 8, x: 0, y: 4)
+                HStack(spacing: 4) {
+                    Image(systemName: "plus")
+                        .font(.system(size: 16, weight: .bold))
+                    Text("Log")
+                        .font(.labelMD)
+                        .fontWeight(.bold)
+                }
+                .foregroundColor(.onPrimary)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .background(Color.primary)
+                .clipShape(Capsule())
+                .shadow(color: Color.primary.opacity(0.3), radius: 6, x: 0, y: 2)
             }
-            .offset(y: -16) // Breaks out of the top of the pill
+            .buttonStyle(SquishyNavStyle())
             
             Spacer()
             
