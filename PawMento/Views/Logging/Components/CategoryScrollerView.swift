@@ -27,15 +27,19 @@ struct CategoryScrollerView: View {
                             Text("More")
                                 .font(.labelMD)
                         }
-                        .frame(width: 64, height: 76)
-                        .background(Color.surface0)
-                        .cornerRadius(AppRadius.md)
+                        .frame(width: 68, height: 80)
+                        .background(
+                            LinearGradient(colors: [Color.surface0, Color.surface0], startPoint: .top, endPoint: .bottom)
+                        )
+                        .cornerRadius(16)
                         .overlay(
                             RoundedRectangle(cornerRadius: 16)
-                                .stroke(Color.warmSand, lineWidth: 1)
+                                .stroke(Color.primary.opacity(0.05), lineWidth: 1)
                         )
+                        .shadow(color: Color.black.opacity(0.02), radius: 4, x: 0, y: 2)
                         .foregroundColor(.primaryText)
                     }
+                    .buttonStyle(SquishyCardStyle())
                 }
             }
         }

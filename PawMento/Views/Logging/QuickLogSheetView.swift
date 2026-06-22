@@ -57,12 +57,17 @@ struct QuickLogSheetView: View {
                     
                     Spacer()
                     
-                    Button(AppStrings.QuickLog.cancel) {
+                    Button(action: {
                         TelemetryEngine.shared.track(event: .quick_log_cancelled, properties: ["had_changes": !note.isEmpty || selectedCategory != nil])
                         dismiss()
+                    }) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundColor(.tertiaryText)
+                            .frame(width: 32, height: 32)
+                            .background(Color.surface0)
+                            .clipShape(Circle())
                     }
-                    .font(.bodyMD)
-                    .foregroundColor(.tertiaryText)
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 24)
@@ -123,8 +128,8 @@ struct QuickLogSheetView: View {
                                 TextField("e.g. 16mg, 1 tablet", text: $dose)
                                     .padding()
                                     .background(Color.surface0)
-                                    .cornerRadius(AppRadius.input)
-                                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.warmSand, lineWidth: 1))
+                                    .cornerRadius(16)
+                                    .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.primary.opacity(0.05), lineWidth: 1))
                             }
                             .padding(.horizontal, 20)
                         }
@@ -182,6 +187,7 @@ struct QuickLogSheetView: View {
                     .foregroundColor(.primary)
                     .padding(.bottom, 8)
                 }
+                .frame(maxWidth: .infinity)
                 .padding(.horizontal, 20)
                 .padding(.top, 16)
                 .padding(.bottom, 16)
