@@ -47,16 +47,22 @@ struct PhotoNoteRowView: View {
                         }
                     } else {
                         RoundedRectangle(cornerRadius: 16)
-                            .fill(Color.cream)
+                            .fill(Color.surfaceContainerLowest)
                             .frame(width: 72, height: 72)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 16)
-                                    .strokeBorder(Color.primary, style: StrokeStyle(lineWidth: 1, dash: [4]))
+                                    .stroke(Color.primary.opacity(0.1), lineWidth: 1)
                             )
+                            .shadow(color: Color.black.opacity(0.03), radius: 6, x: 0, y: 2)
                             .overlay(
-                                Image(systemName: "camera.fill")
-                                    .foregroundColor(.primary)
-                                    .font(.headlineLG)
+                                VStack(spacing: 4) {
+                                    Image(systemName: "camera.fill")
+                                        .foregroundColor(.primary)
+                                        .font(.headlineLG)
+                                    Text("Add")
+                                        .font(.system(size: 10, weight: .medium))
+                                        .foregroundColor(.secondaryText)
+                                }
                             )
                     }
                 }
@@ -67,8 +73,11 @@ struct PhotoNoteRowView: View {
             // Note Field
             ZStack(alignment: .topLeading) {
                 RoundedRectangle(cornerRadius: 16)
-                    .stroke(isNoteFocused ? Color.primary : Color.warmSand, lineWidth: isNoteFocused ? 2 : 1)
-                    .background(Color.clear)
+                    .fill(Color.surface0)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(isNoteFocused ? Color.primary : Color.primary.opacity(0.05), lineWidth: isNoteFocused ? 2 : 1)
+                    )
                 
                 if note.isEmpty {
                     Text(AppStrings.QuickLog.tapToDescribe)

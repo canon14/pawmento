@@ -67,10 +67,8 @@ struct QuickLogSheetView: View {
                 .padding(.horizontal, 20)
                 .padding(.top, 24)
                 
-                Divider()
-                    .background(Color.warmSand.opacity(0.3))
-                    .padding(.top, 16)
-                    .padding(.bottom, 16)
+                // Padding instead of harsh divider
+                Color.clear.frame(height: 24)
                 
                 if showDraftBanner, let draft = draftToRestore {
                     HStack(spacing: 12) {
@@ -135,7 +133,9 @@ struct QuickLogSheetView: View {
                 }
                 .scrollDismissesKeyboard(.interactively)
                 
-                // Sticky CTA Footer
+            }
+            .safeAreaInset(edge: .bottom) {
+                // Floating Glass Footer
                 VStack(spacing: 12) {
                     Button(action: saveLog) {
                         HStack {
@@ -155,10 +155,17 @@ struct QuickLogSheetView: View {
                         .frame(maxWidth: .infinity)
                         .frame(height: 56)
                         .background(
-                            selectedCategory == nil ? Color.primary.opacity(0.4) : Color.primary
+                            LinearGradient(
+                                colors: [Color.primary, Color.primary.opacity(0.8)],
+                                startPoint: .topLeading, endPoint: .bottomTrailing
+                            )
                         )
-                        .cornerRadius(AppRadius.input)
-                        .shadow(color: Color.primary.opacity((selectedCategory == nil || !hasContent) ? 0 : 0.2), radius: 8, x: 0, y: 4)
+                        .clipShape(RoundedRectangle(cornerRadius: AppRadius.input))
+                        .shadow(color: Color.primary.opacity((selectedCategory == nil || !hasContent) ? 0 : 0.3), radius: 8, x: 0, y: 4)
+                        .opacity(selectedCategory == nil || !hasContent ? 0.4 : 1.0)
+                        .scaleEffect((selectedCategory == nil || !hasContent) ? 1.0 : (isSaving ? 0.95 : 1.0))
+                        .animation(.spring(response: 0.3, dampingFraction: 0.6), value: selectedCategory == nil || !hasContent)
+                        .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isSaving)
                     }
                     .disabled(selectedCategory == nil || !hasContent || isSaving || showSuccess)
                     .offset(x: showErrorShake && !reduceMotion ? 10 : -10)
@@ -178,9 +185,17 @@ struct QuickLogSheetView: View {
                 .padding(.horizontal, 20)
                 .padding(.top, 16)
                 .padding(.bottom, 16)
-                .background(Color.warmCream)
+                .background(
+                    Color.surfaceContainerLowest.opacity(0.8)
+                        .background(.ultraThinMaterial)
+                )
+                .overlay(
+                    Rectangle()
+                        .frame(height: 1)
+                        .foregroundColor(Color.primary.opacity(0.05)),
+                    alignment: .top
+                )
             }
-            
         }
         .alert("Error", isPresented: $showErrorAlert) {
             Button("OK", role: .cancel) { }

@@ -15,8 +15,12 @@ struct SeveritySliderView: View {
                 Spacer()
                 
                 Text(labels[severity - 1])
-                    .font(.labelMD)
+                    .font(.labelSemibold)
                     .foregroundColor(colorForSeverity(severity))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(colorForSeverity(severity).opacity(0.15))
+                    .clipShape(Capsule())
             }
             
             Slider(value: Binding(

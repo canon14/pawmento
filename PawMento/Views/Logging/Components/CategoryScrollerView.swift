@@ -50,7 +50,7 @@ struct CategoryScrollerView: View {
         let isSelected = selectedCategory == category
         
         Button(action: {
-            withAnimation(.spring(response: 0.2, dampingFraction: 0.7)) {
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
                 selectedCategory = category
             }
             let generator = UISelectionFeedbackGenerator()
@@ -64,25 +64,31 @@ struct CategoryScrollerView: View {
                 Text(category.emoji)
                     .font(.headlineLG)
                     .padding(.top, 8)
+                    .scaleEffect(isSelected ? 1.1 : 1.0)
                 
                 Text(category.rawValue)
-                    .font(.labelMD)
+                    .font(isSelected ? .labelSemibold : .labelMD)
                     .minimumScaleFactor(0.8)
                     .lineLimit(1)
             }
-            .frame(width: 64, height: 76)
-            .background(isSelected ? Color.primary : Color.surface0)
-            .cornerRadius(AppRadius.md)
+            .frame(width: 68, height: 80) // Slightly taller and wider for premium feel
+            .background(
+                isSelected ? 
+                LinearGradient(colors: [Color.primary, Color.primary.opacity(0.8)], startPoint: .topLeading, endPoint: .bottomTrailing) 
+                : LinearGradient(colors: [Color.surface0, Color.surface0], startPoint: .top, endPoint: .bottom)
+            )
+            .cornerRadius(16)
             .overlay(
                 RoundedRectangle(cornerRadius: 16)
-                    .stroke(isSelected ? Color.primary : Color.warmSand, lineWidth: 1)
+                    .stroke(isSelected ? Color.clear : Color.primary.opacity(0.05), lineWidth: 1)
             )
+            .shadow(color: isSelected ? Color.primary.opacity(0.3) : Color.black.opacity(0.02), radius: isSelected ? 8 : 4, x: 0, y: isSelected ? 4 : 2)
             .foregroundColor(isSelected ? .white : .primaryText)
-            .scaleEffect(isSelected ? 1.0 : 0.98)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(category.rawValue)
             .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
         }
+        .buttonStyle(SquishyCardStyle())
     }
 }
 
