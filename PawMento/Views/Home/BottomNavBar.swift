@@ -60,16 +60,18 @@ struct BottomNavBar: View {
             )
         }
         .padding(.horizontal, 20)
-        .padding(.vertical, 12)
+        .padding(.top, 12)
+        .padding(.bottom, 24) // Extra padding for bottom safe area
         .background(
-            Color.surfaceContainerLowest.opacity(0.8)
+            Color.surfaceContainerLowest.opacity(0.6)
                 .background(.ultraThinMaterial)
         )
-        .clipShape(Capsule())
-        .overlay(Capsule().stroke(Color.primary.opacity(0.1), lineWidth: 1))
-        .shadow(color: Color.black.opacity(0.08), radius: 20, x: 0, y: 10)
-        .padding(.horizontal, 16)
-        .padding(.bottom, 24)
+        .cornerRadius(24, corners: [.topLeft, .topRight])
+        .overlay(
+            RoundedCorner(radius: 24, corners: [.topLeft, .topRight])
+                .stroke(Color.primary.opacity(0.1), lineWidth: 1)
+        )
+        .shadow(color: Color.black.opacity(0.05), radius: 20, x: 0, y: -5)
     }
 }
 
@@ -131,6 +133,22 @@ struct SquishyNavStyle: ButtonStyle {
         configuration.label
             .scaleEffect(configuration.isPressed ? 0.9 : 1.0)
             .animation(.spring(response: 0.3, dampingFraction: 0.6), value: configuration.isPressed)
+    }
+}
+
+struct RoundedCorner: Shape {
+    var radius: CGFloat = .infinity
+    var corners: UIRectCorner = .allCorners
+
+    func path(in rect: CGRect) -> Path {
+        let path = UIBezierPath(roundedRect: rect, byRoundingCorners: corners, cornerRadii: CGSize(width: radius, height: radius))
+        return Path(path.cgPath)
+    }
+}
+
+extension View {
+    func cornerRadius(_ radius: CGFloat, corners: UIRectCorner) -> some View {
+        clipShape( RoundedCorner(radius: radius, corners: corners) )
     }
 }
 
