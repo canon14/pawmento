@@ -11,10 +11,10 @@ struct FormTextField: View {
             .padding(.horizontal, 16)
             .frame(height: 52)
             .background(Color.surface0)
-            .cornerRadius(AppRadius.input)
+            .cornerRadius(16)
             .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(isError ? Color.error : Color.warmSand, lineWidth: isError ? 2 : 1)
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(isError ? Color.error : Color.primary.opacity(0.05), lineWidth: isError ? 2 : 1)
             )
             .foregroundColor(.primaryText)
     }

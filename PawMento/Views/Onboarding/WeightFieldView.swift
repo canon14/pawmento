@@ -41,10 +41,10 @@ struct WeightFieldView: View {
             .padding(.horizontal, 8)
         }
         .background(Color.surface0)
-        .cornerRadius(AppRadius.input)
+        .cornerRadius(16)
         .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(Color.warmSand, lineWidth: 1)
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(Color.primary.opacity(0.05), lineWidth: 1)
         )
         
         Text("Used to calculate medication dose reminders")

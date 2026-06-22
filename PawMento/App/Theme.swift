@@ -182,10 +182,15 @@ struct PrimaryButtonStyle: ButtonStyle {
             .foregroundColor(.onPrimary)
             .frame(maxWidth: .infinity)
             .frame(height: 56)
-            .background(isEnabled ? Color.primary : Color.primary.opacity(0.4))
-            .cornerRadius(AppRadius.input)
-            .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
-            .animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
+            .background(
+                isEnabled ? 
+                LinearGradient(colors: [Color.primary, Color.primary.opacity(0.8)], startPoint: .topLeading, endPoint: .bottomTrailing) 
+                : LinearGradient(colors: [Color.primary.opacity(0.4), Color.primary.opacity(0.4)], startPoint: .top, endPoint: .bottom)
+            )
+            .cornerRadius(16)
+            .shadow(color: isEnabled ? Color.primary.opacity(0.3) : Color.clear, radius: 8, x: 0, y: 4)
+            .scaleEffect(configuration.isPressed ? 0.95 : 1.0)
+            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: configuration.isPressed)
             .onChange(of: configuration.isPressed) { _, pressed in
                 if pressed && isEnabled {
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()

@@ -57,15 +57,19 @@ struct SpeciesPill: View {
             }
             .frame(maxWidth: .infinity)
             .frame(height: 52)
-            .background(isSelected ? Color.primary : Color.surface0)
-            .foregroundColor(isSelected ? .white : .primaryText)
-            .cornerRadius(AppRadius.input)
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(isSelected ? Color.clear : Color.warmSand, lineWidth: 1)
+            .background(
+                isSelected ? 
+                LinearGradient(colors: [Color.primary, Color.primary.opacity(0.8)], startPoint: .topLeading, endPoint: .bottomTrailing) 
+                : LinearGradient(colors: [Color.surface0, Color.surface0], startPoint: .top, endPoint: .bottom)
             )
-            .scaleEffect(isSelected ? 0.97 : 1.0)
-            .animation(.easeOut(duration: 0.08), value: isSelected)
+            .foregroundColor(isSelected ? .white : .primaryText)
+            .cornerRadius(16)
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(isSelected ? Color.clear : Color.primary.opacity(0.05), lineWidth: 1)
+            )
+            .shadow(color: isSelected ? Color.primary.opacity(0.3) : Color.black.opacity(0.02), radius: isSelected ? 8 : 4, x: 0, y: isSelected ? 4 : 2)
         }
+        .buttonStyle(SquishyCardStyle())
     }
 }

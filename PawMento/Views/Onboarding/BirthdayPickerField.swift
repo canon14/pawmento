@@ -48,10 +48,10 @@ struct BirthdayPickerField: View {
                 .padding(.horizontal, 16)
                 .frame(height: 52)
                 .background(Color.surface0)
-                .cornerRadius(AppRadius.input)
+                .cornerRadius(16)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(isExpanded ? Color.primary : Color.warmSand, lineWidth: isExpanded ? 2 : 1)
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(isExpanded ? Color.primary : Color.primary.opacity(0.05), lineWidth: isExpanded ? 2 : 1)
                 )
             }
             
@@ -98,7 +98,7 @@ struct BirthdayPickerField: View {
                     .frame(height: 150)
                 }
                 .background(Color.surfaceContainerLow)
-                .cornerRadius(AppRadius.input)
+                .cornerRadius(16)
                 .transition(.opacity.combined(with: .move(edge: .top)))
             }
             

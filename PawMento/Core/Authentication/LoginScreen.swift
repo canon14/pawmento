@@ -57,7 +57,7 @@ struct LoginScreen: View {
             }
             
         }
-        .background(Color.warmCream.ignoresSafeArea())
+        .background(Color.background.ignoresSafeArea())
     }
     
     // MARK: - Auth Form

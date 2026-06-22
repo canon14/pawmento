@@ -9,7 +9,7 @@ struct OnboardingCarouselView: View {
     
     var body: some View {
         ZStack {
-            Color.warmCream.ignoresSafeArea()
+            Color.background.ignoresSafeArea()
             
             VStack(spacing: 0) {
                 // Header with Skip Button
@@ -84,13 +84,8 @@ struct OnboardingCarouselView: View {
                         }
                     }) {
                         Text(currentIndex == 3 ? "Get started" : "Continue")
-                            .font(.ctaOnboarding)
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 56)
-                            .background(Color.primary)
-                            .cornerRadius(AppRadius.input)
                     }
+                    .buttonStyle(PrimaryButtonStyle())
                     .padding(.horizontal, 20)
                     .padding(.bottom, 32)
                 }
