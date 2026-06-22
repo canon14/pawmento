@@ -19,136 +19,148 @@ struct SettingsView: View {
     
     var body: some View {
         NavigationStack {
-            List {
-                // Profile Section
-                Section {
-                    HStack(spacing: 16) {
-                        Circle()
-                            .fill(Color.primaryContainer)
-                            .frame(width: 60, height: 60)
-                            .overlay(
-                                Text(userEmail.prefix(1).uppercased())
-                                    .font(.headlineLG)
-                                    .foregroundColor(.onPrimaryContainer)
-                            )
+            ZStack {
+                Color.background.ignoresSafeArea()
+                
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 32) {
                         
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("PawMento User")
+                        // Profile Header
+                        VStack(spacing: 16) {
+                            ZStack {
+                                Circle()
+                                    .fill(
+                                        LinearGradient(colors: [Color.primary, Color(hex: "#7A6C5D")], startPoint: .topLeading, endPoint: .bottomTrailing)
+                                    )
+                                    .frame(width: 80, height: 80)
+                                    .shadow(color: Color.primary.opacity(0.3), radius: 12, x: 0, y: 6)
+                                
+                                Text(userEmail.prefix(1).uppercased())
+                                    .font(.system(size: 32, weight: .bold))
+                                    .foregroundColor(.white)
+                            }
+                            
+                            VStack(spacing: 4) {
+                                Text("PawMento User")
+                                    .font(.title3.weight(.bold))
+                                    .foregroundColor(.primaryText)
+                                Text(userEmail)
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondaryText)
+                            }
+                        }
+                        .padding(.top, 24)
+                        
+                        // Account & Household Section
+                        SettingsSection(title: "ACCOUNT") {
+                            SettingsRow(icon: "star.fill", iconColor: .primary, title: "Manage Subscription") {
+                                HStack {
+                                    Text("Free")
+                                        .font(.caption.weight(.bold))
+                                        .foregroundColor(.white)
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 4)
+                                        .background(
+                                            LinearGradient(colors: [Color.primary, Color.primary.opacity(0.8)], startPoint: .topLeading, endPoint: .bottomTrailing)
+                                        )
+                                        .clipShape(Capsule())
+                                        .shadow(color: Color.primary.opacity(0.3), radius: 4, x: 0, y: 2)
+                                    Image(systemName: "chevron.right")
+                                        .font(.caption.weight(.bold))
+                                        .foregroundColor(.tertiaryText)
+                                        .padding(.leading, 4)
+                                }
+                            } action: {
+                                showPaywall = true
+                            }
+                            
+                            SettingsDivider()
+                            
+                            SettingsRow(icon: "person.2.fill", iconColor: .blue, title: "Household & Family") {
+                                Image(systemName: "chevron.right")
+                                    .font(.caption.weight(.bold))
+                                    .foregroundColor(.tertiaryText)
+                            } action: {
+                                toastManager.show("Household Sharing coming soon", actionLabel: nil, action: nil)
+                            }
+                        }
+                        
+                        // Preferences Section
+                        SettingsSection(title: "PREFERENCES") {
+                            SettingsToggleRow(icon: "bell.badge.fill", iconColor: .orange, title: "Push Notifications", isOn: $pushNotificationsEnabled)
+                        }
+                        
+                        // Support Section
+                        SettingsSection(title: "SUPPORT") {
+                            SettingsRow(icon: "questionmark.circle.fill", iconColor: .green, title: "Help Center") {
+                                Image(systemName: "chevron.right")
+                                    .font(.caption.weight(.bold))
+                                    .foregroundColor(.tertiaryText)
+                            } action: {
+                                toastManager.show("Help Center coming soon", actionLabel: nil, action: nil)
+                            }
+                            
+                            SettingsDivider()
+                            
+                            SettingsRow(icon: "hand.raised.fill", iconColor: .purple, title: "Privacy Policy") {
+                                Image(systemName: "chevron.right")
+                                    .font(.caption.weight(.bold))
+                                    .foregroundColor(.tertiaryText)
+                            } action: {
+                                toastManager.show("Privacy Policy coming soon", actionLabel: nil, action: nil)
+                            }
+                            
+                            SettingsDivider()
+                            
+                            SettingsRow(icon: "doc.text.fill", iconColor: .gray, title: "Terms of Service") {
+                                Image(systemName: "chevron.right")
+                                    .font(.caption.weight(.bold))
+                                    .foregroundColor(.tertiaryText)
+                            } action: {
+                                toastManager.show("Terms of Service coming soon", actionLabel: nil, action: nil)
+                            }
+                        }
+                        
+                        // Danger Zone
+                        VStack(spacing: 16) {
+                            Button(action: {
+                                Task {
+                                    await authManager.signOut()
+                                    dismiss()
+                                }
+                            }) {
+                                HStack {
+                                    Image(systemName: "rectangle.portrait.and.arrow.right")
+                                    Text("Sign Out")
+                                }
                                 .font(.headlineSM)
                                 .foregroundColor(.primaryText)
-                            Text(userEmail)
-                                .font(.labelRegular)
-                                .foregroundColor(.secondaryText)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 16)
+                                .background(Color.surfaceContainerLowest)
+                                .cornerRadius(20)
+                                .shadow(color: Color.black.opacity(0.02), radius: 8, x: 0, y: 4)
+                            }
+                            .buttonStyle(SquishyCardStyle())
+                            
+                            Button(action: {
+                                showDeleteConfirmation = true
+                            }) {
+                                HStack {
+                                    Image(systemName: "trash.fill")
+                                    Text("Delete Account")
+                                }
+                                .font(.headlineSM)
+                                .foregroundColor(.error)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 16)
+                                .background(Color.error.opacity(0.1))
+                                .cornerRadius(20)
+                            }
+                            .buttonStyle(SquishyCardStyle())
                         }
-                        
-                        Spacer()
-                    }
-                    .padding(.vertical, 4)
-                }
-                
-                // Account & Household Section
-                Section(header: Text("ACCOUNT").font(.labelSM).foregroundColor(.tertiaryText)) {
-                    Button(action: {
-                        showPaywall = true
-                    }) {
-                        HStack {
-                            Label("Manage Subscription", systemImage: "star.fill")
-                                .foregroundColor(.primaryText)
-                            Spacer()
-                            Text("Free")
-                                .font(.bodyXS)
-                                .foregroundColor(.secondaryText)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(Color.ink100)
-                                .clipShape(Capsule())
-                        }
-                    }
-                    
-                    Button(action: {
-                        toastManager.show("Household Sharing coming soon", actionLabel: nil, action: nil)
-                    }) {
-                        HStack {
-                            Label("Household & Family", systemImage: "person.2.fill")
-                                .foregroundColor(.primaryText)
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .font(.bodySM)
-                                .foregroundColor(.secondaryText)
-                        }
-                    }
-                }
-                
-                // Preferences Section
-                Section(header: Text("PREFERENCES").font(.labelSM).foregroundColor(.tertiaryText)) {
-                    Toggle(isOn: $pushNotificationsEnabled) {
-                        Label("Push Notifications", systemImage: "bell.badge.fill")
-                            .foregroundColor(.primaryText)
-                    }
-                    .tint(.primary)
-                }
-                
-                // Support Section
-                Section(header: Text("SUPPORT").font(.labelSM).foregroundColor(.tertiaryText)) {
-                    Button(action: {
-                        toastManager.show("Help Center coming soon", actionLabel: nil, action: nil)
-                    }) {
-                        Label("Help Center", systemImage: "questionmark.circle.fill")
-                            .foregroundColor(.primaryText)
-                    }
-                    
-                    Button(action: {
-                        toastManager.show("Privacy Policy coming soon", actionLabel: nil, action: nil)
-                    }) {
-                        Label("Privacy Policy", systemImage: "hand.raised.fill")
-                            .foregroundColor(.primaryText)
-                    }
-                    
-                    Button(action: {
-                        toastManager.show("Terms of Service coming soon", actionLabel: nil, action: nil)
-                    }) {
-                        Label("Terms of Service", systemImage: "doc.text.fill")
-                            .foregroundColor(.primaryText)
-                    }
-                }
-                
-                // Danger Zone
-                Section {
-                    Button(action: {
-                        Task {
-                            await authManager.signOut()
-                            dismiss()
-                        }
-                    }) {
-                        Text("Sign Out")
-                            .font(.bodyMD)
-                            .foregroundColor(.primaryText)
-                            .frame(maxWidth: .infinity, alignment: .center)
-                    }
-                    
-                    Button(action: {
-                        showDeleteConfirmation = true
-                    }) {
-                        Text("Delete Account")
-                            .font(.bodyMD)
-                            .foregroundColor(.error)
-                            .frame(maxWidth: .infinity, alignment: .center)
-                    }
-                }
-            }
-            .listStyle(.insetGrouped)
-            .scrollContentBackground(.hidden)
-            .background(Color.background.edgesIgnoringSafeArea(.all))
-            .disabled(isDeleting)
-            .overlay {
-                if isDeleting {
-                    ZStack {
-                        Color.black.opacity(0.3).ignoresSafeArea()
-                        ProgressView("Deleting Account...")
-                            .padding()
-                            .background(Color.surfaceBright)
-                            .cornerRadius(AppRadius.input)
-                            .shadow(radius: 10)
+                        .padding(.horizontal, 20)
+                        .padding(.bottom, 40)
                     }
                 }
             }
@@ -156,11 +168,25 @@ struct SettingsView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") {
-                        dismiss()
+                    Button(action: { dismiss() }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.headlineLG)
+                            .foregroundColor(.tertiaryText)
+                            .symbolRenderingMode(.hierarchical)
                     }
-                    .foregroundColor(.primary)
-                    .font(.headlineMD)
+                }
+            }
+            .disabled(isDeleting)
+            .overlay {
+                if isDeleting {
+                    ZStack {
+                        Color.black.opacity(0.3).ignoresSafeArea()
+                        ProgressView("Deleting Account...")
+                            .padding(24)
+                            .background(Color.surfaceContainerLowest)
+                            .cornerRadius(24)
+                            .shadow(radius: 10)
+                    }
                 }
             }
             .onAppear {
@@ -199,6 +225,110 @@ struct SettingsView: View {
                 PaywallSheet()
             }
         }
+    }
+}
+
+// MARK: - Components
+
+struct SettingsSection<Content: View>: View {
+    let title: String
+    @ViewBuilder let content: () -> Content
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.caption.weight(.bold))
+                .foregroundColor(.tertiaryText)
+                .padding(.horizontal, 24)
+            
+            VStack(spacing: 0) {
+                content()
+            }
+            .background(Color.surfaceContainerLowest)
+            .cornerRadius(24)
+            .shadow(color: Color.black.opacity(0.02), radius: 8, x: 0, y: 4)
+            .padding(.horizontal, 20)
+        }
+    }
+}
+
+struct SettingsRow<Trailing: View>: View {
+    let icon: String
+    let iconColor: Color
+    let title: String
+    @ViewBuilder let trailing: () -> Trailing
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 16) {
+                ZStack {
+                    Circle()
+                        .fill(iconColor.opacity(0.15))
+                        .frame(width: 36, height: 36)
+                    Image(systemName: icon)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(iconColor)
+                }
+                
+                Text(title)
+                    .font(.bodyMD)
+                    .foregroundColor(.primaryText)
+                
+                Spacer()
+                
+                trailing()
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
+            .background(Color.surfaceContainerLowest)
+        }
+        .buttonStyle(SettingsRowStyle())
+    }
+}
+
+struct SettingsToggleRow: View {
+    let icon: String
+    let iconColor: Color
+    let title: String
+    @Binding var isOn: Bool
+    
+    var body: some View {
+        HStack(spacing: 16) {
+            ZStack {
+                Circle()
+                    .fill(iconColor.opacity(0.15))
+                    .frame(width: 36, height: 36)
+                Image(systemName: icon)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(iconColor)
+            }
+            
+            Toggle(title, isOn: $isOn)
+                .font(.bodyMD)
+                .foregroundColor(.primaryText)
+                .tint(.primary)
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 12)
+        .background(Color.surfaceContainerLowest)
+    }
+}
+
+struct SettingsDivider: View {
+    var body: some View {
+        Divider()
+            .background(Color.primary.opacity(0.05))
+            .padding(.leading, 72)
+            .padding(.trailing, 20)
+    }
+}
+
+struct SettingsRowStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .background(configuration.isPressed ? Color.primary.opacity(0.05) : Color.surfaceContainerLowest)
+            .animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
     }
 }
 
