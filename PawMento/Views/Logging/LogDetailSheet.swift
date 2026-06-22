@@ -75,7 +75,7 @@ struct LogDetailSheet: View {
                             Spacer()
                             DatePicker("", selection: $recordedAt, displayedComponents: [.date, .hourAndMinute])
                                 .labelsHidden()
-                                .tint(.warmTan)
+                                .tint(.primary)
                         }
                         .padding(.horizontal, 20)
                         
@@ -123,7 +123,7 @@ struct LogDetailSheet: View {
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .frame(height: 56)
-                        .background(selectedCategory == nil ? Color.warmTan.opacity(0.4) : Color.warmTan)
+                        .background(selectedCategory == nil ? Color.primary.opacity(0.4) : Color.primary)
                         .cornerRadius(14)
                     }
                     .disabled(selectedCategory == nil || isSaving || showSuccess)

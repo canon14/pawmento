@@ -7,12 +7,12 @@ struct InsightEmptyStateView: View {
     var body: some View {
         VStack(spacing: 16) {
             Circle()
-                .fill(Color.sage.opacity(0.1))
+                .fill(Color.primary.opacity(0.1))
                 .frame(width: 80, height: 80)
                 .overlay(
                     Image(systemName: iconName)
                         .font(.system(size: 32))
-                        .foregroundColor(.sage)
+                        .foregroundColor(.primary)
                 )
                 .padding(.bottom, 8)
             
@@ -29,10 +29,10 @@ struct InsightEmptyStateView: View {
             Button(action: onAction) {
                 Text(buttonTitle)
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(Color.sage)
+                    .foregroundColor(Color.primary)
                     .padding(.horizontal, 24)
                     .padding(.vertical, 12)
-                    .background(Color.sage.opacity(0.1))
+                    .background(Color.primary.opacity(0.1))
                     .cornerRadius(20)
             }
             .padding(.top, 8)

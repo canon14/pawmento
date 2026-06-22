@@ -82,7 +82,7 @@ struct QuickLogSheetView: View {
                             UserDefaults.standard.removeObject(forKey: draftKey)
                         }
                         .font(.labelSemibold)
-                        .foregroundColor(.warmTan)
+                        .foregroundColor(.primary)
                         
                         Button(AppStrings.QuickLog.discard) {
                             showDraftBanner = false
@@ -135,10 +135,10 @@ struct QuickLogSheetView: View {
                         .frame(maxWidth: .infinity)
                         .frame(height: 56)
                         .background(
-                            selectedCategory == nil ? Color.warmTan.opacity(0.4) : Color.warmTan
+                            selectedCategory == nil ? Color.primary.opacity(0.4) : Color.primary
                         )
                         .cornerRadius(14)
-                        .shadow(color: Color.warmTan.opacity((selectedCategory == nil || note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) ? 0 : 0.2), radius: 8, x: 0, y: 4)
+                        .shadow(color: Color.primary.opacity((selectedCategory == nil || note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) ? 0 : 0.2), radius: 8, x: 0, y: 4)
                     }
                     .disabled(selectedCategory == nil || note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSaving || showSuccess)
                     .offset(x: showErrorShake && !reduceMotion ? 10 : -10)
@@ -152,7 +152,7 @@ struct QuickLogSheetView: View {
                         showDetailedLog = true
                     }
                     .font(.labelMD)
-                    .foregroundColor(.warmTan)
+                    .foregroundColor(.primary)
                     .padding(.bottom, 8)
                 }
                 .padding(.horizontal, 20)

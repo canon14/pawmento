@@ -29,7 +29,7 @@ private struct SparklineChart: View {
                     y: .value("Value", value)
                 )
                 .interpolationMethod(.catmullRom)
-                .foregroundStyle(Color.sage.opacity(0.8))
+                .foregroundStyle(Color.primary.opacity(0.8))
                 .lineStyle(StrokeStyle(lineWidth: 3))
                 
                 AreaMark(
@@ -39,7 +39,7 @@ private struct SparklineChart: View {
                 .interpolationMethod(.catmullRom)
                 .foregroundStyle(
                     LinearGradient(
-                        colors: [Color.sage.opacity(0.3), Color.sage.opacity(0.0)],
+                        colors: [Color.primary.opacity(0.3), Color.primary.opacity(0.0)],
                         startPoint: .top,
                         endPoint: .bottom
                     )
@@ -84,7 +84,7 @@ private struct StreakChart: View {
         HStack(spacing: 4) {
             ForEach(Array(dataPoints.enumerated()), id: \.offset) { index, value in
                 RoundedRectangle(cornerRadius: 4)
-                    .fill(value > 0 ? Color.sage : Color.ink200)
+                    .fill(value > 0 ? Color.primary : Color.ink200)
                     .frame(maxWidth: .infinity)
             }
         }

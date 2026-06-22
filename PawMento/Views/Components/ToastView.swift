@@ -22,7 +22,7 @@ struct ToastView: View {
                         }) {
                             Text(actionLabel)
                                 .font(.labelSemibold)
-                                .foregroundColor(.warmTan)
+                                .foregroundColor(.primary)
                         }
                     }
                 }

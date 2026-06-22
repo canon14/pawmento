@@ -23,7 +23,7 @@ struct PetProfileTopBar: View {
                         .foregroundColor(.primaryText)
                     Image(systemName: "chevron.down")
                         .font(.system(size: 12))
-                        .foregroundColor(.warmTan)
+                        .foregroundColor(.primary)
                 }
             }
             .sheet(isPresented: $showSwitcher) {
@@ -52,7 +52,7 @@ struct PetProfileTopBar: View {
                     showEditSheet = true
                 }
                 .font(.system(size: 17))
-                .foregroundColor(.warmTan)
+                .foregroundColor(.primary)
             }
         }
         .padding(.horizontal, 16)
@@ -98,7 +98,7 @@ struct HeroCardView: View {
                 .overlay(
                     Circle().stroke(Color.warmSand, lineWidth: 4)
                 )
-                .shadow(color: viewModel.wellnessScore >= 80 ? Color.sage.opacity(0.4) : Color.clear, radius: 10, x: 0, y: 0)
+                .shadow(color: viewModel.wellnessScore >= 80 ? Color.primary.opacity(0.4) : Color.clear, radius: 10, x: 0, y: 0)
                 
                 // Identity Stack
                 VStack(alignment: .leading, spacing: 2) {
@@ -179,14 +179,14 @@ struct HeroCardView: View {
     }
     
     private var ringColor: Color {
-        if viewModel.wellnessScore >= 80 { return .sage }
-        if viewModel.wellnessScore >= 60 { return .warmTan }
-        return .warmCoral
+        if viewModel.wellnessScore >= 80 { return .primary }
+        if viewModel.wellnessScore >= 60 { return .primary }
+        return .error
     }
     
     private var trendColor: Color {
-        if viewModel.scoreTrend.contains("↗") { return .sage }
-        if viewModel.scoreTrend.contains("↘") { return .warmCoral }
+        if viewModel.scoreTrend.contains("↗") { return .primary }
+        if viewModel.scoreTrend.contains("↘") { return .error }
         return .secondaryText
     }
     
@@ -207,7 +207,7 @@ struct AICoachCardView: View {
         VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: 8) {
                 Image(systemName: "pawprint.fill")
-                    .foregroundColor(.warmTan)
+                    .foregroundColor(.primary)
                     .font(.system(size: 20))
                 Text("AI Coach · \(pet.name)")
                     .font(.system(size: 13, weight: .semibold))
@@ -232,16 +232,16 @@ struct AICoachCardView: View {
                     Spacer()
                     Text("See Full Pattern Analysis")
                         .font(.system(size: 15, weight: .semibold))
-                        .foregroundColor(.warmTan)
+                        .foregroundColor(.primary)
                     Spacer()
                     Text("Premium 🔒")
                         .font(.system(size: 11))
-                        .foregroundColor(.warmTan)
+                        .foregroundColor(.primary)
                 }
                 .frame(height: 48)
                 .background(Color.white)
                 .cornerRadius(12)
-                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.warmTan, lineWidth: 1))
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.primary, lineWidth: 1))
             }
             .alert("PawMento Premium", isPresented: $showPaywall) {
                 Button("Maybe Later", role: .cancel) {}
@@ -253,7 +253,7 @@ struct AICoachCardView: View {
             Button(action: { showCoach = true }) {
                 Text("Ask the Coach about \(pet.name) →")
                     .font(.system(size: 14))
-                    .foregroundColor(.warmTan)
+                    .foregroundColor(.primary)
             }
             .fullScreenCover(isPresented: $showCoach) {
                 CoachChatView()
@@ -305,7 +305,7 @@ struct RecentActivityPreview: View {
                 Button(action: { showTimeline = true }) {
                     Text("See all \(logs.count) →")
                         .font(.system(size: 14))
-                        .foregroundColor(.warmTan)
+                        .foregroundColor(.primary)
                 }
             }
             
@@ -392,10 +392,10 @@ struct VetPDFCTACard: View {
                 
                 Text("Pro")
                     .font(.system(size: 11, weight: .bold))
-                    .foregroundColor(.warmTan)
+                    .foregroundColor(.primary)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
-                    .overlay(Capsule().stroke(Color.warmTan, lineWidth: 1))
+                    .overlay(Capsule().stroke(Color.primary, lineWidth: 1))
             }
             .padding(18)
             .background(Color.cream)
@@ -430,7 +430,7 @@ struct MedicationsCard: View {
                             if med.streakCount > 0 {
                                 Text("Logged today · \(med.streakCount) day streak ✓")
                                     .font(.system(size: 12))
-                                    .foregroundColor(.sage)
+                                    .foregroundColor(.primary)
                             } else if let nextDue = med.nextDueDate {
                                 Text("Next: \(nextDue, formatter: shortDateFormatter)")
                                     .font(.system(size: 12))
@@ -476,7 +476,7 @@ struct VitalRecordsList: View {
                 Button(action: { showManageRecords = true }) {
                     Text("Manage →")
                         .font(.system(size: 14))
-                        .foregroundColor(.warmTan)
+                        .foregroundColor(.primary)
                 }
             }
             
@@ -512,15 +512,15 @@ struct ArchiveButton: View {
         }) {
             HStack {
                 if isArchiving {
-                    ProgressView().tint(.warmCoral).padding(.trailing, 8)
+                    ProgressView().tint(.error).padding(.trailing, 8)
                 }
                 Text(isArchiving ? "Archiving..." : "Archive \(pet.name)'s profile")
             }
                 .font(.system(size: 15))
-                .foregroundColor(.warmCoral)
+                .foregroundColor(.error)
                 .frame(maxWidth: .infinity)
                 .frame(height: 52)
-                .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.warmCoral, lineWidth: 1))
+                .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color.error, lineWidth: 1))
         }
         .disabled(isArchiving)
         .alert("Archive \(pet.name)?", isPresented: $showingFirstAlert) {
@@ -608,7 +608,7 @@ struct PetSwitcherSheet: View {
                                 .frame(width: 80, height: 80)
                                 .clipShape(Circle())
                                 .overlay(
-                                    Circle().stroke(petStore.activePet?.id == pet.id ? Color.sage : Color.clear, lineWidth: 3)
+                                    Circle().stroke(petStore.activePet?.id == pet.id ? Color.primary : Color.clear, lineWidth: 3)
                                 )
                                 
                                 Text(pet.name)

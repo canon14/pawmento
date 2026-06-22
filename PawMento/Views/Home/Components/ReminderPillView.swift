@@ -10,7 +10,7 @@ struct ReminderPillView: View {
         HStack(spacing: 12) {
             ZStack {
                 Circle()
-                    .fill(Color.sage.opacity(0.15))
+                    .fill(Color.primary.opacity(0.15))
                     .frame(width: 40, height: 40)
                 
                 Text(emoji(for: reminder.categoryId))
@@ -35,7 +35,7 @@ struct ReminderPillView: View {
                     .foregroundColor(.white)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 8)
-                    .background(Color.sage)
+                    .background(Color.primary)
                     .cornerRadius(16)
             }
         }

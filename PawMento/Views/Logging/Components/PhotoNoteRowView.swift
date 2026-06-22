@@ -28,7 +28,7 @@ struct PhotoNoteRowView: View {
                             .clipShape(RoundedRectangle(cornerRadius: 16))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 16)
-                                    .stroke(Color.warmTan, lineWidth: 1)
+                                    .stroke(Color.primary, lineWidth: 1)
                             )
                         
                         // Remove badge
@@ -37,7 +37,7 @@ struct PhotoNoteRowView: View {
                                 Spacer()
                                 Button(action: { photo = nil }) {
                                     Image(systemName: "xmark.circle.fill")
-                                        .foregroundColor(.warmCoral)
+                                        .foregroundColor(.error)
                                         .background(Color.white.clipShape(Circle()))
                                         .font(.system(size: 20))
                                 }
@@ -51,11 +51,11 @@ struct PhotoNoteRowView: View {
                             .frame(width: 72, height: 72)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 16)
-                                    .strokeBorder(Color.warmTan, style: StrokeStyle(lineWidth: 1, dash: [4]))
+                                    .strokeBorder(Color.primary, style: StrokeStyle(lineWidth: 1, dash: [4]))
                             )
                             .overlay(
                                 Image(systemName: "camera.fill")
-                                    .foregroundColor(.warmTan)
+                                    .foregroundColor(.primary)
                                     .font(.system(size: 24))
                             )
                     }
@@ -67,7 +67,7 @@ struct PhotoNoteRowView: View {
             // Note Field
             ZStack(alignment: .topLeading) {
                 RoundedRectangle(cornerRadius: 16)
-                    .stroke(isNoteFocused ? Color.warmTan : Color.warmSand, lineWidth: isNoteFocused ? 2 : 1)
+                    .stroke(isNoteFocused ? Color.primary : Color.warmSand, lineWidth: isNoteFocused ? 2 : 1)
                     .background(Color.clear)
                 
                 if note.isEmpty {

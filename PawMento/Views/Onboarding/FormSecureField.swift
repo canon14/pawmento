@@ -32,7 +32,7 @@ struct FormSecureField: View {
         .cornerRadius(12)
         .overlay(
             RoundedRectangle(cornerRadius: 12)
-                .stroke(isError ? Color.warmCoral : Color.warmSand, lineWidth: isError ? 2 : 1)
+                .stroke(isError ? Color.error : Color.warmSand, lineWidth: isError ? 2 : 1)
         )
     }
 }

@@ -133,7 +133,7 @@ struct HomeScreen: View {
                 Button(action: { showCreateReminder = true }) {
                     Image(systemName: "plus.circle.fill")
                         .font(.system(size: 20))
-                        .foregroundColor(.sage)
+                        .foregroundColor(.primary)
                 }
             }
             
@@ -141,18 +141,18 @@ struct HomeScreen: View {
                 Button(action: { showCreateReminder = true }) {
                     HStack {
                         Image(systemName: "bell.badge")
-                            .foregroundColor(.sage)
+                            .foregroundColor(.primary)
                         Text("Add a reminder for \(petStore.activePet?.name ?? PetStore.fallbackPetName)")
                             .font(.system(size: 14, weight: .medium))
                             .foregroundColor(.ink900)
                         Spacer()
                     }
                     .padding(16)
-                    .background(Color.sage.opacity(0.1))
+                    .background(Color.primary.opacity(0.1))
                     .cornerRadius(16)
                     .overlay(
                         RoundedRectangle(cornerRadius: 16)
-                            .stroke(Color.sage.opacity(0.3), style: StrokeStyle(lineWidth: 1, dash: [4]))
+                            .stroke(Color.primary.opacity(0.3), style: StrokeStyle(lineWidth: 1, dash: [4]))
                     )
                 }
             } else {

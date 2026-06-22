@@ -15,11 +15,11 @@ struct PatternCard: View {
         case .moderate:
             return ("MODERATE", Color.orange.opacity(0.2), Color.orange)
         case .positive:
-            return ("POSITIVE", Color.sage.opacity(0.2), Color.sage)
+            return ("POSITIVE", Color.primary.opacity(0.2), Color.primary)
         case .emerging:
             return ("EMERGING", Color.ink900.opacity(0.1), Color.ink900.opacity(0.8))
         case .strong:
-            return ("STRONG", Color.sage, .white)
+            return ("STRONG", Color.primary, .white)
         }
     }
     

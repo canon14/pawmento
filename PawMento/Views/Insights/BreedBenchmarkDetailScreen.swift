@@ -34,7 +34,7 @@ struct BreedBenchmarkDetailScreen: View {
                         benchmarkGauge(
                             title: "Rest & Sleep",
                             percentile: benchmark.sleepPercentile,
-                            color: .sage
+                            color: .primary
                         )
                         
                         benchmarkGauge(
@@ -72,7 +72,7 @@ struct BreedBenchmarkDetailScreen: View {
                     Button("Done") {
                         dismiss()
                     }
-                    .foregroundColor(.warmTan)
+                    .foregroundColor(.primary)
                     .font(.headlineMD)
                 }
             }

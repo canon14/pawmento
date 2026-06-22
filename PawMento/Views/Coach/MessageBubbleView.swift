@@ -43,7 +43,7 @@ struct MessageBubbleView: View {
                 .padding(.horizontal, 16)
                 .background(
                     LinearGradient(
-                        gradient: Gradient(colors: [Color.warmTan, Color.warmTan.opacity(0.9)]),
+                        gradient: Gradient(colors: [Color.primary, Color.primary.opacity(0.9)]),
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
@@ -84,7 +84,7 @@ struct MessageBubbleView: View {
             .clipShape(BubbleShape(isUser: false))
             .overlay(
                 BubbleShape(isUser: false)
-                    .stroke(message.isEmergency ? Color.warmCoral : Color.outline.opacity(0.08), lineWidth: message.isEmergency ? 3 : 1)
+                    .stroke(message.isEmergency ? Color.error : Color.outline.opacity(0.08), lineWidth: message.isEmergency ? 3 : 1)
             )
         }
         .frame(maxWidth: 300, alignment: .leading)

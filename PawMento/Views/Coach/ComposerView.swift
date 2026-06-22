@@ -27,7 +27,7 @@ struct ComposerView: View {
                     .cornerRadius(20)
                     .overlay(
                         RoundedRectangle(cornerRadius: 20)
-                            .stroke(Color.sage.opacity(text.isEmpty ? 0 : 1), lineWidth: 1)
+                            .stroke(Color.primary.opacity(text.isEmpty ? 0 : 1), lineWidth: 1)
                     )
                 
                 // Send Button
@@ -36,7 +36,7 @@ struct ComposerView: View {
                         .font(.system(size: 16, weight: .bold))
                         .foregroundColor(.white)
                         .frame(width: 40, height: 40)
-                        .background(Color.sage)
+                        .background(Color.primary)
                         .clipShape(Circle())
                         .opacity(text.isEmpty ? 0.3 : 1.0)
                 }
@@ -80,6 +80,6 @@ struct ComposerView: View {
     private func counterColor() -> Color {
         if freeQuestionsRemaining > 2 { return .tertiaryText }
         if freeQuestionsRemaining == 2 { return .warning }
-        return .warmCoral
+        return .error
     }
 }

@@ -35,7 +35,7 @@ struct ManageRecordsSheet: View {
                                 Text("Add Record")
                             }
                             .font(.system(size: 16, weight: .semibold))
-                            .foregroundColor(.warmTan)
+                            .foregroundColor(.primary)
                             .frame(maxWidth: .infinity)
                             .padding()
                             .background(Color.cream)
@@ -53,7 +53,7 @@ struct ManageRecordsSheet: View {
                     Button("Done") {
                         dismiss()
                     }
-                    .foregroundColor(.warmTan)
+                    .foregroundColor(.primary)
                     .font(.headlineMD)
                 }
             }

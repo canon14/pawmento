@@ -85,7 +85,7 @@ struct SettingsView: View {
                         Label("Push Notifications", systemImage: "bell.badge.fill")
                             .foregroundColor(.primaryText)
                     }
-                    .tint(.sage)
+                    .tint(.primary)
                 }
                 
                 // Support Section
@@ -146,7 +146,7 @@ struct SettingsView: View {
                     Button("Done") {
                         dismiss()
                     }
-                    .foregroundColor(.warmTan)
+                    .foregroundColor(.primary)
                     .font(.headlineMD)
                 }
             }

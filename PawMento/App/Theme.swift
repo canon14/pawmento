@@ -30,7 +30,7 @@ struct PrimaryButtonStyle: ButtonStyle {
             .frame(maxWidth: .infinity)
             .frame(height: 56)
             .background(
-                isEnabled ? Color.sage : Color.sage.opacity(0.4)
+                isEnabled ? Color.primary : Color.primary.opacity(0.4)
             )
             .cornerRadius(AppRadius.input)
             .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
@@ -69,6 +69,7 @@ extension Color {
     static let onBackground = Color(hex: "#1b1c1a")
     
     static let error = Color(hex: "#ba1a1a")
+    static let onError = Color(hex: "#ffffff")
     
     static let warning = Color(hex: "#F57F17")
     static let warningBackground = Color(hex: "#FFF8E1")
@@ -77,9 +78,9 @@ extension Color {
     // Onboarding Colors
     static let warmCream = Color(hex: "#FBF7F1")
     static let tertiaryText = Color(hex: "#A8968A")
-    static let warmTan = Color(hex: "#C89968")
-    static let warmTanDark = Color(hex: "#B88858")
-    static let sage = Color(hex: "#7A9E7E")
+    static let warmTanHue = Color(hex: "#C89968")
+    static let warmTanDarkHue = Color(hex: "#B88858")
+    static let sageHue = Color(hex: "#7A9E7E")
     
     static let warmTanTintBg = Color(hex: "#F5E8D3")
     static let sageTintBg = Color(hex: "#EAF2EB")
@@ -91,7 +92,7 @@ extension Color {
     
     // Add First Pet Colors
     static let warmSand = Color(hex: "#D4C4B0")
-    static let warmCoral = Color(hex: "#E47A6B")
+    static let warmCoralHue = Color(hex: "#E47A6B")
     static let cream = Color(hex: "#F5EFE4")
     
     // Timeline v2 Colors

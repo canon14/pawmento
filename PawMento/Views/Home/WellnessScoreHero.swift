@@ -144,9 +144,9 @@ struct WellnessScoreHero: View {
     // Dynamic Properties
     private var ringColor: Color {
         if confidence == .insufficient { return Color(hex: "#F5F3EF") }
-        if score >= 80 { return .sage }
-        if score >= 60 { return .warmTan }
-        return .warmCoral
+        if score >= 80 { return .primary }
+        if score >= 60 { return .primary }
+        return .error
     }
     
     private func subtitleText(for name: String) -> String {
@@ -176,10 +176,10 @@ struct WellnessScoreHero: View {
     }
     
     private var deltaColor: Color {
-        if confidence == .insufficient || yesterdayConfidence == .insufficient { return .warmTan }
-        if deltaValue > 0 { return .sage }
-        if deltaValue < 0 { return .warmCoral }
-        return .warmTan
+        if confidence == .insufficient || yesterdayConfidence == .insufficient { return .primary }
+        if deltaValue > 0 { return .primary }
+        if deltaValue < 0 { return .error }
+        return .primary
     }
 }
 

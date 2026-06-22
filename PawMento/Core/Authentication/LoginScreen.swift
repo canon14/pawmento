@@ -51,7 +51,7 @@ struct LoginScreen: View {
                 }) {
                     Text(isSignUp ? "Already have an account? Sign In" : "Don't have an account? Sign Up")
                         .font(.labelMD)
-                        .foregroundColor(.sage)
+                        .foregroundColor(.primary)
                 }
                 .padding(.bottom, AppSpacing.lg)
             }
@@ -138,7 +138,7 @@ struct LoginScreen: View {
         VStack(spacing: AppSpacing.md) {
             Image(systemName: "envelope.badge")
                 .font(.system(size: 48))
-                .foregroundColor(.sage)
+                .foregroundColor(.primary)
                 .padding(.bottom, AppSpacing.xs)
             
             Text("Check Your Email")
@@ -154,7 +154,7 @@ struct LoginScreen: View {
             if confirmationResent {
                 Text("Confirmation email resent!")
                     .font(.labelSM)
-                    .foregroundColor(.sage)
+                    .foregroundColor(.primary)
             }
             
             if let error = authManager.authError {
@@ -195,7 +195,7 @@ struct LoginScreen: View {
             }) {
                 Text("Back to Sign In")
                     .font(.labelMD)
-                    .foregroundColor(.sage)
+                    .foregroundColor(.primary)
             }
             .padding(.top, AppSpacing.sm)
         }

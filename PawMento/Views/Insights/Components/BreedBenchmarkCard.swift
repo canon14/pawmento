@@ -42,7 +42,7 @@ struct BreedBenchmarkCard: View {
                 // Footer
                 Text("See full breakdown ›")
                     .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(Color.sage)
+                    .foregroundColor(Color.primary)
                     .padding(.top, 4)
                     .blur(radius: isLocked ? 2 : 0)
             }
@@ -89,7 +89,7 @@ struct BreedBenchmarkCard: View {
                         .frame(height: 8)
                     
                     Capsule()
-                        .fill(Color.sage)
+                        .fill(Color.primary)
                         .frame(width: geo.size.width * CGFloat(percentile) / 100.0, height: 8)
                 }
             }

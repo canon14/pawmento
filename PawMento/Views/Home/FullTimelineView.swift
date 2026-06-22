@@ -428,13 +428,13 @@ struct TimelineItemRowV2: View {
     var isSymptom: Bool { log.category == .symptom }
     
     var severityColor: Color {
-        guard let s = log.severity else { return .sage }
+        guard let s = log.severity else { return .primary }
         switch s {
-        case 1, 2: return .sage
+        case 1, 2: return .primary
         case 3: return .amber
         case 4: return .coral500
         case 5: return .red500
-        default: return .sage
+        default: return .primary
         }
     }
     

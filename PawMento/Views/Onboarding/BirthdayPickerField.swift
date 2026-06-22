@@ -51,7 +51,7 @@ struct BirthdayPickerField: View {
                 .cornerRadius(12)
                 .overlay(
                     RoundedRectangle(cornerRadius: 12)
-                        .stroke(isExpanded ? Color.warmTan : Color.warmSand, lineWidth: isExpanded ? 2 : 1)
+                        .stroke(isExpanded ? Color.primary : Color.warmSand, lineWidth: isExpanded ? 2 : 1)
                 )
             }
             
@@ -105,7 +105,7 @@ struct BirthdayPickerField: View {
             if let age = ageString, !isExpanded {
                 Text(age)
                     .font(.custom("PlusJakartaSans-Regular", size: 12))
-                    .foregroundColor(.sage)
+                    .foregroundColor(.primary)
                     .padding(.top, 2)
             }
         }

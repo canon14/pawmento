@@ -27,7 +27,7 @@ struct AskCoachInsightCard: View {
                         }) {
                             Text("\"\(suggestion)\"")
                                 .font(.system(size: 14, weight: .regular))
-                                .foregroundColor(Color.sage)
+                                .foregroundColor(Color.primary)
                                 .lineLimit(1)
                         }
                     }
@@ -39,7 +39,7 @@ struct AskCoachInsightCard: View {
                     Spacer()
                     Text("Open chat ›")
                         .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(Color.sage)
+                        .foregroundColor(Color.primary)
                 }
                 .padding(.top, 4)
             }
@@ -48,7 +48,7 @@ struct AskCoachInsightCard: View {
             .cornerRadius(16)
             .overlay(
                 RoundedRectangle(cornerRadius: 16)
-                    .stroke(Color.sage.opacity(0.3), lineWidth: 1) // roughly sage-200
+                    .stroke(Color.primary.opacity(0.3), lineWidth: 1) // roughly sage-200
             )
         }
         .buttonStyle(PlainButtonStyle())

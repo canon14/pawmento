@@ -61,7 +61,7 @@ struct OnboardingCarouselView: View {
                     HStack(spacing: 8) {
                         ForEach(0..<4) { index in
                             Circle()
-                                .fill(Color.warmTan.opacity(currentIndex == index ? 1.0 : 0.2))
+                                .fill(Color.primary.opacity(currentIndex == index ? 1.0 : 0.2))
                                 .frame(width: currentIndex == index ? 8 : 6, height: currentIndex == index ? 8 : 6)
                                 .animation(.easeInOut(duration: 0.2), value: currentIndex)
                                 .onTapGesture {
@@ -88,7 +88,7 @@ struct OnboardingCarouselView: View {
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
                             .frame(height: 56)
-                            .background(currentIndex == 3 ? Color.warmTanDark : Color.warmTan)
+                            .background(Color.primary)
                             .cornerRadius(14)
                     }
                     .padding(.horizontal, 20)

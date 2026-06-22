@@ -12,14 +12,14 @@ struct Slide1Illustration: View {
                 .resizable()
                 .scaledToFit()
                 .frame(width: 100, height: 100)
-                .foregroundColor(Color.warmTanDark)
+                .foregroundColor(Color.warmTanDarkHue)
                 .offset(y: 20)
             
             // Floating dots
-            Circle().fill(Color.sage.opacity(0.8)).frame(width: 12, height: 12).offset(x: -60, y: -40)
-            Circle().fill(Color.sage.opacity(0.5)).frame(width: 8, height: 8).offset(x: 40, y: -60)
-            Circle().fill(Color.sage.opacity(0.6)).frame(width: 16, height: 16).offset(x: 70, y: 10)
-            Circle().fill(Color.sage.opacity(0.4)).frame(width: 10, height: 10).offset(x: -80, y: 30)
+            Circle().fill(Color.sageHue.opacity(0.8)).frame(width: 12, height: 12).offset(x: -60, y: -40)
+            Circle().fill(Color.sageHue.opacity(0.5)).frame(width: 8, height: 8).offset(x: 40, y: -60)
+            Circle().fill(Color.sageHue.opacity(0.6)).frame(width: 16, height: 16).offset(x: 70, y: 10)
+            Circle().fill(Color.sageHue.opacity(0.4)).frame(width: 10, height: 10).offset(x: -80, y: 30)
         }
     }
 }
@@ -42,7 +42,7 @@ struct Slide2Illustration: View {
                 path.move(to: CGPoint(x: 80, y: 140))
                 path.addQuadCurve(to: CGPoint(x: 200, y: 140), control: CGPoint(x: 140, y: 60))
             }
-            .stroke(Color.sage, style: StrokeStyle(lineWidth: 3, dash: [6, 4]))
+            .stroke(Color.sageHue, style: StrokeStyle(lineWidth: 3, dash: [6, 4]))
             
             // Camera
             Image(systemName: "camera.fill")
@@ -53,13 +53,13 @@ struct Slide2Illustration: View {
             // Checkmark
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 32))
-                .foregroundColor(Color.warmTan)
+                .foregroundColor(Color.warmTanHue)
                 .offset(x: 60, y: 0)
             
             // Tag chips
             HStack(spacing: 4) {
-                Capsule().fill(Color.sage.opacity(0.3)).frame(width: 20, height: 8)
-                Capsule().fill(Color.sage.opacity(0.3)).frame(width: 30, height: 8)
+                Capsule().fill(Color.sageHue.opacity(0.3)).frame(width: 20, height: 8)
+                Capsule().fill(Color.sageHue.opacity(0.3)).frame(width: 30, height: 8)
             }
             .offset(y: 40)
         }
@@ -75,13 +75,13 @@ struct Slide3Illustration: View {
             
             // Bar chart
             HStack(alignment: .bottom, spacing: 8) {
-                RoundedRectangle(cornerRadius: 4).fill(Color.warmTan.opacity(0.6)).frame(width: 12, height: 40)
-                RoundedRectangle(cornerRadius: 4).fill(Color.warmTan.opacity(0.4)).frame(width: 12, height: 60)
-                RoundedRectangle(cornerRadius: 4).fill(Color.warmTan.opacity(0.8)).frame(width: 12, height: 30)
-                RoundedRectangle(cornerRadius: 4).fill(Color.warmTan).frame(width: 12, height: 90)
-                RoundedRectangle(cornerRadius: 4).fill(Color.warmTan.opacity(0.5)).frame(width: 12, height: 50)
-                RoundedRectangle(cornerRadius: 4).fill(Color.warmTan.opacity(0.7)).frame(width: 12, height: 70)
-                RoundedRectangle(cornerRadius: 4).fill(Color.warmTan.opacity(0.3)).frame(width: 12, height: 40)
+                RoundedRectangle(cornerRadius: 4).fill(Color.warmTanHue.opacity(0.6)).frame(width: 12, height: 40)
+                RoundedRectangle(cornerRadius: 4).fill(Color.warmTanHue.opacity(0.4)).frame(width: 12, height: 60)
+                RoundedRectangle(cornerRadius: 4).fill(Color.warmTanHue.opacity(0.8)).frame(width: 12, height: 30)
+                RoundedRectangle(cornerRadius: 4).fill(Color.warmTanHue).frame(width: 12, height: 90)
+                RoundedRectangle(cornerRadius: 4).fill(Color.warmTanHue.opacity(0.5)).frame(width: 12, height: 50)
+                RoundedRectangle(cornerRadius: 4).fill(Color.warmTanHue.opacity(0.7)).frame(width: 12, height: 70)
+                RoundedRectangle(cornerRadius: 4).fill(Color.warmTanHue.opacity(0.3)).frame(width: 12, height: 40)
             }
             .offset(y: 40)
             
@@ -110,7 +110,7 @@ struct Slide3Illustration: View {
             .padding(12)
             .background(Color.white)
             .cornerRadius(12)
-            .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.warmTan, lineWidth: 1))
+            .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.warmTanHue, lineWidth: 1))
             .shadow(color: .black.opacity(0.05), radius: 10, y: 5)
             .offset(y: -30)
         }
@@ -127,26 +127,26 @@ struct Slide4Illustration: View {
             // Paw prints
             Image(systemName: "pawprint.fill")
                 .font(.system(size: 24))
-                .foregroundColor(Color.warmTan.opacity(0.2))
+                .foregroundColor(Color.warmTanHue.opacity(0.2))
                 .offset(x: -80, y: -80)
                 .rotationEffect(.degrees(-20))
             
             Image(systemName: "pawprint.fill")
                 .font(.system(size: 24))
-                .foregroundColor(Color.warmTan.opacity(0.4))
+                .foregroundColor(Color.warmTanHue.opacity(0.4))
                 .offset(x: -40, y: -40)
                 .rotationEffect(.degrees(-10))
             
             Image(systemName: "pawprint.fill")
                 .font(.system(size: 24))
-                .foregroundColor(Color.warmTan.opacity(0.6))
+                .foregroundColor(Color.warmTanHue.opacity(0.6))
                 .offset(x: -10, y: -10)
             
             // Empty pet portrait circle
             Circle()
                 .fill(Color.warmCream)
                 .frame(width: 80, height: 80)
-                .overlay(Circle().stroke(Color.warmTan, lineWidth: 2))
+                .overlay(Circle().stroke(Color.warmTanHue, lineWidth: 2))
                 .offset(x: 40, y: 40)
         }
     }

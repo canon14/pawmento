@@ -71,11 +71,11 @@ struct CategoryScrollerView: View {
                     .lineLimit(1)
             }
             .frame(width: 64, height: 76)
-            .background(isSelected ? Color.warmTan : Color.white)
+            .background(isSelected ? Color.primary : Color.white)
             .cornerRadius(16)
             .overlay(
                 RoundedRectangle(cornerRadius: 16)
-                    .stroke(isSelected ? Color.warmTan : Color.warmSand, lineWidth: 1)
+                    .stroke(isSelected ? Color.primary : Color.warmSand, lineWidth: 1)
             )
             .foregroundColor(isSelected ? .white : .primaryText)
             .scaleEffect(isSelected ? 1.0 : 0.98)
@@ -121,11 +121,11 @@ struct FullCategoryGridView: View {
                             }
                             .frame(maxWidth: .infinity)
                             .frame(height: 76)
-                            .background(isSelected ? Color.warmTan : Color.white)
+                            .background(isSelected ? Color.primary : Color.white)
                             .cornerRadius(16)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 16)
-                                    .stroke(isSelected ? Color.warmTan : Color.warmSand, lineWidth: 1)
+                                    .stroke(isSelected ? Color.primary : Color.warmSand, lineWidth: 1)
                             )
                             .foregroundColor(isSelected ? .white : .primaryText)
                         }

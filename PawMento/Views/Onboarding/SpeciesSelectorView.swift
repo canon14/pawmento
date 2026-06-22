@@ -57,7 +57,7 @@ struct SpeciesPill: View {
             }
             .frame(maxWidth: .infinity)
             .frame(height: 52)
-            .background(isSelected ? Color.warmTan : Color.white)
+            .background(isSelected ? Color.primary : Color.white)
             .foregroundColor(isSelected ? .white : .primaryText)
             .cornerRadius(12)
             .overlay(

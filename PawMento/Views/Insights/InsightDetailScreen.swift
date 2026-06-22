@@ -51,14 +51,14 @@ struct InsightDetailScreen: View {
                 // Evidence
                 HStack {
                     Image(systemName: "doc.text.magnifyingglass")
-                        .foregroundColor(.sage)
+                        .foregroundColor(.primary)
                     Text("Based on \(insight.evidenceCount) logged events")
                         .font(.system(size: 14, weight: .medium))
                         .foregroundColor(.ink900.opacity(0.8))
                     Spacer()
                 }
                 .padding(16)
-                .background(Color.sage.opacity(0.1))
+                .background(Color.primary.opacity(0.1))
                 .cornerRadius(12)
                 
                 // Actions
@@ -71,7 +71,7 @@ struct InsightDetailScreen: View {
                                 .font(.system(size: 16, weight: .semibold))
                                 .frame(maxWidth: .infinity)
                                 .frame(height: 56)
-                                .background(action.isPrimary ? Color.sage : Color.white)
+                                .background(action.isPrimary ? Color.primary : Color.white)
                                 .foregroundColor(action.isPrimary ? .white : .ink900)
                                 .cornerRadius(16)
                                 .overlay(
@@ -97,9 +97,9 @@ struct InsightDetailScreen: View {
     
     private var pillColor: Color {
         switch insight.tier {
-        case .strong: return Color.sage
+        case .strong: return Color.primary
         case .moderate: return Color.orange
-        case .positive: return Color.sage
+        case .positive: return Color.primary
         case .emerging: return Color.ink900
         }
     }

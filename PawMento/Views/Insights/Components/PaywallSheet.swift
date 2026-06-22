@@ -32,8 +32,8 @@ struct PaywallSheet: View {
                     VStack(spacing: 16) {
                         Image(systemName: "star.circle.fill")
                             .font(.system(size: 64))
-                            .foregroundColor(.sage)
-                            .shadow(color: .sage.opacity(0.3), radius: 10, x: 0, y: 5)
+                            .foregroundColor(.primary)
+                            .shadow(color: .primary.opacity(0.3), radius: 10, x: 0, y: 5)
                         
                         Text("PawMento\nPremium")
                             .font(.system(size: 28, weight: .black, design: .rounded))
@@ -76,7 +76,7 @@ struct PaywallSheet: View {
                     .font(.system(size: 16, weight: .semibold))
                     .frame(maxWidth: .infinity)
                     .frame(height: 56)
-                    .background(Color.sage)
+                    .background(Color.primary)
                     .foregroundColor(.white)
                     .cornerRadius(16)
             }

@@ -46,7 +46,7 @@ struct RecentActivityTimeline: View {
                         Spacer()
                         Image(systemName: "arrow.right")
                     }
-                    .foregroundColor(.warmTan)
+                    .foregroundColor(.primary)
                     .padding()
                     .frame(maxWidth: .infinity)
                     .background(Color.warmCream)

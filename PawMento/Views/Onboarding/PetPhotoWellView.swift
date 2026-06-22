@@ -19,12 +19,12 @@ struct PetPhotoWellView: View {
                             .scaledToFill()
                             .frame(width: 96, height: 96)
                             .clipShape(Circle())
-                            .overlay(Circle().stroke(Color.warmTan, lineWidth: 1))
+                            .overlay(Circle().stroke(Color.primary, lineWidth: 1))
                         
                         // Edit indicator
                         ZStack {
                             Circle()
-                                .fill(Color.warmTan)
+                                .fill(Color.primary)
                                 .frame(width: 24, height: 24)
                             Image(systemName: "pencil")
                                 .font(.system(size: 12, weight: .bold))
@@ -37,12 +37,12 @@ struct PetPhotoWellView: View {
                             .strokeBorder(
                                 style: StrokeStyle(lineWidth: 1.5, dash: [4, 4])
                             )
-                            .foregroundColor(Color.warmTan)
+                            .foregroundColor(Color.primary)
                             .frame(width: 96, height: 96)
                         
                         Image(systemName: "camera.fill")
                             .font(.system(size: 28))
-                            .foregroundColor(Color.warmTan)
+                            .foregroundColor(Color.primary)
                     }
                 }
             }

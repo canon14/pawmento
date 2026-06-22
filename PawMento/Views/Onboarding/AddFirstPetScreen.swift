@@ -57,7 +57,7 @@ struct AddFirstPetScreen: View {
                         submitForm()
                     }
                     .font(.labelLarge)
-                    .foregroundColor(.warmTan)
+                    .foregroundColor(.primary)
                     .disabled(isSubmitting)
                 }
             }
@@ -93,7 +93,7 @@ struct AddFirstPetScreen: View {
                             if showError && name.isEmpty {
                                 Text("Give your pet a name first")
                                     .font(.custom("PlusJakartaSans-Regular", size: 12))
-                                    .foregroundColor(.warmCoral)
+                                    .foregroundColor(.error)
                                     .padding(.leading, 4)
                             }
                         }
@@ -108,7 +108,7 @@ struct AddFirstPetScreen: View {
                             if showError && selectedSpecies == nil {
                                 Text("Select a species to continue")
                                     .font(.custom("PlusJakartaSans-Regular", size: 12))
-                                    .foregroundColor(.warmCoral)
+                                    .foregroundColor(.error)
                                     .padding(.leading, 4)
                             }
                         }

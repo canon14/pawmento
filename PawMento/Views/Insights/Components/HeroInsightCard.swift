@@ -29,7 +29,7 @@ struct HeroInsightCard: View {
                     }
                     .padding(.horizontal, 8)
                     .frame(height: 24)
-                    .background(Color.sage)
+                    .background(Color.primary)
                     .foregroundColor(.white)
                     .clipShape(Capsule())
                     
@@ -87,7 +87,7 @@ struct HeroInsightCard: View {
                                     .font(.system(size: 14, weight: .semibold))
                                     .frame(maxWidth: .infinity)
                                     .frame(height: 44)
-                                    .background(isLocked ? Color.sage.opacity(0.3) : Color.sage)
+                                    .background(isLocked ? Color.primary.opacity(0.3) : Color.primary)
                                     .foregroundColor(.white)
                                     .cornerRadius(12)
                             }
@@ -119,7 +119,7 @@ struct HeroInsightCard: View {
             .cornerRadius(20)
             .overlay(
                 RoundedRectangle(cornerRadius: 20)
-                    .stroke(Color.sage.opacity(0.5), lineWidth: 2)
+                    .stroke(Color.primary.opacity(0.5), lineWidth: 2)
             )
             .shadow(color: Color(red: 44/255, green: 95/255, blue: 93/255).opacity(0.08), radius: 12, x: 0, y: 2)
             .overlay(

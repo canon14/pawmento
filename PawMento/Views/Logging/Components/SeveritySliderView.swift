@@ -39,10 +39,10 @@ struct SeveritySliderView: View {
     
     private func colorForSeverity(_ val: Int) -> Color {
         switch val {
-        case 1: return Color.sage
-        case 2, 3: return Color.warmTan
-        case 4, 5: return Color.warmCoral
-        default: return Color.warmTan
+        case 1: return Color.primary
+        case 2, 3: return Color.primary
+        case 4, 5: return Color.error
+        default: return Color.primary
         }
     }
 }
