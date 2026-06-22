@@ -2,6 +2,7 @@ import SwiftUI
 
 struct InsightEmptyStateView: View {
     let state: InsightsViewModel.ViewState
+    let petName: String
     let onAction: () -> Void
     
     var body: some View {
@@ -65,7 +66,7 @@ struct InsightEmptyStateView: View {
     
     private var message: String {
         switch state {
-        case .noData: return "The AI Coach needs a few more logs to start analyzing patterns for Buddy."
+        case .noData: return "The AI Coach needs a few more logs to start analyzing patterns for \(petName)."
         case .noDataForRange: return "No activity was logged during this time period."
         case .noPatterns: return "We analyzed the data and didn't find any concerning health correlations."
         case .offline: return "The Insight Engine requires an internet connection to run the LLM analysis."

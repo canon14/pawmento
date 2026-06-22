@@ -49,7 +49,7 @@ struct OnboardingCarouselView: View {
                     OnboardingSlideView(
                         illustration: Slide4Illustration(),
                         headline: "Your pet deserves\nthis kind of care.",
-                        bodyText: "Take 30 seconds to set up Buddy's profile. Everything else follows from there."
+                        bodyText: "Take 30 seconds to set up your pet's profile. Everything else follows from there."
                     ).tag(3)
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))

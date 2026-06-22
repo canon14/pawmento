@@ -52,7 +52,7 @@ struct EditPetSheet: View {
                                 Text("Pet's Name")
                                     .font(.labelSemibold)
                                     .foregroundColor(.primaryText)
-                                FormTextField(placeholder: "e.g. Buddy", text: $name)
+                                FormTextField(placeholder: "e.g. Max", text: $name)
                             }
                             
                             // Species

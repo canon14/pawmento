@@ -2,6 +2,7 @@ import SwiftUI
 
 struct AskCoachInsightCard: View {
     let suggestions: [String]
+    let petName: String
     var onChatTapped: (() -> Void)?
     var onSuggestionTapped: ((String) -> Void)?
     
@@ -13,7 +14,7 @@ struct AskCoachInsightCard: View {
                 // Header
                 HStack(spacing: 8) {
                     Text("💬")
-                    Text("Ask Buddy's AI Coach")
+                    Text("Ask \(petName)'s AI Coach")
                         .font(.system(size: 15, weight: .semibold))
                         .foregroundColor(.ink900)
                     Spacer()

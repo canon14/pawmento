@@ -3,6 +3,7 @@ import SwiftUI
 struct ComposerView: View {
     @Binding var text: String
     @Binding var freeQuestionsRemaining: Int
+    let petName: String
     let onCameraTap: () -> Void
     let onSend: () -> Void
     
@@ -64,7 +65,7 @@ struct ComposerView: View {
         if freeQuestionsRemaining == 1 {
             return "Last free question — make it count 🐶"
         }
-        return "Ask anything about Buddy..."
+        return "Ask anything about \(petName)..."
     }
     
     private func counterText() -> String {

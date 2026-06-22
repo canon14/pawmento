@@ -121,7 +121,7 @@ struct InsightsScreen: View {
                     askCoachSection
                 default:
                     // All other states (noData, offline, error)
-                    InsightEmptyStateView(state: viewModel.viewState) {
+                    InsightEmptyStateView(state: viewModel.viewState, petName: petStore.activePet?.name ?? PetStore.fallbackPetName) {
                         handleEmptyStateAction(viewModel.viewState)
                     }
                     benchmarkSection
@@ -269,7 +269,7 @@ struct InsightsScreen: View {
                 .foregroundColor(Color.ink900.opacity(0.6))
                 .kerning(0.5)
             
-            AskCoachInsightCard(suggestions: viewModel.coachSuggestions, onChatTapped: {
+            AskCoachInsightCard(suggestions: viewModel.coachSuggestions, petName: petStore.activePet?.name ?? PetStore.fallbackPetName, onChatTapped: {
                 showCoachChat = true
             }, onSuggestionTapped: { suggestion in
                 showCoachChat = true

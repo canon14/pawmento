@@ -89,7 +89,7 @@ struct AddFirstPetScreen: View {
                             Text("Pet's name")
                                 .font(.labelSemibold)
                                 .foregroundColor(.primaryText)
-                            FormTextField(placeholder: "e.g. Buddy", text: $name, isError: showError && name.isEmpty)
+                            FormTextField(placeholder: "e.g. Max", text: $name, isError: showError && name.isEmpty)
                             if showError && name.isEmpty {
                                 Text("Give your pet a name first")
                                     .font(.custom("PlusJakartaSans-Regular", size: 12))

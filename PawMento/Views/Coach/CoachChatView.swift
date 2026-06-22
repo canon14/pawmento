@@ -88,6 +88,7 @@ struct CoachChatView: View {
             ComposerView(
                 text: $inputText,
                 freeQuestionsRemaining: $viewModel.freeQuestionsRemaining,
+                petName: petName,
                 onCameraTap: {
                     viewModel.showPremiumWall = true
                 }
@@ -136,6 +137,8 @@ struct CoachChatView: View {
         }
     }
     
+    @State private var showWipeConfirmation = false
+    
     private var topBar: some View {
         HStack {
             Button(action: { dismiss() }) {
@@ -172,10 +175,7 @@ struct CoachChatView: View {
             
             Menu {
                 Button(role: .destructive, action: {
-                    withAnimation {
-                        viewModel.messages.removeAll()
-                        setInitialQuickReplies()
-                    }
+                    showWipeConfirmation = true
                 }) {
                     Label("New Conversation", systemImage: "trash")
                 }
@@ -183,6 +183,17 @@ struct CoachChatView: View {
                 Image(systemName: "ellipsis")
                     .font(.system(size: 20))
                     .foregroundColor(.primaryText)
+            }
+            .confirmationDialog("Start New Conversation?", isPresented: $showWipeConfirmation, titleVisibility: .visible) {
+                Button("Wipe History", role: .destructive) {
+                    withAnimation {
+                        viewModel.messages.removeAll()
+                        setInitialQuickReplies()
+                    }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This will permanently clear your conversation history.")
             }
         }
         .padding(.horizontal, 16)

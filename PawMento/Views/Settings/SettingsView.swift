@@ -139,6 +139,19 @@ struct SettingsView: View {
             .listStyle(.insetGrouped)
             .scrollContentBackground(.hidden)
             .background(Color.background.edgesIgnoringSafeArea(.all))
+            .disabled(isDeleting)
+            .overlay {
+                if isDeleting {
+                    ZStack {
+                        Color.black.opacity(0.3).ignoresSafeArea()
+                        ProgressView("Deleting Account...")
+                            .padding()
+                            .background(Color.surfaceBright)
+                            .cornerRadius(12)
+                            .shadow(radius: 10)
+                    }
+                }
+            }
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
