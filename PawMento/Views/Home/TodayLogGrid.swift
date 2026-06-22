@@ -74,28 +74,35 @@ struct TodayLogGrid: View {
                         Text("Log")
                             .font(.labelMD)
                     }
-                    .foregroundColor(.onPrimary)
+                    .foregroundColor(.primary)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 8)
-                    .background(Color.primary)
+                    .background(.ultraThinMaterial)
                     .clipShape(Capsule())
-                    .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
+                    .shadow(color: Color.black.opacity(0.05), radius: 2, x: 0, y: 1)
                     .overlay(
                         Capsule()
-                            .stroke(Color.primaryFixedDim.opacity(0.3), lineWidth: 1)
+                            .stroke(Color.primary.opacity(0.3), lineWidth: 1)
                     )
                 }
             }
             
             HStack(spacing: 12) {
                 ForEach(gridItems) { item in
-                    LogItemCard(
-                        icon: item.icon,
-                        title: item.title,
-                        subtitle: item.subtitle,
-                        subtitleIcon: item.subtitleIcon,
-                        isLogged: item.isLogged
-                    )
+                    Button(action: {
+                        if !item.isLogged {
+                            onLogAction()
+                        }
+                    }) {
+                        LogItemCard(
+                            icon: item.icon,
+                            title: item.title,
+                            subtitle: item.subtitle,
+                            subtitleIcon: item.subtitleIcon,
+                            isLogged: item.isLogged
+                        )
+                    }
+                    .buttonStyle(SquishyCardStyle())
                 }
             }
         }
@@ -112,7 +119,8 @@ struct LogItemCard: View {
     var body: some View {
         VStack(alignment: .leading) {
             Text(icon)
-                .font(.headlineLG)
+                .font(.system(size: 32))
+                .shadow(color: Color.black.opacity(0.1), radius: 2, x: 0, y: 2)
                 .grayscale(isLogged ? 0 : 1.0)
                 .opacity(isLogged ? 1.0 : 0.5)
             
@@ -135,11 +143,19 @@ struct LogItemCard: View {
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
         .aspectRatio(1, contentMode: .fill)
-        .background(isLogged ? Color.primaryContainer.opacity(0.4) : Color.surfaceBright)
+        .background(
+            Group {
+                if isLogged {
+                    LinearGradient(colors: [Color.primaryContainer.opacity(0.6), Color.primaryContainer.opacity(0.2)], startPoint: .topLeading, endPoint: .bottomTrailing)
+                } else {
+                    Color.surfaceBright
+                }
+            }
+        )
         .cornerRadius(AppRadius.md)
         .overlay(
-            RoundedRectangle(cornerRadius: 20)
-                .stroke(isLogged ? Color.clear : Color.surfaceContainerLow, lineWidth: 1)
+            RoundedRectangle(cornerRadius: AppRadius.md)
+                .stroke(isLogged ? Color.primary.opacity(0.2) : Color.outline.opacity(0.3), style: StrokeStyle(lineWidth: 1, dash: isLogged ? [] : [4]))
         )
         .warmShadow()
     }
