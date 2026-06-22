@@ -51,30 +51,25 @@ struct ComposerView: View {
                 .disabled(text.isEmpty)
             }
             
-            // Counter Pill
+            // Counter Text (Subtle)
             Text(counterText())
-                .font(.labelSM)
+                .font(.caption)
                 .foregroundColor(counterColor())
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(Color.surfaceContainerLowest)
-                .clipShape(Capsule())
-                .overlay(Capsule().stroke(counterColor().opacity(0.3), lineWidth: 1))
+                .padding(.trailing, 8)
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 16)
+        .padding(.top, 12)
+        .padding(.bottom, 24) // Extra padding for bottom safe area
         .background(
-            Color.surfaceContainerLowest.opacity(0.6)
+            Color.surfaceContainerLowest.opacity(0.8)
                 .background(.ultraThinMaterial)
         )
-        .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 32, style: .continuous)
-                .stroke(Color.primary.opacity(0.1), lineWidth: 1)
+            Rectangle()
+                .frame(height: 1)
+                .foregroundColor(Color.primary.opacity(0.05)),
+            alignment: .top
         )
-        .shadow(color: Color.black.opacity(0.05), radius: 15, x: 0, y: 5)
-        .padding(.horizontal, 16)
-        .padding(.bottom, 8)
     }
     
     private func placeholderText() -> String {
