@@ -11,6 +11,10 @@ struct CoachChatView: View {
         petStore.activePet?.name ?? PetStore.fallbackPetName
     }
     
+    private func hideKeyboard() {
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+    }
+    
     var body: some View {
         ZStack {
             Color.background.ignoresSafeArea()
@@ -96,6 +100,11 @@ struct CoachChatView: View {
                     }
                     .padding(.bottom, 20) // Extra padding before composer
                 }
+                .background(
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .onTapGesture { hideKeyboard() }
+                )
                 .safeAreaInset(edge: .top) {
                     topBar
                 }
@@ -126,6 +135,9 @@ struct CoachChatView: View {
                     }
                 }
                 .scrollDismissesKeyboard(.interactively)
+            }
+            .onTapGesture {
+                hideKeyboard()
             }
         }
         .navigationBarHidden(true)
