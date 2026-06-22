@@ -110,7 +110,7 @@ struct HeroCardView: View {
                         .font(.system(size: 14))
                         .foregroundColor(.secondaryText)
                     
-                    Text("\(ageString) · \(Int(pet.weightKg ?? 0)) lbs")
+                    Text("\(ageString) · \(formattedWeight)")
                         .font(.system(size: 13))
                         .foregroundColor(.tertiaryText)
                 }
@@ -160,22 +160,17 @@ struct HeroCardView: View {
         .cornerRadius(20)
         .shadow(color: Color.black.opacity(0.06), radius: 8, x: 0, y: 2)
         .contentShape(Rectangle())
-        .gesture(
-            DragGesture()
-                .onEnded { value in
-                    // Simple swipe logic: Left or Right to switch pets
-                    let pets = petStore.pets
-                    guard pets.count > 1, let currentIndex = pets.firstIndex(where: { $0.id == pet.id }) else { return }
-                    
-                    if value.translation.width < -50 { // Swipe Left (Next)
-                        let nextIndex = (currentIndex + 1) % pets.count
-                        petStore.activePet = pets[nextIndex]
-                    } else if value.translation.width > 50 { // Swipe Right (Previous)
-                        let prevIndex = (currentIndex - 1 + pets.count) % pets.count
-                        petStore.activePet = pets[prevIndex]
-                    }
-                }
-        )
+    }
+    
+    private var formattedWeight: String {
+        guard let kg = pet.weightKg else { return "Unknown weight" }
+        let isMetric = Locale.current.measurementSystem == .metric
+        if isMetric {
+            return "\(Int(round(kg))) kg"
+        } else {
+            let lbs = kg * 2.20462
+            return "\(Int(round(lbs))) lbs"
+        }
     }
     
     private var ringColor: Color {

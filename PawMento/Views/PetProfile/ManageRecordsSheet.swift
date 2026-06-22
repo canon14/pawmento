@@ -2,6 +2,18 @@ import SwiftUI
 
 struct ManageRecordsSheet: View {
     @Environment(\.dismiss) var dismiss
+    @EnvironmentObject var petStore: PetStore
+    
+    private var formattedWeight: String {
+        guard let kg = petStore.activePet?.weightKg else { return "Unknown" }
+        let isMetric = Locale.current.measurementSystem == .metric
+        if isMetric {
+            return "\(Int(round(kg))) kg"
+        } else {
+            let lbs = kg * 2.20462
+            return "\(Int(round(lbs))) lbs"
+        }
+    }
     
     var body: some View {
         NavigationView {
@@ -19,7 +31,7 @@ struct ManageRecordsSheet: View {
                         VStack(spacing: 0) {
                             RecordRow(title: "Vaccinations", value: "Up to date", subtitle: "Next: Aug 14")
                             Divider()
-                            RecordRow(title: "Weight History", value: "68 lbs", subtitle: "Stable")
+                            RecordRow(title: "Weight History", value: formattedWeight, subtitle: "Stable")
                             Divider()
                             RecordRow(title: "Allergies", value: "Chicken, Environmental", subtitle: nil)
                             Divider()
@@ -92,4 +104,5 @@ struct RecordRow: View {
 
 #Preview {
     ManageRecordsSheet()
+        .environmentObject(PetStore())
 }
