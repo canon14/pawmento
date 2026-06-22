@@ -410,6 +410,12 @@ struct VetPDFCTACard: View {
     }
 }
 
+let shortDateAndTimeFormatter: DateFormatter = {
+    let formatter = DateFormatter()
+    formatter.dateFormat = "MMM d, h:mm a"
+    return formatter
+}()
+
 struct MedicationsCard: View {
     let medications: [Medication]
     
@@ -418,43 +424,59 @@ struct MedicationsCard: View {
             Text("Medications & Routines")
                 .font(.system(size: 17, weight: .semibold, design: .rounded))
             
-            VStack(spacing: 0) {
-                ForEach(medications) { med in
-                    HStack {
-                        Text(med.name.contains("Apoquel") ? "💊" : "💉")
-                            .font(.system(size: 24))
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(med.name)
-                                .font(.system(size: 15, weight: .medium))
-                            
-                            if med.streakCount > 0 {
-                                Text("Logged today · \(med.streakCount) day streak ✓")
-                                    .font(.system(size: 12))
-                                    .foregroundColor(.primary)
-                            } else if let nextDue = med.nextDueDate {
-                                Text("Next: \(nextDue, formatter: shortDateFormatter)")
-                                    .font(.system(size: 12))
-                                    .foregroundColor(.secondaryText)
-                            } else {
-                                Text("No streak")
-                                    .font(.system(size: 12))
-                                    .foregroundColor(.secondaryText)
-                            }
-                        }
-                        Spacer()
-                        Text(med.frequency)
-                            .font(.system(size: 14))
-                            .foregroundColor(.secondaryText)
-                    }
+            if medications.isEmpty {
+                Text("No medications or routines added yet")
+                    .font(.system(size: 15))
+                    .foregroundColor(.secondaryText)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(16)
-                    
-                    if med.id != medications.last?.id {
-                        Divider().background(Color.warmSand.opacity(0.2))
+                    .background(Color.white)
+                    .cornerRadius(16)
+            } else {
+                VStack(spacing: 0) {
+                    ForEach(medications) { med in
+                        HStack {
+                            Text(med.form?.lowercased() == "injectable" ? "💉" : "💊")
+                                .font(.system(size: 24))
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("\(med.name)\(med.dose.map { " · \($0)" } ?? "")")
+                                    .font(.system(size: 15, weight: .medium))
+                                
+                                if med.loggedToday {
+                                    Text("Logged today · \(med.streakCount) day streak ✓")
+                                        .font(.system(size: 12))
+                                        .foregroundColor(.primary)
+                                } else if let nextDue = med.nextDueDate {
+                                    if nextDue < Date() {
+                                        Text("Overdue: \(nextDue, formatter: shortDateAndTimeFormatter)")
+                                            .font(.system(size: 12))
+                                            .foregroundColor(.error)
+                                    } else {
+                                        Text("Next: \(nextDue, formatter: shortDateAndTimeFormatter)")
+                                            .font(.system(size: 12))
+                                            .foregroundColor(.secondaryText)
+                                    }
+                                } else {
+                                    Text("No streak")
+                                        .font(.system(size: 12))
+                                        .foregroundColor(.secondaryText)
+                                }
+                            }
+                            Spacer()
+                            Text(med.frequency)
+                                .font(.system(size: 14))
+                                .foregroundColor(.secondaryText)
+                        }
+                        .padding(16)
+                        
+                        if med.id != medications.last?.id {
+                            Divider().background(Color.warmSand.opacity(0.2))
+                        }
                     }
                 }
+                .background(Color.white)
+                .cornerRadius(16)
             }
-            .background(Color.white)
-            .cornerRadius(16)
         }
     }
 }
