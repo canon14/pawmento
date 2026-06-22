@@ -4,78 +4,84 @@ struct PetSelectorCard: View {
     @EnvironmentObject var petStore: PetStore
     var onAddPet: () -> Void = {}
     
-    var petAgeString: String {
-        guard let pet = petStore.activePet, let bday = pet.birthday, let year = bday.year else { return "" }
+    var petAgeString: String? {
+        guard let pet = petStore.activePet, let bday = pet.birthday, let year = bday.year else { return nil }
         let age = Calendar.current.component(.year, from: Date()) - year
-        return age > 0 ? " · \(age) yrs" : ""
+        return age > 0 ? "\(age) yrs" : nil
     }
     
     var body: some View {
         HStack {
             HStack(spacing: 20) {
                 // Pet Avatar
-                if let pet = petStore.activePet, let image = pet.photoImage {
-                    Image(uiImage: image)
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .frame(width: 56, height: 56)
-                        .clipShape(Circle())
-                        .overlay(
-                            Circle()
-                                .stroke(Color.primaryContainer, lineWidth: 2)
-                        )
-                        .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
-                } else if let pet = petStore.activePet, let photoURL = pet.photoLocalURL {
-                    CachedAsyncImage(url: photoURL) { image in
-                        image
+                let avatarGradient = LinearGradient(colors: [Color.primary, Color.primary.opacity(0.3)], startPoint: .topLeading, endPoint: .bottomTrailing)
+                
+                Group {
+                    if let pet = petStore.activePet, let image = pet.photoImage {
+                        Image(uiImage: image)
                             .resizable()
                             .aspectRatio(contentMode: .fill)
-                            .frame(width: 56, height: 56)
-                            .clipShape(Circle())
-                            .overlay(
-                                Circle()
-                                    .stroke(Color.primaryContainer, lineWidth: 2)
-                            )
-                            .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
-                    } placeholder: {
-                        Circle()
-                            .fill(Color.primaryContainer)
-                            .frame(width: 56, height: 56)
-                            .overlay(ProgressView())
+                    } else if let pet = petStore.activePet, let photoURL = pet.photoLocalURL {
+                        CachedAsyncImage(url: photoURL) { image in
+                            image.resizable().aspectRatio(contentMode: .fill)
+                        } placeholder: {
+                            ZStack {
+                                Color.surfaceContainerHigh
+                                ProgressView()
+                            }
+                        }
+                    } else {
+                        ZStack {
+                            Color.surfaceContainerHigh
+                            Image(systemName: "pawprint.fill")
+                                .font(.system(size: 24))
+                                .foregroundColor(Color.primary.opacity(0.6))
+                        }
                     }
-                } else {
-                    Circle()
-                        .fill(Color.primaryContainer)
-                        .frame(width: 56, height: 56)
-                        .overlay(
-                            Circle()
-                                .stroke(Color.primaryContainer, lineWidth: 2)
-                        )
                 }
+                .frame(width: 56, height: 56)
+                .clipShape(Circle())
+                .overlay(
+                    Circle().stroke(avatarGradient, lineWidth: 2)
+                )
+                .shadow(color: Color.primary.opacity(0.2), radius: 4, x: 0, y: 2)
                 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(petStore.activePet?.name ?? "No Pet")
                         .font(.headlineSM)
+                        .fontWeight(.bold)
                         .foregroundColor(.onSurface)
                     
                     let breedString = petStore.activePet?.breed ?? "Mixed Breed"
-                    Text("\(breedString)\(petAgeString)")
-                        .font(.labelMD)
-                        .foregroundColor(.onSurfaceVariant)
+                    HStack(spacing: 4) {
+                        Text(breedString)
+                            .foregroundColor(.onSurfaceVariant)
+                        if let ageStr = petAgeString {
+                            Text("•")
+                                .foregroundColor(.onSurfaceVariant.opacity(0.5))
+                            Text(ageStr)
+                                .foregroundColor(.onSurfaceVariant)
+                        }
+                    }
+                    .font(.labelMD)
                 }
+            }
+            .background(Color.surfaceContainerLowest.opacity(0.01))
+            .onTapGesture {
+                // Action for pet switcher hook
             }
             
             Spacer()
             
             Button(action: onAddPet) {
-                HStack(spacing: 4) {
-                    Image(systemName: "plus.circle.fill")
-                        .font(.bodySM)
-                    Text("Add another pet")
-                        .font(.labelSM)
-                }
-                .foregroundColor(Color.secondary.opacity(0.7))
+                Image(systemName: "plus")
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundColor(.primary)
+                    .frame(width: 40, height: 40)
+                    .background(Color.primaryContainer.opacity(0.5))
+                    .clipShape(Circle())
             }
+            .buttonStyle(SquishyCardStyle())
         }
         .padding(20)
         .background(Color.surfaceContainerLowest)
