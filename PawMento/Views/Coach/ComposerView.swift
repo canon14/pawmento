@@ -58,8 +58,8 @@ struct ComposerView: View {
                 .padding(.trailing, 8)
         }
         .padding(.horizontal, 16)
-        .padding(.top, 12)
-        .padding(.bottom, 24) // Extra padding for bottom safe area
+        .padding(.top, 8)
+        .padding(.bottom, 16) // Extra padding for bottom safe area
         .background(
             Color.surfaceContainerLowest.opacity(0.8)
                 .background(.ultraThinMaterial)

@@ -1,18 +1,252 @@
-import SwiftUI
+import os
+
+coach_chat_path = "/Users/max_ladmin/Desktop/antigravity_pawmento/pawmento/PawMento/Views/Coach/CoachChatView.swift"
+composer_path = "/Users/max_ladmin/Desktop/antigravity_pawmento/pawmento/PawMento/Views/Coach/ComposerView.swift"
+bubble_path = "/Users/max_ladmin/Desktop/antigravity_pawmento/pawmento/PawMento/Views/Coach/MessageBubbleView.swift"
+
+# 1. ComposerView.swift
+composer_content = """import SwiftUI
+
+struct ComposerView: View {
+    @Binding var text: String
+    @Binding var freeQuestionsRemaining: Int
+    let petName: String
+    let onCameraTap: () -> Void
+    let onSend: () -> Void
+    
+    var body: some View {
+        VStack(alignment: .center, spacing: 12) {
+            HStack(alignment: .bottom, spacing: 12) {
+                // Attachments
+                Button(action: onCameraTap) {
+                    Image(systemName: "camera.fill")
+                        .font(.title2)
+                        .foregroundColor(.primary)
+                        .padding(10)
+                        .background(Color.primary.opacity(0.1))
+                        .clipShape(Circle())
+                }
+                
+                // Text Field
+                TextField(placeholderText(), text: $text, axis: .vertical)
+                    .lineLimit(1...5)
+                    .font(.bodyMD)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .background(Color.surfaceContainerLowest)
+                    .cornerRadius(20)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 20)
+                            .stroke(Color.primary.opacity(text.isEmpty ? 0 : 0.2), lineWidth: 1)
+                    )
+                
+                // Send Button
+                Button(action: onSend) {
+                    Image(systemName: "arrow.up")
+                        .font(.bodyMD.weight(.bold))
+                        .foregroundColor(.white)
+                        .frame(width: 44, height: 44)
+                        .background(
+                            LinearGradient(colors: [Color.primary, Color.primary.opacity(0.8)], startPoint: .topLeading, endPoint: .bottomTrailing)
+                        )
+                        .clipShape(Circle())
+                        .shadow(color: Color.primary.opacity(0.3), radius: 6, x: 0, y: 3)
+                        .opacity(text.isEmpty ? 0.3 : 1.0)
+                        .scaleEffect(text.isEmpty ? 0.95 : 1.0)
+                        .animation(.spring(response: 0.3, dampingFraction: 0.6), value: text.isEmpty)
+                }
+                .disabled(text.isEmpty)
+            }
+            
+            // Counter Pill
+            Text(counterText())
+                .font(.labelSM)
+                .foregroundColor(counterColor())
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(Color.surfaceContainerLowest)
+                .clipShape(Capsule())
+                .overlay(Capsule().stroke(counterColor().opacity(0.3), lineWidth: 1))
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 16)
+        .background(
+            Color.surfaceContainerLowest.opacity(0.6)
+                .background(.ultraThinMaterial)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 32, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 32, style: .continuous)
+                .stroke(Color.primary.opacity(0.1), lineWidth: 1)
+        )
+        .shadow(color: Color.black.opacity(0.05), radius: 15, x: 0, y: 5)
+        .padding(.horizontal, 16)
+        .padding(.bottom, 8)
+    }
+    
+    private func placeholderText() -> String {
+        if freeQuestionsRemaining == 1 {
+            return "Last free question — make it count 🐶"
+        }
+        return "Ask anything about \(petName)..."
+    }
+    
+    private func counterText() -> String {
+        if freeQuestionsRemaining > 2 {
+            return "\(freeQuestionsRemaining) free this month"
+        } else if freeQuestionsRemaining == 1 {
+            return "Last free question"
+        } else {
+            return "\(freeQuestionsRemaining) left"
+        }
+    }
+    
+    private func counterColor() -> Color {
+        if freeQuestionsRemaining > 2 { return .secondaryText }
+        if freeQuestionsRemaining == 2 { return .warning }
+        return .error
+    }
+}
+"""
+
+with open(composer_path, "w") as f:
+    f.write(composer_content)
+
+
+# 2. MessageBubbleView.swift
+bubble_content = """import SwiftUI
+
+struct BubbleShape: Shape {
+    var isUser: Bool
+    
+    func path(in rect: CGRect) -> Path {
+        let path = UIBezierPath(
+            roundedRect: rect,
+            byRoundingCorners: [
+                .topLeft,
+                .topRight,
+                isUser ? .bottomLeft : .bottomRight
+            ],
+            cornerRadii: CGSize(width: 20, height: 20)
+        )
+        return Path(path.cgPath)
+    }
+}
+
+struct MessageBubbleView: View {
+    let message: ChatMessage
+    var showTimestamp: Bool = true
+    @State private var isRevealed: Bool = false
+    
+    var body: some View {
+        HStack {
+            if message.role == .user {
+                Spacer()
+                userBubble
+            } else {
+                coachBubble
+                Spacer()
+            }
+        }
+        .padding(.horizontal, AppSpacing.md)
+    }
+    
+    var userBubble: some View {
+        VStack(alignment: .trailing, spacing: 4) {
+            Text(message.content)
+                .font(.bodyMD)
+                .foregroundColor(.white)
+                .padding(.vertical, 14)
+                .padding(.horizontal, 16)
+                .background(
+                    LinearGradient(
+                        gradient: Gradient(colors: [Color.primary, Color(hex: "#7A6C5D")]),
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .clipShape(BubbleShape(isUser: true))
+                .shadow(color: Color.primary.opacity(0.2), radius: 8, x: 0, y: 4)
+            
+            if showTimestamp || isRevealed {
+                Text(message.timestamp, style: .time)
+                    .font(.labelSM)
+                    .foregroundColor(.tertiaryText)
+            }
+        }
+        .padding(.leading, 48)
+        .textSelection(.enabled)
+        .onTapGesture {
+            withAnimation { isRevealed.toggle() }
+        }
+    }
+    
+    var coachBubble: some View {
+        HStack(alignment: .top, spacing: 12) {
+            // AI Sparkle Avatar
+            ZStack {
+                Circle()
+                    .fill(
+                        LinearGradient(colors: [Color.primary.opacity(0.2), Color.primary.opacity(0.05)], startPoint: .topLeading, endPoint: .bottomTrailing)
+                    )
+                    .frame(width: 32, height: 32)
+                
+                Image(systemName: "sparkles")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(.primary)
+            }
+            .padding(.top, 2)
+            
+            VStack(alignment: .leading, spacing: 8) {
+                if message.isEmergency {
+                    HStack(spacing: 4) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                        Text("This sounds urgent")
+                    }
+                    .font(.headlineSM)
+                    .foregroundColor(.error)
+                }
+                
+                Text(message.content.isEmpty ? "..." : message.content)
+                    .font(.bodyMD)
+                    .foregroundColor(.primaryText)
+                    .lineSpacing(6)
+            }
+            .padding(.vertical, 14)
+            .padding(.horizontal, 16)
+            .background(message.isEmergency ? Color.errorTintBg : Color.surfaceContainerLowest)
+            .clipShape(BubbleShape(isUser: false))
+            .overlay(
+                BubbleShape(isUser: false)
+                    .stroke(message.isEmergency ? Color.error : Color.primary.opacity(0.05), lineWidth: message.isEmergency ? 2 : 1)
+            )
+            .shadow(color: Color.black.opacity(0.03), radius: 8, x: 0, y: 2)
+        }
+        .padding(.trailing, 48)
+        .textSelection(.enabled)
+        .onTapGesture {
+            withAnimation { isRevealed.toggle() }
+        }
+    }
+}
+"""
+
+with open(bubble_path, "w") as f:
+    f.write(bubble_content)
+
+
+# 3. CoachChatView.swift
+coach_chat_content = """import SwiftUI
 
 struct CoachChatView: View {
     @EnvironmentObject var viewModel: CoachViewModel
     @State private var inputText = ""
-    @Environment(\.dismiss) var dismiss
+    @Environment(\\.dismiss) var dismiss
     @EnvironmentObject var petStore: PetStore
     @EnvironmentObject var authManager: AuthManager
     
     private var petName: String {
         petStore.activePet?.name ?? PetStore.fallbackPetName
-    }
-    
-    private func hideKeyboard() {
-        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }
     
     var body: some View {
@@ -39,7 +273,7 @@ struct CoachChatView: View {
                                     .font(.headlineLG)
                                     .foregroundColor(.primaryText)
                                 
-                                Text("I'm here to help you understand \(petName)'s health, behavior, and daily needs.")
+                                Text("I'm here to help you understand \\(petName)'s health, behavior, and daily needs.")
                                     .font(.bodyMD)
                                     .foregroundColor(.secondaryText)
                                     .multilineTextAlignment(.center)
@@ -47,7 +281,7 @@ struct CoachChatView: View {
                                 
                                 if !viewModel.quickReplies.isEmpty {
                                     VStack(spacing: 12) {
-                                        ForEach(viewModel.quickReplies, id: \.self) { reply in
+                                        ForEach(viewModel.quickReplies, id: \\.self) { reply in
                                             Button(action: { send(reply) }) {
                                                 HStack {
                                                     Text(reply)
@@ -76,9 +310,9 @@ struct CoachChatView: View {
                             .padding(.top, 60)
                         } else {
                             // Add top padding
-                            Color.clear.frame(height: 10)
+                            Color.clear.frame(height: 20)
                             
-                            ForEach(Array(viewModel.messages.enumerated()), id: \.element.id) { index, message in
+                            ForEach(Array(viewModel.messages.enumerated()), id: \\.element.id) { index, message in
                                 let showTimestamp = shouldShowTimestamp(for: index)
                                 MessageBubbleView(message: message, showTimestamp: showTimestamp)
                                     .id(message.id)
@@ -98,13 +332,8 @@ struct CoachChatView: View {
                             .id("typingIndicator")
                         }
                     }
-                    .padding(.bottom, 10) // Extra padding before composer
+                    .padding(.bottom, 20) // Extra padding before composer
                 }
-                .background(
-                    Color.clear
-                        .contentShape(Rectangle())
-                        .onTapGesture { hideKeyboard() }
-                )
                 .safeAreaInset(edge: .top) {
                     topBar
                 }
@@ -136,9 +365,6 @@ struct CoachChatView: View {
                 }
                 .scrollDismissesKeyboard(.interactively)
             }
-            .onTapGesture {
-                hideKeyboard()
-            }
         }
         .navigationBarHidden(true)
         .gesture(
@@ -151,7 +377,7 @@ struct CoachChatView: View {
         // Premium Wall
         .sheet(isPresented: $viewModel.showPremiumWall) {
             VStack(spacing: 24) {
-                Text("\(petName) and I have so much more to talk about")
+                Text("\\(petName) and I have so much more to talk about")
                     .font(.headlineMD)
                     .multilineTextAlignment(.center)
                 
@@ -218,7 +444,7 @@ struct CoachChatView: View {
                         case .other: return "🐾"
                         }
                     }()
-                    Text("\(emoji) \(petName)")
+                    Text("\\(emoji) \\(petName)")
                         .font(.labelSM)
                         .foregroundColor(.secondaryText)
                     Image(systemName: "chevron.down")
@@ -253,8 +479,8 @@ struct CoachChatView: View {
             }
         }
         .padding(.horizontal, 20)
-        .padding(.bottom, 6)
-        .padding(.top, 6) // Fallback padding for safe area
+        .padding(.bottom, 12)
+        .padding(.top, 12) // Fallback padding for safe area
         .background(
             Color.surfaceContainerLowest.opacity(0.8)
                 .background(.ultraThinMaterial)
@@ -279,8 +505,8 @@ struct CoachChatView: View {
     
     private func setInitialQuickReplies() {
         viewModel.quickReplies = [
-            "Is \(petName)'s weight healthy?",
-            "What should I feed \(petName)?",
+            "Is \\(petName)'s weight healthy?",
+            "What should I feed \\(petName)?",
             "How often should I walk them?"
         ]
     }
@@ -305,7 +531,7 @@ struct TypingIndicator: View {
         }
         .foregroundColor(.tertiaryText)
         .padding(.horizontal, 16)
-        .padding(.vertical, 8)
+        .padding(.vertical, 12)
         .background(Color.surfaceContainerLowest)
         .clipShape(BubbleShape(isUser: false))
         .shadow(color: Color.black.opacity(0.03), radius: 8, x: 0, y: 2)
@@ -322,3 +548,9 @@ struct TypingIndicator: View {
     CoachChatView()
         .environmentObject(PetStore())
 }
+"""
+
+with open(coach_chat_path, "w") as f:
+    f.write(coach_chat_content)
+
+print("All Coach Chat views rewritten.")
