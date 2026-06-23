@@ -2,89 +2,114 @@ import SwiftUI
 
 struct PatternAlertCard: View {
     @EnvironmentObject var petStore: PetStore
-    var hasAlert: Bool = false // Mocked state for now
+    var hasAlert: Bool = false
     var action: (() -> Void)?
     
     var body: some View {
         let petName = petStore.activePet?.name ?? "your pet"
+        let accentColor: Color = hasAlert ? .warning : .primary
         
         Button(action: {
             action?()
         }) {
             ZStack(alignment: .topTrailing) {
-                // Background blur effect from design
-                let glowColor = hasAlert ? Color.warningBorder : Color.primary
+                // Subtle glow accent
                 Circle()
-                    .fill(RadialGradient(colors: [glowColor.opacity(0.6), glowColor.opacity(0.0)], center: .center, startRadius: 0, endRadius: 80))
-                    .frame(width: 160, height: 160)
-                    .blur(radius: 20)
-                    .offset(x: 40, y: -40)
+                    .fill(
+                        RadialGradient(
+                            colors: [accentColor.opacity(0.4), accentColor.opacity(0.0)],
+                            center: .center,
+                            startRadius: 0,
+                            endRadius: 70
+                        )
+                    )
+                    .frame(width: 120, height: 120)
+                    .blur(radius: 15)
+                    .offset(x: 30, y: -30)
                 
-                VStack(alignment: .leading, spacing: 12) {
-                HStack(spacing: 12) {
-                    Image(systemName: hasAlert ? "exclamationmark.triangle.fill" : "checkmark.shield.fill")
-                        .foregroundColor(hasAlert ? Color.warning : Color.primary)
-                        .padding(8)
-                        .background(Color.surface0)
-                        .clipShape(Circle())
-                        .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
+                VStack(alignment: .leading, spacing: 10) {
+                    // Icon + Title
+                    HStack(spacing: 10) {
+                        ZStack {
+                            Circle()
+                                .fill(accentColor.opacity(0.12))
+                                .frame(width: 36, height: 36)
+                            Image(systemName: hasAlert ? "exclamationmark.triangle.fill" : "checkmark.shield.fill")
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(accentColor)
+                        }
+                        
+                        Text(hasAlert ? "Pattern noticed" : "All Clear")
+                            .font(.headlineSM)
+                            .foregroundColor(accentColor)
+                    }
                     
-                    Text(hasAlert ? "Pattern noticed" : "All Clear")
-                        .font(.headlineSM)
-                        .foregroundColor(hasAlert ? Color.warning : Color.primary)
-                }
-                
-                Text(hasAlert ? "\(petName)'s scratched 3 times this week." : "No anomalies detected for \(petName).")
-                    .font(.bodyMD)
-                    .foregroundColor(hasAlert ? Color.warning.opacity(0.8) : Color.primary.opacity(0.8))
-                
-                HStack {
-                    Spacer()
+                    // Description
+                    Text(hasAlert
+                         ? "\(petName)'s scratched 3 times this week."
+                         : "No anomalies for \(petName).")
+                        .font(.bodySM)
+                        .foregroundColor(accentColor.opacity(0.75))
+                        .lineLimit(2)
+                        .multilineTextAlignment(.leading)
+                    
+                    Spacer(minLength: 0)
+                    
+                    // CTA
                     HStack(spacing: 4) {
                         if hasAlert {
                             Image(systemName: "lock.fill")
-                                .font(.caption)
-                                .foregroundColor(.warning)
+                                .font(.system(size: 9))
                         }
-                        Text(hasAlert ? "See full analysis" : "View Insights")
-                            .font(.labelMD)
+                        Text(hasAlert ? "See analysis" : "View Insights")
+                            .font(.labelSM)
                         Image(systemName: "chevron.right")
-                            .font(.bodySM)
+                            .font(.system(size: 10, weight: .semibold))
                     }
-                    .foregroundColor(hasAlert ? Color.warning : Color.primary)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
+                    .foregroundColor(accentColor)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
                     .background(.ultraThinMaterial)
                     .clipShape(Capsule())
-                    .overlay(Capsule().stroke(hasAlert ? Color.warning.opacity(0.3) : Color.primary.opacity(0.3), lineWidth: 1))
+                    .overlay(Capsule().stroke(accentColor.opacity(0.25), lineWidth: 1))
                 }
-                .padding(.top, 4)
+                .padding(16)
             }
-            .padding(20)
-            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(height: 170)
             .background(
                 Group {
-                    if hasAlert { Color.warningBackground }
-                    else { Color.primaryContainer.opacity(0.3) }
+                    if hasAlert {
+                        Color.warningBackground
+                    } else {
+                        Color.primaryContainer.opacity(0.25)
+                    }
                 }
-                .overlay(.ultraThinMaterial.opacity(0.8))
+                .overlay(.ultraThinMaterial.opacity(0.7))
             )
             .cornerRadius(AppRadius.card)
             .overlay(
                 RoundedRectangle(cornerRadius: AppRadius.card)
-                    .stroke(hasAlert ? Color.warningBorder.opacity(0.5) : Color.primary.opacity(0.2), lineWidth: 1)
+                    .stroke(accentColor.opacity(0.15), lineWidth: 1)
             )
             .warmShadow()
             .clipped()
             .accessibilityElement(children: .combine)
-            .accessibilityLabel(hasAlert ? "Pattern noticed. \(petName) scratched 3 times this week." : "All Clear. No anomalies detected for \(petName).")
+            .accessibilityLabel(hasAlert
+                ? "Pattern noticed. \(petName) scratched 3 times this week."
+                : "All Clear. No anomalies detected for \(petName).")
         }
         .buttonStyle(SquishyCardStyle())
     }
 }
 
 #Preview {
-    PatternAlertCard()
-        .padding()
-        .background(Color.background)
+    HStack(spacing: 14) {
+        PatternAlertCard()
+            .frame(width: 260)
+        PatternAlertCard(hasAlert: true)
+            .frame(width: 260)
+    }
+    .padding()
+    .background(Color.background)
 }

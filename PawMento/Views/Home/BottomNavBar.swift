@@ -8,7 +8,7 @@ struct BottomNavBar: View {
     @Namespace private var animation
     
     enum Tab {
-        case home, pet
+        case home, insights, pet
     }
     
     var body: some View {
@@ -20,6 +20,17 @@ struct BottomNavBar: View {
                 isSelected: selectedTab == .home,
                 namespace: animation,
                 action: { selectedTab = .home }
+            )
+            
+            Spacer()
+            
+            NavBarItem(
+                id: .insights,
+                icon: "chart.line.uptrend.xyaxis",
+                title: "Insights",
+                isSelected: selectedTab == .insights,
+                namespace: animation,
+                action: { selectedTab = .insights }
             )
             
             Spacer()
@@ -65,9 +76,9 @@ struct BottomNavBar: View {
                 action: { selectedTab = .pet }
             )
         }
-        .padding(.horizontal, 20)
+        .padding(.horizontal, 16)
         .padding(.top, 12)
-        .padding(.bottom, 24) // Extra padding for bottom safe area
+        .padding(.bottom, 24)
         .background(
             Color.surfaceContainerLowest.opacity(0.6)
                 .background(.ultraThinMaterial)
@@ -90,6 +101,8 @@ struct NavBarItem: View {
     var namespace: Namespace.ID
     let action: () -> Void
     
+    @State private var pulseAnimate = false
+    
     var body: some View {
         Button(action: {
             withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
@@ -101,7 +114,7 @@ struct NavBarItem: View {
                     Image(systemName: icon)
                         .font(.headlineLG)
                         .foregroundColor(isSelected ? .onPrimaryContainer : .onSurfaceVariant)
-                        .padding(.horizontal, 16)
+                        .padding(.horizontal, 14)
                         .padding(.vertical, 4)
                         .background(
                             ZStack {
@@ -115,13 +128,28 @@ struct NavBarItem: View {
                         .clipShape(Capsule())
                     
                     if hasPulse {
-                        Circle()
-                            .fill(Color.primary)
-                            .frame(width: 8, height: 8)
-                            .overlay(
-                                Circle().stroke(Color.surfaceContainerLowest, lineWidth: 1)
-                            )
-                            .offset(x: -8, y: 0)
+                        ZStack {
+                            // Animated pulse ring
+                            Circle()
+                                .stroke(Color.primary.opacity(0.4), lineWidth: 1.5)
+                                .frame(width: 8, height: 8)
+                                .scaleEffect(pulseAnimate ? 2.2 : 1.0)
+                                .opacity(pulseAnimate ? 0.0 : 0.6)
+                                .animation(
+                                    .easeOut(duration: 1.5)
+                                    .repeatForever(autoreverses: false),
+                                    value: pulseAnimate
+                                )
+                            
+                            // Core dot
+                            Circle()
+                                .fill(Color.primary)
+                                .frame(width: 8, height: 8)
+                                .overlay(
+                                    Circle().stroke(Color.surfaceContainerLowest, lineWidth: 1.5)
+                                )
+                        }
+                        .offset(x: -6, y: -1)
                     }
                 }
                 
@@ -131,6 +159,13 @@ struct NavBarItem: View {
             }
         }
         .buttonStyle(SquishyNavStyle())
+        .accessibilityLabel(title)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+        .onAppear {
+            if hasPulse {
+                pulseAnimate = true
+            }
+        }
     }
 }
 

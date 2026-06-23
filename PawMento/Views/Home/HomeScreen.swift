@@ -20,59 +20,25 @@ struct HomeScreen: View {
     var body: some View {
         ZStack(alignment: .bottom) {
             // Main Content ScrollView
-            if selectedTab == .pet {
+            switch selectedTab {
+            case .pet:
                 PetProfileScreen()
                     .environmentObject(petStore)
                     .environmentObject(logStore)
-            } else {
-                ScrollView(showsIndicators: false) {
-                    VStack(spacing: 0) {
-                        // Header (Sticky on top conceptually, but scrolls here)
-                        TopHeaderView()
-                        
-                        VStack(spacing: 16) {
-                            PetSelectorCard(onAddPet: { showAddPetSheet = true })
-                            
-                            // Promoted clinical card
-                            WellnessScoreHero(onViewTrendsTapped: {
-                                showFullTimeline = true
-                            })
-                            
-                            upNextRemindersSection
-                            
-                            TodayLogGrid(onLogAction: {
-                                showQuickLog = true
-                            })
-                            
-                            RecentActivityTimeline()
-                            
-                            // Deemphasized secondary/marketing cards
-                            HStack(spacing: 12) {
-                                PatternAlertCard(action: {
-                                    showInsights = true
-                                })
-                                .scaleEffect(0.9)
-                                
-                                AskCoachCard(action: {
-                                    showCoachChat = true
-                                })
-                                .scaleEffect(0.9)
-                            }
-                            
-                        }
-                        .padding(.horizontal, 20)
-                        .padding(.top, 20)
-                        .padding(.bottom, 120) // Padding for bottom nav bar
-                    }
-                }
-                .background(Color.background)
-                .edgesIgnoringSafeArea(.bottom) // Let content scroll behind nav bar
+            case .insights:
+                InsightsScreen()
+            default:
+                homeContent
             }
             
             // Bottom Navigation
             VStack {
                 Spacer()
-                BottomNavBar(selectedTab: $selectedTab, onLogTap: { showQuickLog = true }, onCoachTap: { showCoachChat = true })
+                BottomNavBar(
+                    selectedTab: $selectedTab,
+                    onLogTap: { showQuickLog = true },
+                    onCoachTap: { showCoachChat = true }
+                )
             }
             .edgesIgnoringSafeArea(.bottom)
         }
@@ -111,20 +77,76 @@ struct HomeScreen: View {
         }
     }
     
+    // MARK: - Home Content
+    
+    private var homeContent: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(spacing: 0) {
+                TopHeaderView()
+                
+                VStack(spacing: 24) {
+                    // ── Hero Zone ──
+                    PetSelectorCard(onAddPet: { showAddPetSheet = true })
+                    
+                    WellnessScoreHero(onViewTrendsTapped: {
+                        showFullTimeline = true
+                    })
+                    
+                    // ── Up Next ──
+                    upNextRemindersSection
+                    
+                    // ── Today ──
+                    TodayLogGrid(onLogAction: {
+                        showQuickLog = true
+                    })
+                    
+                    // ── Recent Activity ──
+                    RecentActivityTimeline()
+                    
+                    // ── Quick Actions — horizontally scrolling compact cards ──
+                    quickActionsSection
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 16)
+                .padding(.bottom, 120)
+            }
+        }
+        .background(Color.background)
+        .edgesIgnoringSafeArea(.bottom)
+    }
+    
+    // MARK: - Quick Actions (replaces side-by-side scaleEffect hack)
+    
+    private var quickActionsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SectionHeader("Quick Actions")
+            
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 14) {
+                    PatternAlertCard(action: {
+                        showInsights = true
+                    })
+                    .frame(width: 260)
+                    
+                    AskCoachCard(action: {
+                        showCoachChat = true
+                    })
+                    .frame(width: 260)
+                }
+                .padding(.vertical, 4) // Prevent shadow clipping
+            }
+        }
+    }
+    
+    // MARK: - Up Next Reminders
+    
     @ViewBuilder
     private var upNextRemindersSection: some View {
         let petId = petStore.activePet?.id ?? UUID()
         let petReminders = reminderStore.reminders(for: petId)
         
         VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("UP NEXT")
-                    .font(.bodyXS)
-                    .foregroundColor(.ink900.opacity(0.6))
-                    .kerning(1.2)
-                
-                Spacer()
-                
+            SectionHeader("Up Next") {
                 Button(action: { showCreateReminder = true }) {
                     Image(systemName: "plus.circle.fill")
                         .font(.headlineMD)
@@ -143,11 +165,11 @@ struct HomeScreen: View {
                         Spacer()
                     }
                     .padding(16)
-                    .background(Color.primary.opacity(0.1))
+                    .background(Color.primary.opacity(0.08))
                     .cornerRadius(AppRadius.md)
                     .overlay(
                         RoundedRectangle(cornerRadius: 16)
-                            .stroke(Color.primary.opacity(0.3), style: StrokeStyle(lineWidth: 1, dash: [4]))
+                            .stroke(Color.primary.opacity(0.2), style: StrokeStyle(lineWidth: 1, dash: [6]))
                     )
                 }
             } else {
@@ -155,7 +177,6 @@ struct HomeScreen: View {
                     HStack(spacing: 12) {
                         ForEach(petReminders) { reminder in
                             ReminderPillView(reminder: reminder, onLogTapped: {
-                                // For now, let's open quick log pre-filled, or just log directly
                                 Task { @MainActor in
                                     if let category = LogCategory(rawValue: reminder.categoryId) {
                                         let newLog = LogEntry(
@@ -186,11 +207,9 @@ struct HomeScreen: View {
                             })
                         }
                     }
-                    // padding so shadow doesn't clip
-                    .padding(.vertical, 8) 
+                    .padding(.vertical, 8)
                 }
                 .contentMargins(.horizontal, 20, for: .scrollContent)
-                
             }
         }
     }

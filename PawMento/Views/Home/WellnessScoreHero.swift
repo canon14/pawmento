@@ -70,7 +70,7 @@ struct WellnessScoreHero: View {
                         } else {
                             HStack(alignment: .firstTextBaseline, spacing: 0) {
                                 Text("\(score)")
-                                    .font(.system(size: 64, weight: .bold, design: .rounded))
+                                    .font(.custom("PlusJakartaSans-Bold", size: 56))
                                     .foregroundColor(.primary)
                                     .contentTransition(.numericText(value: Double(score)))
                                 Text("/100")
@@ -171,7 +171,7 @@ struct WellnessScoreHero: View {
         let baseColor: Color
         if confidence == .insufficient { baseColor = Color(hex: "#F5F3EF") }
         else if score >= 80 { baseColor = .primary }
-        else if score >= 60 { baseColor = .primary }
+        else if score >= 60 { baseColor = .warning }
         else { baseColor = .error }
         
         return AngularGradient(
