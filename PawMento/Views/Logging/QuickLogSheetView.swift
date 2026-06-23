@@ -142,6 +142,8 @@ struct QuickLogSheetView: View {
             .safeAreaInset(edge: .bottom) {
                 // Floating Glass Footer
                 VStack(spacing: 12) {
+                    let isDisabled = selectedCategory == nil || !hasContent
+                    
                     Button(action: saveLog) {
                         HStack {
                             if isSaving {
@@ -153,7 +155,7 @@ struct QuickLogSheetView: View {
                                     .font(.headlineSM)
                             } else {
                                 Text(AppStrings.QuickLog.save)
-                                    .font(.ctaOnboarding)
+                                    .font(.headlineSM)
                             }
                         }
                         .foregroundColor(.white)
@@ -161,20 +163,31 @@ struct QuickLogSheetView: View {
                         .frame(height: 56)
                         .background(
                             LinearGradient(
-                                colors: [Color.primary, Color.primary.opacity(0.8)],
+                                colors: isDisabled
+                                    ? [Color.primary.opacity(0.35), Color.primary.opacity(0.25)]
+                                    : [Color.primary, Color.primary.opacity(0.85)],
                                 startPoint: .topLeading, endPoint: .bottomTrailing
                             )
                         )
                         .clipShape(RoundedRectangle(cornerRadius: AppRadius.input))
-                        .shadow(color: Color.primary.opacity((selectedCategory == nil || !hasContent) ? 0 : 0.3), radius: 8, x: 0, y: 4)
-                        .opacity(selectedCategory == nil || !hasContent ? 0.4 : 1.0)
-                        .scaleEffect((selectedCategory == nil || !hasContent) ? 1.0 : (isSaving ? 0.95 : 1.0))
-                        .animation(.spring(response: 0.3, dampingFraction: 0.6), value: selectedCategory == nil || !hasContent)
+                        .shadow(
+                            color: isDisabled ? Color.clear : Color.primary.opacity(0.3),
+                            radius: isDisabled ? 0 : 8,
+                            x: 0,
+                            y: isDisabled ? 0 : 4
+                        )
+                        .scaleEffect(isDisabled ? 0.97 : (isSaving ? 0.95 : 1.0))
+                        .animation(.spring(response: 0.35, dampingFraction: 0.7), value: isDisabled)
                         .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isSaving)
                     }
-                    .disabled(selectedCategory == nil || !hasContent || isSaving || showSuccess)
-                    .offset(x: showErrorShake && !reduceMotion ? 10 : -10)
-                    .animation(showErrorShake && !reduceMotion ? Animation.default.repeatCount(3).speed(4) : .default, value: showErrorShake)
+                    .disabled(isDisabled || isSaving || showSuccess)
+                    .offset(x: showErrorShake && !reduceMotion ? 8 : 0)
+                    .animation(
+                        showErrorShake && !reduceMotion
+                            ? .spring(response: 0.12, dampingFraction: 0.2).repeatCount(3)
+                            : .default,
+                        value: showErrorShake
+                    )
                     
                     Button(AppStrings.QuickLog.moreDetails) {
                         TelemetryEngine.shared.track(event: .quick_log_more_details_tapped, properties: [

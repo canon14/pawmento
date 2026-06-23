@@ -47,11 +47,11 @@ struct PhotoNoteRowView: View {
                         }
                     } else {
                         RoundedRectangle(cornerRadius: 16)
-                            .fill(Color.surfaceContainerLowest)
+                            .fill(Color.surfaceContainerLow.opacity(0.5))
                             .frame(width: 72, height: 72)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 16)
-                                    .stroke(Color.primary.opacity(0.1), lineWidth: 1)
+                                    .stroke(Color.primary.opacity(0.15), style: StrokeStyle(lineWidth: 1, dash: [5]))
                             )
                             .shadow(color: Color.black.opacity(0.03), radius: 6, x: 0, y: 2)
                             .overlay(
@@ -73,11 +73,19 @@ struct PhotoNoteRowView: View {
             // Note Field
             ZStack(alignment: .topLeading) {
                 RoundedRectangle(cornerRadius: 16)
-                    .fill(Color.surface0)
+                    .fill(isNoteFocused ? Color.surfaceContainerLowest : Color.surface0)
                     .overlay(
                         RoundedRectangle(cornerRadius: 16)
-                            .stroke(isNoteFocused ? Color.primary : Color.primary.opacity(0.05), lineWidth: isNoteFocused ? 2 : 1)
+                            .stroke(
+                                isNoteFocused ? Color.primary.opacity(0.4) : Color.primary.opacity(0.08),
+                                lineWidth: isNoteFocused ? 1.5 : 1
+                            )
                     )
+                    .shadow(
+                        color: isNoteFocused ? Color.primary.opacity(0.08) : Color.clear,
+                        radius: 6, x: 0, y: 3
+                    )
+                    .animation(.easeInOut(duration: 0.2), value: isNoteFocused)
                 
                 if note.isEmpty {
                     Text(AppStrings.QuickLog.tapToDescribe)

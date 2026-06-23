@@ -20,24 +20,22 @@ struct CategoryScrollerView: View {
                     Button(action: {
                         showingMoreCategories = true
                     }) {
-                        VStack(spacing: 8) {
-                            Text("···")
-                                .font(.headlineLG)
-                                .padding(.top, 8)
+                        VStack(spacing: 6) {
+                            Image(systemName: "square.grid.2x2")
+                                .font(.system(size: 20, weight: .medium))
+                                .foregroundColor(.primary)
+                                .padding(.top, 4)
                             Text("More")
                                 .font(.labelMD)
+                                .foregroundColor(.secondaryText)
                         }
                         .frame(width: 68, height: 80)
-                        .background(
-                            LinearGradient(colors: [Color.surface0, Color.surface0], startPoint: .top, endPoint: .bottom)
-                        )
+                        .background(Color.surface0.opacity(0.6))
                         .cornerRadius(16)
                         .overlay(
                             RoundedRectangle(cornerRadius: 16)
-                                .stroke(Color.primary.opacity(0.05), lineWidth: 1)
+                                .stroke(Color.primary.opacity(0.15), style: StrokeStyle(lineWidth: 1, dash: [5]))
                         )
-                        .shadow(color: Color.black.opacity(0.02), radius: 4, x: 0, y: 2)
-                        .foregroundColor(.primaryText)
                     }
                     .buttonStyle(SquishyCardStyle())
                 }
@@ -110,35 +108,46 @@ struct FullCategoryGridView: View {
     var body: some View {
         NavigationView {
             ScrollView {
-                LazyVGrid(columns: columns, spacing: 16) {
+                LazyVGrid(columns: columns, spacing: 14) {
                     ForEach(LogCategory.allCases) { category in
                         let isSelected = selectedCategory == category
                         
                         Button(action: {
-                            withAnimation {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.6)) {
                                 selectedCategory = category
                             }
+                            let generator = UISelectionFeedbackGenerator()
+                            generator.selectionChanged()
                             dismiss()
                         }) {
-                            VStack(spacing: 8) {
+                            VStack(spacing: 6) {
                                 Text(category.emoji)
                                     .font(.headlineLG)
+                                    .scaleEffect(isSelected ? 1.1 : 1.0)
                                 
                                 Text(category.rawValue)
-                                    .font(.labelSM)
+                                    .font(isSelected ? .labelSemibold : .labelSM)
                                     .minimumScaleFactor(0.7)
                                     .lineLimit(1)
                             }
                             .frame(maxWidth: .infinity)
                             .frame(height: 76)
-                            .background(isSelected ? Color.primary : Color.surface0)
+                            .background(
+                                isSelected
+                                    ? LinearGradient(colors: [Color.primary, Color.primary.opacity(0.8)], startPoint: .topLeading, endPoint: .bottomTrailing)
+                                    : LinearGradient(colors: [Color.surface0, Color.surface0], startPoint: .top, endPoint: .bottom)
+                            )
                             .cornerRadius(AppRadius.md)
                             .overlay(
-                                RoundedRectangle(cornerRadius: 16)
-                                    .stroke(isSelected ? Color.primary : Color.warmSand, lineWidth: 1)
+                                RoundedRectangle(cornerRadius: AppRadius.md)
+                                    .stroke(isSelected ? Color.clear : Color.primary.opacity(0.08), lineWidth: 1)
                             )
+                            .shadow(color: isSelected ? Color.primary.opacity(0.2) : Color.black.opacity(0.02), radius: isSelected ? 6 : 3, x: 0, y: isSelected ? 3 : 1)
                             .foregroundColor(isSelected ? .white : .primaryText)
                         }
+                        .buttonStyle(SquishyCardStyle())
+                        .accessibilityLabel(category.rawValue)
+                        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
                     }
                 }
                 .padding(20)
@@ -148,8 +157,11 @@ struct FullCategoryGridView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Close") {
-                        dismiss()
+                    Button(action: { dismiss() }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.headlineLG)
+                            .foregroundColor(.tertiaryText)
+                            .symbolRenderingMode(.hierarchical)
                     }
                 }
             }
