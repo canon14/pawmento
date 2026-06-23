@@ -7,6 +7,8 @@ struct CoachChatView: View {
     @EnvironmentObject var petStore: PetStore
     @EnvironmentObject var authManager: AuthManager
     
+    @State private var heroVisible = false
+    
     private var petName: String {
         petStore.activePet?.name ?? PetStore.fallbackPetName
     }
@@ -23,65 +25,25 @@ struct CoachChatView: View {
                 ScrollView {
                     LazyVStack(spacing: 24) {
                         if viewModel.messages.isEmpty {
-                            VStack(spacing: 20) {
-                                ZStack {
-                                    Circle()
-                                        .fill(LinearGradient(colors: [Color.primary.opacity(0.2), Color.primary.opacity(0.0)], startPoint: .top, endPoint: .bottom))
-                                        .frame(width: 80, height: 80)
-                                    
-                                    Image(systemName: "sparkles")
-                                        .font(.system(size: 40))
-                                        .foregroundColor(.primary)
-                                }
-                                .padding(.bottom, 8)
-                                
-                                Text("Welcome to Coach")
-                                    .font(.headlineLG)
-                                    .foregroundColor(.primaryText)
-                                
-                                Text("I'm here to help you understand \(petName)'s health, behavior, and daily needs.")
-                                    .font(.bodyMD)
-                                    .foregroundColor(.secondaryText)
-                                    .multilineTextAlignment(.center)
-                                    .padding(.horizontal, 32)
-                                
-                                if !viewModel.quickReplies.isEmpty {
-                                    VStack(spacing: 12) {
-                                        ForEach(viewModel.quickReplies, id: \.self) { reply in
-                                            Button(action: { send(reply) }) {
-                                                HStack {
-                                                    Text(reply)
-                                                        .font(.labelMD)
-                                                        .foregroundColor(.primaryText)
-                                                    Spacer()
-                                                    Image(systemName: "arrow.up.right")
-                                                        .foregroundColor(.primary.opacity(0.6))
-                                                }
-                                                .padding(.horizontal, 20)
-                                                .padding(.vertical, 16)
-                                                .background(Color.primaryContainer.opacity(0.3))
-                                                .cornerRadius(AppRadius.card)
-                                                .overlay(
-                                                    RoundedRectangle(cornerRadius: AppRadius.card)
-                                                        .stroke(Color.primary.opacity(0.1), lineWidth: 1)
-                                                )
-                                            }
-                                            .buttonStyle(SquishyCardStyle())
-                                        }
-                                    }
-                                    .padding(.horizontal, 24)
-                                    .padding(.top, 24)
-                                }
-                            }
-                            .padding(.top, 60)
+                            welcomeHero
                         } else {
-                            // Add top padding
                             Color.clear.frame(height: 10)
                             
                             ForEach(Array(viewModel.messages.enumerated()), id: \.element.id) { index, message in
                                 let showTimestamp = shouldShowTimestamp(for: index)
                                 MessageBubbleView(message: message, showTimestamp: showTimestamp)
                                     .id(message.id)
+                                    .transition(.asymmetric(
+                                        insertion: .move(edge: .bottom).combined(with: .opacity),
+                                        removal: .opacity
+                                    ))
+                            }
+                            
+                            // Follow-up quick replies (shown after AI response)
+                            if !viewModel.quickReplies.isEmpty {
+                                quickRepliesSection
+                                    .id("quickReplies")
+                                    .transition(.move(edge: .bottom).combined(with: .opacity))
                             }
                         }
                         
@@ -98,7 +60,7 @@ struct CoachChatView: View {
                             .id("typingIndicator")
                         }
                     }
-                    .padding(.bottom, 10) // Extra padding before composer
+                    .padding(.bottom, 10)
                 }
                 .background(
                     Color.clear
@@ -134,6 +96,13 @@ struct CoachChatView: View {
                         }
                     }
                 }
+                .onChange(of: viewModel.quickReplies) { _, replies in
+                    if !replies.isEmpty {
+                        withAnimation(.easeOut(duration: 0.3).delay(0.2)) {
+                            proxy.scrollTo("quickReplies", anchor: .bottom)
+                        }
+                    }
+                }
                 .scrollDismissesKeyboard(.interactively)
             }
             .onTapGesture {
@@ -148,30 +117,9 @@ struct CoachChatView: View {
                 }
             }
         )
-        // Premium Wall
+        // Premium Wall — fully redesigned
         .sheet(isPresented: $viewModel.showPremiumWall) {
-            VStack(spacing: 24) {
-                Text("\(petName) and I have so much more to talk about")
-                    .font(.headlineMD)
-                    .multilineTextAlignment(.center)
-                
-                Text("Unlock unlimited Coach for $9.99/mo")
-                    .font(.bodyLG)
-                    .foregroundColor(.secondaryText)
-                
-                Button("Start 7-day free trial") {
-                    viewModel.showPremiumWall = false
-                }
-                .buttonStyle(PrimaryButtonStyle())
-                .padding(.horizontal, 24)
-                
-                Button("Maybe later") {
-                    viewModel.showPremiumWall = false
-                }
-                .foregroundColor(.tertiaryText)
-            }
-            .padding(32)
-            .presentationDetents([.medium])
+            premiumPaywallSheet
         }
         .onAppear {
             Task {
@@ -185,8 +133,218 @@ struct CoachChatView: View {
                     }
                 }
             }
+            withAnimation(.easeOut(duration: 0.6).delay(0.15)) {
+                heroVisible = true
+            }
         }
     }
+    
+    // MARK: - Welcome Hero (empty state)
+    
+    private var welcomeHero: some View {
+        VStack(spacing: 20) {
+            ZStack {
+                // Ambient rings
+                Circle()
+                    .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+                    .frame(width: 110, height: 110)
+                    .scaleEffect(heroVisible ? 1.0 : 0.6)
+                    .opacity(heroVisible ? 1.0 : 0.0)
+                
+                Circle()
+                    .fill(
+                        LinearGradient(
+                            colors: [Color.primary.opacity(0.2), Color.primary.opacity(0.04)],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    )
+                    .frame(width: 80, height: 80)
+                    .scaleEffect(heroVisible ? 1.0 : 0.5)
+                    .opacity(heroVisible ? 1.0 : 0.0)
+                
+                Image(systemName: "sparkles")
+                    .font(.system(size: 36, weight: .medium))
+                    .foregroundColor(.primary)
+                    .scaleEffect(heroVisible ? 1.0 : 0.3)
+                    .opacity(heroVisible ? 1.0 : 0.0)
+            }
+            .animation(.spring(response: 0.7, dampingFraction: 0.6), value: heroVisible)
+            .padding(.bottom, 4)
+            
+            Text("Welcome to Coach")
+                .font(.headlineLG)
+                .foregroundColor(.primaryText)
+                .opacity(heroVisible ? 1.0 : 0.0)
+                .offset(y: heroVisible ? 0 : 10)
+                .animation(.easeOut(duration: 0.5).delay(0.2), value: heroVisible)
+            
+            Text("I'm here to help you understand \(petName)'s health, behavior, and daily needs.")
+                .font(.bodyMD)
+                .foregroundColor(.secondaryText)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
+                .opacity(heroVisible ? 1.0 : 0.0)
+                .offset(y: heroVisible ? 0 : 8)
+                .animation(.easeOut(duration: 0.5).delay(0.3), value: heroVisible)
+            
+            if !viewModel.quickReplies.isEmpty {
+                quickRepliesSection
+                    .padding(.top, 16)
+                    .opacity(heroVisible ? 1.0 : 0.0)
+                    .offset(y: heroVisible ? 0 : 12)
+                    .animation(.easeOut(duration: 0.5).delay(0.4), value: heroVisible)
+            }
+        }
+        .padding(.top, 60)
+    }
+    
+    // MARK: - Quick Replies (reusable for welcome + follow-up)
+    
+    private var quickRepliesSection: some View {
+        VStack(spacing: 10) {
+            ForEach(viewModel.quickReplies, id: \.self) { reply in
+                Button(action: { send(reply) }) {
+                    HStack(spacing: 12) {
+                        Text(reply)
+                            .font(.labelMD)
+                            .foregroundColor(.primaryText)
+                            .multilineTextAlignment(.leading)
+                        Spacer()
+                        Image(systemName: "arrow.up.right")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(.primary.opacity(0.5))
+                    }
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 14)
+                    .background(Color.primaryContainer.opacity(0.25))
+                    .cornerRadius(AppRadius.md)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: AppRadius.md)
+                            .stroke(Color.primary.opacity(0.1), lineWidth: 1)
+                    )
+                }
+                .buttonStyle(SquishyCardStyle())
+            }
+        }
+        .padding(.horizontal, 24)
+    }
+    
+    // MARK: - Premium Paywall Sheet
+    
+    private var premiumPaywallSheet: some View {
+        VStack(spacing: 0) {
+            // Decorative header glow
+            ZStack {
+                Circle()
+                    .fill(
+                        RadialGradient(
+                            colors: [Color.primary.opacity(0.2), Color.primary.opacity(0.0)],
+                            center: .center,
+                            startRadius: 0,
+                            endRadius: 100
+                        )
+                    )
+                    .frame(width: 200, height: 200)
+                    .blur(radius: 20)
+                
+                VStack(spacing: 8) {
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 44, weight: .medium))
+                        .foregroundColor(.primary)
+                    
+                    Text("Coach Pro")
+                        .font(.headlineLG)
+                        .foregroundColor(.primaryText)
+                }
+            }
+            .padding(.top, 32)
+            
+            VStack(spacing: 8) {
+                Text("\(petName) and I have so much more to talk about")
+                    .font(.headlineSM)
+                    .multilineTextAlignment(.center)
+                    .foregroundColor(.primaryText)
+                
+                Text("Unlock unlimited coaching, photo analysis, and personalized health insights")
+                    .font(.bodyMD)
+                    .foregroundColor(.secondaryText)
+                    .multilineTextAlignment(.center)
+            }
+            .padding(.horizontal, 28)
+            .padding(.top, 16)
+            
+            // Feature list
+            VStack(alignment: .leading, spacing: 14) {
+                premiumFeatureRow(icon: "infinity", text: "Unlimited questions every month")
+                premiumFeatureRow(icon: "camera.fill", text: "Photo-based health checks")
+                premiumFeatureRow(icon: "chart.line.uptrend.xyaxis", text: "Personalized trend insights")
+                premiumFeatureRow(icon: "bell.badge", text: "Proactive health alerts")
+            }
+            .padding(.horizontal, 32)
+            .padding(.top, 28)
+            
+            Spacer()
+            
+            // CTA
+            VStack(spacing: 12) {
+                Button(action: {
+                    viewModel.showPremiumWall = false
+                }) {
+                    VStack(spacing: 2) {
+                        Text("Start 7-day free trial")
+                            .font(.headlineSM)
+                        Text("then $9.99/month")
+                            .font(.labelSM)
+                            .opacity(0.7)
+                    }
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 56)
+                    .background(
+                        LinearGradient(
+                            colors: [Color.primary, Color.primary.opacity(0.85)],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: AppRadius.input))
+                    .shadow(color: Color.primary.opacity(0.3), radius: 8, x: 0, y: 4)
+                }
+                
+                Button(action: {
+                    viewModel.showPremiumWall = false
+                }) {
+                    Text("Maybe later")
+                        .font(.labelMD)
+                        .foregroundColor(.tertiaryText)
+                }
+                .padding(.bottom, 8)
+            }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 16)
+        }
+        .presentationDetents([.medium, .large])
+        .presentationCornerRadius(28)
+        .presentationDragIndicator(.visible)
+    }
+    
+    private func premiumFeatureRow(icon: String, text: String) -> some View {
+        HStack(spacing: 14) {
+            Image(systemName: icon)
+                .font(.system(size: 16, weight: .medium))
+                .foregroundColor(.primary)
+                .frame(width: 36, height: 36)
+                .background(Color.primary.opacity(0.1))
+                .clipShape(Circle())
+            
+            Text(text)
+                .font(.bodyMD)
+                .foregroundColor(.primaryText)
+        }
+    }
+    
+    // MARK: - Top Bar
     
     @State private var showWipeConfirmation = false
     
@@ -194,8 +352,11 @@ struct CoachChatView: View {
         HStack {
             Button(action: { dismiss() }) {
                 Image(systemName: "chevron.left")
-                    .font(.headlineMD)
+                    .font(.system(size: 18, weight: .semibold))
                     .foregroundColor(.primaryText)
+                    .frame(width: 36, height: 36)
+                    .background(Color.surfaceContainer.opacity(0.5))
+                    .clipShape(Circle())
             }
             
             Spacer()
@@ -237,8 +398,11 @@ struct CoachChatView: View {
                 }
             } label: {
                 Image(systemName: "ellipsis")
-                    .font(.headlineMD)
+                    .font(.system(size: 18, weight: .semibold))
                     .foregroundColor(.primaryText)
+                    .frame(width: 36, height: 36)
+                    .background(Color.surfaceContainer.opacity(0.5))
+                    .clipShape(Circle())
             }
             .confirmationDialog("Start New Conversation?", isPresented: $showWipeConfirmation, titleVisibility: .visible) {
                 Button("Wipe History", role: .destructive) {
@@ -253,8 +417,8 @@ struct CoachChatView: View {
             }
         }
         .padding(.horizontal, 20)
-        .padding(.bottom, 6)
-        .padding(.top, 6) // Fallback padding for safe area
+        .padding(.bottom, 8)
+        .padding(.top, 6)
         .background(
             Color.surfaceContainerLowest.opacity(0.8)
                 .background(.ultraThinMaterial)
@@ -266,6 +430,8 @@ struct CoachChatView: View {
             alignment: .bottom
         )
     }
+    
+    // MARK: - Helpers
     
     private func send(_ text: String) {
         let textToSend = text
@@ -284,6 +450,7 @@ struct CoachChatView: View {
             "How often should I walk them?"
         ]
     }
+    
     private func shouldShowTimestamp(for index: Int) -> Bool {
         if index == 0 { return true }
         let current = viewModel.messages[index]

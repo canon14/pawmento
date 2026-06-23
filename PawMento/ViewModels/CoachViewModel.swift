@@ -185,6 +185,12 @@ class CoachViewModel: ObservableObject {
                 return
             }
             
+            // Generate contextual follow-up quick replies
+            if let index = messages.firstIndex(where: { $0.id == assistantMessageId }) {
+                let responseContent = messages[index].content.lowercased()
+                quickReplies = generateFollowUpReplies(from: responseContent, petName: pet?.name ?? "them")
+            }
+            
             // Post-Stream Premium Gating (Gate 2: Coach Warning)
             if !isPremium && freeQuestionsRemaining <= 2 && freeQuestionsRemaining > 0 && !hasShownLowQuotaWarning {
                 hasShownLowQuotaWarning = true
@@ -247,5 +253,53 @@ class CoachViewModel: ObservableObject {
         quickReplies = []
         loadedPetId = nil
         // we deliberately keep freeQuestionsRemaining so we don't reset until initializeQuotaAndSubscription runs.
+    }
+    
+    // MARK: - Follow-Up Quick Replies
+    
+    /// Generates 2 contextual follow-up prompts based on the AI response content.
+    private func generateFollowUpReplies(from response: String, petName: String) -> [String] {
+        var candidates: [String] = []
+        
+        // Topic detection → follow-up mapping
+        if response.contains("diet") || response.contains("food") || response.contains("feed") || response.contains("nutrition") {
+            candidates.append("What treats are safe for \(petName)?")
+            candidates.append("How much water should \(petName) drink?")
+        }
+        if response.contains("walk") || response.contains("exercise") || response.contains("activity") {
+            candidates.append("How long should walks be?")
+            candidates.append("Is \(petName) getting enough exercise?")
+        }
+        if response.contains("weight") || response.contains("overweight") || response.contains("underweight") {
+            candidates.append("What's a healthy weight for \(petName)?")
+            candidates.append("Tips to manage \(petName)'s weight?")
+        }
+        if response.contains("scratch") || response.contains("itch") || response.contains("allergy") || response.contains("skin") {
+            candidates.append("Could this be allergies?")
+            candidates.append("Should I see a vet about this?")
+        }
+        if response.contains("vomit") || response.contains("diarrhea") || response.contains("stomach") {
+            candidates.append("Is this an emergency?")
+            candidates.append("What should I watch for?")
+        }
+        if response.contains("vaccine") || response.contains("shot") || response.contains("booster") {
+            candidates.append("When is the next vaccine due?")
+            candidates.append("What vaccines does \(petName) need?")
+        }
+        if response.contains("behav") || response.contains("bark") || response.contains("anxious") || response.contains("anxiety") {
+            candidates.append("How can I calm \(petName)?")
+            candidates.append("Is this behavior normal?")
+        }
+        
+        // Fallback generic follow-ups
+        if candidates.isEmpty {
+            candidates = [
+                "Tell me more about this",
+                "Anything else I should know?"
+            ]
+        }
+        
+        // Return first 2 unique candidates
+        return Array(candidates.prefix(2))
     }
 }

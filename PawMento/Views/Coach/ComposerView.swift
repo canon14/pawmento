@@ -7,59 +7,93 @@ struct ComposerView: View {
     let onCameraTap: () -> Void
     let onSend: () -> Void
     
+    @FocusState private var isFocused: Bool
+    
     var body: some View {
-        VStack(alignment: .center, spacing: 12) {
-            HStack(alignment: .bottom, spacing: 12) {
-                // Attachments
+        VStack(alignment: .center, spacing: 10) {
+            HStack(alignment: .bottom, spacing: 10) {
+                // Camera / Attach
                 Button(action: onCameraTap) {
                     Image(systemName: "camera.fill")
-                        .font(.title2)
+                        .font(.system(size: 18))
                         .foregroundColor(.primary)
-                        .padding(10)
-                        .background(Color.primary.opacity(0.1))
+                        .frame(width: 42, height: 42)
+                        .background(Color.primary.opacity(0.08))
                         .clipShape(Circle())
+                        .overlay(
+                            Circle()
+                                .stroke(Color.primary.opacity(0.1), lineWidth: 1)
+                        )
                 }
                 
-                // Text Field
+                // Text Field with focus state
                 TextField(placeholderText(), text: $text, axis: .vertical)
                     .lineLimit(1...5)
                     .font(.bodyMD)
+                    .focused($isFocused)
                     .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
-                    .background(Color.surfaceContainerLowest)
-                    .cornerRadius(20)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 20)
-                            .stroke(Color.primary.opacity(text.isEmpty ? 0 : 0.2), lineWidth: 1)
+                    .padding(.vertical, 11)
+                    .background(
+                        isFocused ? Color.surfaceContainerLowest : Color.surfaceContainer.opacity(0.5)
                     )
+                    .cornerRadius(22)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 22)
+                            .stroke(
+                                isFocused ? Color.primary.opacity(0.25) : Color.primary.opacity(0.06),
+                                lineWidth: isFocused ? 1.5 : 1
+                            )
+                    )
+                    .shadow(
+                        color: isFocused ? Color.primary.opacity(0.06) : Color.clear,
+                        radius: 4, x: 0, y: 2
+                    )
+                    .animation(.easeInOut(duration: 0.2), value: isFocused)
                 
                 // Send Button
                 Button(action: onSend) {
                     Image(systemName: "arrow.up")
-                        .font(.bodyMD.weight(.bold))
+                        .font(.system(size: 16, weight: .bold))
                         .foregroundColor(.white)
-                        .frame(width: 44, height: 44)
+                        .frame(width: 42, height: 42)
                         .background(
-                            LinearGradient(colors: [Color.primary, Color.primary.opacity(0.8)], startPoint: .topLeading, endPoint: .bottomTrailing)
+                            LinearGradient(
+                                colors: text.isEmpty
+                                    ? [Color.primary.opacity(0.3), Color.primary.opacity(0.2)]
+                                    : [Color.primary, Color.primary.opacity(0.85)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
                         )
                         .clipShape(Circle())
-                        .shadow(color: Color.primary.opacity(0.3), radius: 6, x: 0, y: 3)
-                        .opacity(text.isEmpty ? 0.3 : 1.0)
+                        .shadow(
+                            color: text.isEmpty ? Color.clear : Color.primary.opacity(0.3),
+                            radius: text.isEmpty ? 0 : 6,
+                            x: 0,
+                            y: text.isEmpty ? 0 : 3
+                        )
                         .scaleEffect(text.isEmpty ? 0.95 : 1.0)
                         .animation(.spring(response: 0.3, dampingFraction: 0.6), value: text.isEmpty)
                 }
                 .disabled(text.isEmpty)
             }
             
-            // Counter Text (Subtle)
-            Text(counterText())
-                .font(.caption)
-                .foregroundColor(counterColor())
-                .padding(.trailing, 8)
+            // Counter with icon
+            HStack(spacing: 5) {
+                Image(systemName: counterIcon())
+                    .font(.system(size: 10))
+                Text(counterText())
+                    .font(.system(size: 12, weight: .medium))
+            }
+            .foregroundColor(counterColor())
+            .padding(.horizontal, 10)
+            .padding(.vertical, 4)
+            .background(counterColor().opacity(0.08))
+            .clipShape(Capsule())
         }
         .padding(.horizontal, 16)
         .padding(.top, 8)
-        .padding(.bottom, 16) // Extra padding for bottom safe area
+        .padding(.bottom, 16)
         .background(
             Color.surfaceContainerLowest.opacity(0.8)
                 .background(.ultraThinMaterial)
@@ -87,6 +121,12 @@ struct ComposerView: View {
         } else {
             return "\(freeQuestionsRemaining) left"
         }
+    }
+    
+    private func counterIcon() -> String {
+        if freeQuestionsRemaining > 2 { return "sparkle" }
+        if freeQuestionsRemaining == 1 { return "exclamationmark.circle" }
+        return "exclamationmark.triangle"
     }
     
     private func counterColor() -> Color {
