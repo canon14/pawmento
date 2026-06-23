@@ -6,6 +6,9 @@ struct OnboardingCarouselView: View {
     @State private var currentIndex = 0
     @State private var showingSkipConfirmation = false
     @State private var showingAddPetSheet = false
+    @State private var footerVisible = false
+    
+    private let slideCount = 4
     
     var body: some View {
         ZStack {
@@ -14,13 +17,25 @@ struct OnboardingCarouselView: View {
             VStack(spacing: 0) {
                 // Header with Skip Button
                 HStack {
+                    // Page counter
+                    Text("\(currentIndex + 1)/\(slideCount)")
+                        .font(.labelSM)
+                        .foregroundColor(.tertiaryText)
+                        .padding(.leading, 20)
+                        .padding(.top, 20)
+                    
                     Spacer()
+                    
                     Button(action: {
                         showingSkipConfirmation = true
                     }) {
                         Text("Skip")
-                            .font(.skipOnboarding)
+                            .font(.labelMD)
                             .foregroundColor(.tertiaryText)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 8)
+                            .background(Color.surfaceContainer.opacity(0.5))
+                            .clipShape(Capsule())
                     }
                     .padding(.top, 20)
                     .padding(.trailing, 20)
@@ -31,39 +46,50 @@ struct OnboardingCarouselView: View {
                     OnboardingSlideView(
                         illustration: Slide1Illustration(),
                         headline: "Notice the\nlittle things.",
-                        bodyText: "Pets can't tell us when something feels off. PawMento helps you catch it before it becomes a problem."
+                        bodyText: "Pets can't tell us when something feels off. PawMento helps you catch it before it becomes a problem.",
+                        slideIndex: 0,
+                        currentIndex: currentIndex
                     ).tag(0)
                     
                     OnboardingSlideView(
                         illustration: Slide2Illustration(),
                         headline: "Log anything\nin under 10 seconds.",
-                        bodyText: "Snap a photo. Pick a tag. Done. No forms. No typing. No friction."
+                        bodyText: "Snap a photo. Pick a tag. Done. No forms. No typing. No friction.",
+                        slideIndex: 1,
+                        currentIndex: currentIndex
                     ).tag(1)
                     
                     OnboardingSlideView(
                         illustration: Slide3Illustration(),
                         headline: "Patterns your vet\nwill want to see.",
-                        bodyText: "PawMento connects your logs into insights — and formats them into a report your vet can actually use."
+                        bodyText: "PawMento connects your logs into insights — and formats them into a report your vet can actually use.",
+                        slideIndex: 2,
+                        currentIndex: currentIndex
                     ).tag(2)
                     
                     OnboardingSlideView(
                         illustration: Slide4Illustration(),
                         headline: "Your pet deserves\nthis kind of care.",
-                        bodyText: "Take 30 seconds to set up your pet's profile. Everything else follows from there."
+                        bodyText: "Take 30 seconds to set up your pet's profile. Everything else follows from there.",
+                        slideIndex: 3,
+                        currentIndex: currentIndex
                     ).tag(3)
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
-                .animation(.spring(response: 0.3, dampingFraction: 0.8), value: currentIndex)
+                .animation(.spring(response: 0.4, dampingFraction: 0.8), value: currentIndex)
                 
                 // Footer (Dots + CTA)
-                VStack(spacing: 24) {
-                    // Custom Progress Dots
-                    HStack(spacing: 8) {
-                        ForEach(0..<4) { index in
-                            Circle()
-                                .fill(Color.primary.opacity(currentIndex == index ? 1.0 : 0.2))
-                                .frame(width: currentIndex == index ? 8 : 6, height: currentIndex == index ? 8 : 6)
-                                .animation(.easeInOut(duration: 0.2), value: currentIndex)
+                VStack(spacing: 28) {
+                    // Capsule Progress Indicators
+                    HStack(spacing: 6) {
+                        ForEach(0..<slideCount, id: \.self) { index in
+                            Capsule()
+                                .fill(currentIndex == index ? Color.primary : Color.primary.opacity(0.2))
+                                .frame(
+                                    width: currentIndex == index ? 24 : 8,
+                                    height: 8
+                                )
+                                .animation(.spring(response: 0.35, dampingFraction: 0.7), value: currentIndex)
                                 .onTapGesture {
                                     withAnimation {
                                         currentIndex = index
@@ -74,21 +100,34 @@ struct OnboardingCarouselView: View {
                     
                     // Primary CTA
                     Button(action: {
-                        if currentIndex < 3 {
+                        if currentIndex < slideCount - 1 {
                             withAnimation {
                                 currentIndex += 1
                             }
                         } else {
-                            // Show Add Pet Sheet
                             showingAddPetSheet = true
                         }
                     }) {
-                        Text(currentIndex == 3 ? "Get started" : "Continue")
+                        HStack(spacing: 8) {
+                            Text(currentIndex == slideCount - 1 ? "Get started" : "Continue")
+                            
+                            if currentIndex == slideCount - 1 {
+                                Image(systemName: "arrow.right")
+                                    .font(.system(size: 14, weight: .bold))
+                            }
+                        }
                     }
                     .buttonStyle(PrimaryButtonStyle())
                     .padding(.horizontal, 20)
                     .padding(.bottom, 32)
                 }
+                .opacity(footerVisible ? 1 : 0)
+                .offset(y: footerVisible ? 0 : 10)
+            }
+        }
+        .onAppear {
+            withAnimation(.easeOut(duration: 0.5).delay(0.3)) {
+                footerVisible = true
             }
         }
         .confirmationDialog("Skip onboarding?", isPresented: $showingSkipConfirmation, titleVisibility: .visible) {
