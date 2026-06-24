@@ -135,9 +135,9 @@ struct HeroInsightCard: View {
                 .blur(radius: isLocked ? 4 : 0)
             }
             .background(Color.surfaceContainerLowest)
-            .cornerRadius(AppRadius.lg)
+            .cornerRadius(AppRadius.card)
             .overlay(
-                RoundedRectangle(cornerRadius: AppRadius.lg)
+                RoundedRectangle(cornerRadius: AppRadius.card)
                     .stroke(Color.primary.opacity(0.35), lineWidth: 1.5)
             )
             .shadow(color: Color.primary.opacity(0.08), radius: 16, x: 0, y: 6)

@@ -31,7 +31,7 @@ struct PaywallSheet: View {
                     .frame(width: 200, height: 200)
                     .blur(radius: 20)
                 
-                if let insight = insight {
+                if insight != nil {
                     // Show a mini preview of the locked insight
                     VStack(spacing: 8) {
                         Image(systemName: "lock.open.fill")
