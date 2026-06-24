@@ -12,9 +12,9 @@ struct HeroInsightCard: View {
     }
     
     var body: some View {
-        Button(action: {
+        Button {
             onCardTapped?()
-        }) {
+        } label: {
             VStack(alignment: .leading, spacing: 0) {
                 // Header Row
                 HStack(alignment: .top) {
