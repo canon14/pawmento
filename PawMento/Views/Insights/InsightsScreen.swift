@@ -69,43 +69,16 @@ struct InsightsScreen: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
                 ForEach(TimeRange.allCases, id: \.self) { range in
+                    let isSelected = viewModel.timeRange == range
+                    
                     Button(action: {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                            Task { await viewModel.changeTimeRange(to: range, for: petStore.activePet) }
+                        Task {
+                            await viewModel.changeTimeRange(to: range, for: petStore.activePet)
                         }
                     }) {
-                        Text(range.rawValue)
-                            .font(.labelMD)
-                            .padding(.horizontal, 16)
-                            .frame(height: 34)
-                            .background(
-                                viewModel.timeRange == range
-                                    ? Color.primary
-                                    : Color.surfaceContainerLowest
-                            )
-                            .foregroundColor(
-                                viewModel.timeRange == range
-                                    ? .white
-                                    : .secondaryText
-                            )
-                            .cornerRadius(17)
-                            .overlay(
-                                Capsule()
-                                    .stroke(
-                                        viewModel.timeRange == range
-                                            ? Color.clear
-                                            : Color.primary.opacity(0.1),
-                                        lineWidth: 1
-                                    )
-                            )
-                            .shadow(
-                                color: viewModel.timeRange == range
-                                    ? Color.primary.opacity(0.2)
-                                    : Color.clear,
-                                radius: 4, x: 0, y: 2
-                            )
+                        timeRangeLabel(range: range, isSelected: isSelected)
                     }
-                    .animation(.easeInOut(duration: 0.2), value: viewModel.timeRange == range)
+                    .animation(.easeInOut(duration: 0.2), value: isSelected)
                 }
             }
             .padding(.horizontal, 20)
@@ -116,6 +89,26 @@ struct InsightsScreen: View {
             Color.surfaceContainerLowest.opacity(0.8)
                 .background(.ultraThinMaterial)
         )
+    }
+    
+    private func timeRangeLabel(range: TimeRange, isSelected: Bool) -> some View {
+        let bgColor: Color = isSelected ? .primary : .surfaceContainerLowest
+        let fgColor: Color = isSelected ? .white : .secondaryText
+        let borderColor: Color = isSelected ? .clear : .primary.opacity(0.1)
+        let shadowColor: Color = isSelected ? .primary.opacity(0.2) : .clear
+        
+        return Text(range.rawValue)
+            .font(.labelMD)
+            .padding(.horizontal, 16)
+            .frame(height: 34)
+            .background(bgColor)
+            .foregroundColor(fgColor)
+            .cornerRadius(17)
+            .overlay(
+                Capsule()
+                    .stroke(borderColor, lineWidth: 1)
+            )
+            .shadow(color: shadowColor, radius: 4, x: 0, y: 2)
     }
     
     // MARK: - Compare Pets Chip (🟡 9.2 — was dead button)
