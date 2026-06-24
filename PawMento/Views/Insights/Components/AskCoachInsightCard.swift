@@ -10,48 +10,68 @@ struct AskCoachInsightCard: View {
         Button(action: {
             onChatTapped?()
         }) {
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 14) {
                 // Header
                 HStack(spacing: 8) {
-                    Text("💬")
+                    Image(systemName: "sparkles")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(.primary)
                     Text("Ask \(petName)'s AI Coach")
-                        .font(.labelLG)
-                        .foregroundColor(.ink900)
+                        .font(.headlineSM)
+                        .foregroundColor(.primaryText)
                     Spacer()
                 }
                 
-                // Suggestions
-                VStack(alignment: .leading, spacing: 12) {
+                // Suggestion pills
+                VStack(alignment: .leading, spacing: 8) {
                     ForEach(suggestions.prefix(3), id: \.self) { suggestion in
                         Button(action: {
                             onSuggestionTapped?(suggestion)
                         }) {
-                            Text("\"\(suggestion)\"")
-                                .font(.bodySM)
-                                .foregroundColor(Color.primary)
-                                .lineLimit(1)
+                            HStack(spacing: 8) {
+                                Text("→")
+                                    .font(.system(size: 12, weight: .bold))
+                                    .foregroundColor(.primary.opacity(0.5))
+                                Text(suggestion)
+                                    .font(.bodyMD)
+                                    .foregroundColor(.primary)
+                                    .lineLimit(1)
+                            }
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 10)
+                            .background(Color.surfaceContainerLowest.opacity(0.7))
+                            .cornerRadius(AppRadius.input)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: AppRadius.input)
+                                    .stroke(Color.primary.opacity(0.1), lineWidth: 1)
+                            )
                         }
+                        .buttonStyle(.plain)
                     }
                 }
-                .padding(.leading, 28) // Align under text, not icon
                 
                 // Footer CTA
                 HStack {
                     Spacer()
-                    Text("Open chat ›")
-                        .font(.bodySM)
-                        .foregroundColor(Color.primary)
+                    HStack(spacing: 4) {
+                        Text("Open chat")
+                            .font(.labelSemibold)
+                            .foregroundColor(.primary)
+                        Image(systemName: "arrow.up.right")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(.primary.opacity(0.6))
+                    }
                 }
-                .padding(.top, 4)
             }
-            .padding(20)
-            .background(Color(hex: "E8F1EF")) // Sage 50
+            .padding(18)
+            .background(Color.sage50)
             .cornerRadius(AppRadius.md)
             .overlay(
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(Color.primary.opacity(0.3), lineWidth: 1) // roughly sage-200
+                RoundedRectangle(cornerRadius: AppRadius.md)
+                    .stroke(Color.sage200.opacity(0.6), lineWidth: 1)
             )
+            .shadow(color: Color.primary.opacity(0.04), radius: 6, x: 0, y: 2)
         }
-        .buttonStyle(PlainButtonStyle())
+        .buttonStyle(SquishyCardStyle())
     }
 }

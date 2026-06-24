@@ -3,6 +3,7 @@ import SwiftUI
 struct InsightsScreen: View {
     @Environment(\.dismiss) var dismiss
     @EnvironmentObject var petStore: PetStore
+    @EnvironmentObject var toastManager: ToastManager
     @StateObject private var viewModel = InsightsViewModel()
     @State private var selectedInsight: Insight?
     @State private var showPaywall = false
@@ -40,80 +41,116 @@ struct InsightsScreen: View {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button(action: { dismiss() }) {
                         Image(systemName: "chevron.left")
-                            .font(.bodyMD)
-                            .foregroundColor(.ink900)
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundColor(.primaryText)
+                            .frame(width: 36, height: 36)
+                            .background(Color.surfaceContainer.opacity(0.5))
+                            .clipShape(Circle())
                     }
                 }
                 
                 ToolbarItem(placement: .principal) {
                     HStack(spacing: 4) {
-                        Image(systemName: "pawprint.fill")
-                            .font(.caption)
-                        Text(petStore.activePet?.name ?? PetStore.fallbackPetName)
-                            .font(.bodyMD)
-                        Image(systemName: "chevron.down")
-                            .font(.caption)
+                        Image(systemName: "chart.line.uptrend.xyaxis")
+                            .font(.system(size: 12))
+                            .foregroundColor(.primary)
+                        Text("Insights")
+                            .font(.headlineSM)
+                            .foregroundColor(.primaryText)
                     }
-                    .foregroundColor(.ink900)
                 }
             }
         }
     }
+    
+    // MARK: - Time Range Chips
     
     private var timeRangeChips: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
                 ForEach(TimeRange.allCases, id: \.self) { range in
                     Button(action: {
-                        Task { await viewModel.changeTimeRange(to: range, for: petStore.activePet) }
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                            Task { await viewModel.changeTimeRange(to: range, for: petStore.activePet) }
+                        }
                     }) {
                         Text(range.rawValue)
-                            .font(.bodySM)
-                            .padding(.horizontal, 14)
-                            .frame(height: 32)
-                            .background(viewModel.timeRange == range ? Color.ink900 : Color(hex: "F7F9F9"))
-                            .foregroundColor(viewModel.timeRange == range ? .white : Color.ink900.opacity(0.8))
-                            .cornerRadius(AppRadius.md)
+                            .font(.labelMD)
+                            .padding(.horizontal, 16)
+                            .frame(height: 34)
+                            .background(
+                                viewModel.timeRange == range
+                                    ? Color.primary
+                                    : Color.surfaceContainerLowest
+                            )
+                            .foregroundColor(
+                                viewModel.timeRange == range
+                                    ? .white
+                                    : .secondaryText
+                            )
+                            .cornerRadius(17)
                             .overlay(
-                                RoundedRectangle(cornerRadius: 16)
-                                    .stroke(viewModel.timeRange == range ? Color.clear : Color.ink900.opacity(0.1), lineWidth: 1)
+                                Capsule()
+                                    .stroke(
+                                        viewModel.timeRange == range
+                                            ? Color.clear
+                                            : Color.primary.opacity(0.1),
+                                        lineWidth: 1
+                                    )
+                            )
+                            .shadow(
+                                color: viewModel.timeRange == range
+                                    ? Color.primary.opacity(0.2)
+                                    : Color.clear,
+                                radius: 4, x: 0, y: 2
                             )
                     }
+                    .animation(.easeInOut(duration: 0.2), value: viewModel.timeRange == range)
                 }
             }
             .padding(.horizontal, 20)
-            .padding(.vertical, 6)
+            .padding(.vertical, 8)
         }
-        .frame(height: 44)
-        .background(Color.surface0)
+        .frame(height: 50)
+        .background(
+            Color.surfaceContainerLowest.opacity(0.8)
+                .background(.ultraThinMaterial)
+        )
     }
+    
+    // MARK: - Compare Pets Chip (🟡 9.2 — was dead button)
     
     private var comparePetsChip: some View {
         Button(action: {
-            print("Compare pets tapped")
+            toastManager.show("Compare Pets coming soon", actionLabel: nil, action: nil)
         }) {
             HStack(spacing: 6) {
                 Image(systemName: "square.split.2x1")
-                    .font(.caption)
+                    .font(.system(size: 12))
                 Text("Compare with your other pets")
-                    .font(.bodyXS)
+                    .font(.labelMD)
             }
-            .foregroundColor(.ink900.opacity(0.7))
+            .foregroundColor(.primary)
             .padding(.horizontal, 16)
-            .padding(.vertical, 8)
-            .background(Color.ink900.opacity(0.05))
-            .cornerRadius(AppRadius.md)
+            .padding(.vertical, 10)
+            .background(Color.primary.opacity(0.08))
+            .cornerRadius(20)
+            .overlay(
+                Capsule()
+                    .stroke(Color.primary.opacity(0.15), lineWidth: 1)
+            )
         }
         .padding(.top, 12)
     }
     
+    // MARK: - Main Content
+    
     private var mainContent: some View {
         ScrollView(showsIndicators: false) {
-            VStack(spacing: 24) {
+            VStack(spacing: 28) {
                 switch viewModel.viewState {
                 case .loading:
-                    ProgressView()
-                        .padding(.top, 40)
+                    insightsShimmer
                 case .success:
                     heroSection
                     patternsSection
@@ -174,6 +211,28 @@ struct InsightsScreen: View {
         }
     }
     
+    // MARK: - Shimmer Loading State (replaces plain ProgressView)
+    
+    private var insightsShimmer: some View {
+        VStack(spacing: 20) {
+            // Hero shimmer
+            RoundedRectangle(cornerRadius: AppRadius.md)
+                .fill(Color.surfaceContainer.opacity(0.5))
+                .frame(height: 220)
+                .shimmer()
+            
+            // Pattern card shimmers
+            ForEach(0..<2, id: \.self) { _ in
+                RoundedRectangle(cornerRadius: AppRadius.md)
+                    .fill(Color.surfaceContainer.opacity(0.5))
+                    .frame(height: 140)
+                    .shimmer()
+            }
+        }
+    }
+    
+    // MARK: - Sections
+    
     private func handleEmptyStateAction(_ state: InsightsViewModel.ViewState) {
         switch state {
         case .noDataForRange:
@@ -193,10 +252,7 @@ struct InsightsScreen: View {
     private var heroSection: some View {
         if let hero = viewModel.heroInsight {
             VStack(alignment: .leading, spacing: 12) {
-                Text("─── THIS WEEK'S HEADLINE ───")
-                    .font(.caption)
-                    .foregroundColor(Color.ink900.opacity(0.6))
-                    .kerning(0.5)
+                SectionHeader("This Week's Headline", style: .withRule)
                 
                 HeroInsightCard(insight: hero, isPremium: viewModel.isPremium, petName: petStore.activePet?.name ?? PetStore.fallbackPetName, onActionTapped: { action in
                     print("Tapped \(action.title)")
@@ -219,10 +275,7 @@ struct InsightsScreen: View {
     private var patternsSection: some View {
         if !viewModel.patternCards.isEmpty {
             VStack(alignment: .leading, spacing: 12) {
-                Text("─── OTHER PATTERNS ───")
-                    .font(.caption)
-                    .foregroundColor(Color.ink900.opacity(0.6))
-                    .kerning(0.5)
+                SectionHeader("Other Patterns", style: .withRule)
                 
                 ForEach(viewModel.patternCards) { insight in
                     PatternCard(insight: insight, isPremium: viewModel.isPremium, onCardTapped: {
@@ -245,10 +298,7 @@ struct InsightsScreen: View {
     private var benchmarkSection: some View {
         if let benchmark = viewModel.breedBenchmark {
             VStack(alignment: .leading, spacing: 12) {
-                Text("─── HEALTH BENCHMARKS ───")
-                    .font(.caption)
-                    .foregroundColor(Color.ink900.opacity(0.6))
-                    .kerning(0.5)
+                SectionHeader("Health Benchmarks", style: .withRule)
                 
                 BreedBenchmarkCard(benchmark: benchmark, isPremium: viewModel.isPremium, onCardTapped: {
                     if !viewModel.isPremium {
@@ -264,10 +314,7 @@ struct InsightsScreen: View {
     
     private var askCoachSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("─── ASK \(petStore.activePet?.name.uppercased() ?? PetStore.fallbackPetName.uppercased())'S AI COACH ───")
-                .font(.caption)
-                .foregroundColor(Color.ink900.opacity(0.6))
-                .kerning(0.5)
+            SectionHeader("Ask \(petStore.activePet?.name ?? PetStore.fallbackPetName)'s AI Coach", style: .withRule)
             
             AskCoachInsightCard(suggestions: viewModel.coachSuggestions, petName: petStore.activePet?.name ?? PetStore.fallbackPetName, onChatTapped: {
                 showCoachChat = true
@@ -300,5 +347,42 @@ struct InsightsScreen: View {
         }) {
             Label("Not Relevant to \(petStore.activePet?.name ?? PetStore.fallbackPetName)", systemImage: "xmark.circle")
         }
+    }
+}
+
+// MARK: - Shimmer Effect
+
+struct ShimmerModifier: ViewModifier {
+    @State private var phase: CGFloat = -1.0
+    
+    func body(content: Content) -> some View {
+        content
+            .overlay(
+                LinearGradient(
+                    gradient: Gradient(colors: [
+                        Color.white.opacity(0.0),
+                        Color.white.opacity(0.3),
+                        Color.white.opacity(0.0)
+                    ]),
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+                .offset(x: phase * 300)
+                .mask(content)
+            )
+            .onAppear {
+                withAnimation(
+                    .linear(duration: 1.5)
+                    .repeatForever(autoreverses: false)
+                ) {
+                    phase = 1.0
+                }
+            }
+    }
+}
+
+extension View {
+    func shimmer() -> some View {
+        modifier(ShimmerModifier())
     }
 }

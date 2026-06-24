@@ -6,25 +6,28 @@ struct BreedBenchmarkDetailScreen: View {
     let petName: String
     var onAskCoach: () -> Void
     
+    @State private var animateGauges = false
+    
     var body: some View {
         NavigationStack {
             ScrollView(showsIndicators: false) {
-                VStack(spacing: 24) {
+                VStack(spacing: 28) {
                     
-                    // Header text
-                    Text("How \(petName) Compares to Other \(benchmark.breed)s")
-                        .font(.headlineLG)
-                        .foregroundColor(.primaryText)
-                        .multilineTextAlignment(.center)
-                        .padding(.top, 16)
-                    
-                    Text("Based on data from \(benchmark.breed)s at age \(benchmark.age).")
-                        .font(.labelMD)
-                        .foregroundColor(.secondaryText)
-                        .multilineTextAlignment(.center)
+                    // Header
+                    VStack(spacing: 8) {
+                        Text("How \(petName) Compares")
+                            .font(.headlineLG)
+                            .foregroundColor(.primaryText)
+                        
+                        Text("to other \(benchmark.breed)s at age \(benchmark.age)")
+                            .font(.bodyMD)
+                            .foregroundColor(.secondaryText)
+                    }
+                    .multilineTextAlignment(.center)
+                    .padding(.top, 16)
                     
                     // Gauges
-                    VStack(spacing: 32) {
+                    VStack(spacing: 28) {
                         benchmarkGauge(
                             title: "Activity Level",
                             percentile: benchmark.activityPercentile,
@@ -43,25 +46,33 @@ struct BreedBenchmarkDetailScreen: View {
                             color: .coral500
                         )
                     }
-                    .padding(.top, 16)
+                    .padding(.top, 8)
                     
                     // AI CTA
                     Button(action: {
                         dismiss()
                         onAskCoach()
                     }) {
-                        HStack {
+                        HStack(spacing: 8) {
                             Image(systemName: "sparkles")
+                                .font(.system(size: 16))
                             Text("Ask AI Coach about these results")
+                                .font(.headlineSM)
                         }
-                        .font(.headlineSM)
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16)
-                        .background(Color.ink900)
-                        .cornerRadius(AppRadius.md)
+                        .frame(height: 52)
+                        .background(
+                            LinearGradient(
+                                colors: [Color.primary, Color.primary.opacity(0.85)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: AppRadius.md))
+                        .shadow(color: Color.primary.opacity(0.2), radius: 6, x: 0, y: 3)
                     }
-                    .padding(.top, 24)
+                    .padding(.top, 12)
                 }
                 .padding(20)
             }
@@ -69,11 +80,17 @@ struct BreedBenchmarkDetailScreen: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") {
-                        dismiss()
+                    Button(action: { dismiss() }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.headlineLG)
+                            .foregroundColor(.tertiaryText)
+                            .symbolRenderingMode(.hierarchical)
                     }
-                    .foregroundColor(.primary)
-                    .font(.headlineMD)
+                }
+            }
+            .onAppear {
+                withAnimation(.easeOut(duration: 0.8).delay(0.3)) {
+                    animateGauges = true
                 }
             }
         }
@@ -87,39 +104,69 @@ struct BreedBenchmarkDetailScreen: View {
                     .font(.headlineSM)
                     .foregroundColor(.primaryText)
                 Spacer()
-                Text("\(percentile)th Percentile")
-                    .font(.labelSemibold)
-                    .foregroundColor(color)
+                
+                HStack(spacing: 4) {
+                    Circle()
+                        .fill(color)
+                        .frame(width: 8, height: 8)
+                    Text("\(percentile)th Percentile")
+                        .font(.labelSemibold)
+                        .foregroundColor(color)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(color.opacity(0.12))
+                .clipShape(Capsule())
             }
             
-            // Custom Gauge Bar
+            // Animated Gauge Bar
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     Capsule()
-                        .fill(Color.ink900.opacity(0.1))
-                        .frame(height: 16)
+                        .fill(color.opacity(0.1))
+                        .frame(height: 14)
                     
                     Capsule()
-                        .fill(color)
-                        .frame(width: max(24, geo.size.width * CGFloat(percentile) / 100.0), height: 16)
+                        .fill(
+                            LinearGradient(
+                                colors: [color, color.opacity(0.7)],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .frame(
+                            width: max(24, geo.size.width * CGFloat(percentile) / 100.0 * (animateGauges ? 1.0 : 0.0)),
+                            height: 14
+                        )
                     
                     // Indicator dot
                     Circle()
-                        .fill(Color.surface0)
-                        .shadow(radius: 2)
-                        .frame(width: 24, height: 24)
-                        .offset(x: max(0, (geo.size.width * CGFloat(percentile) / 100.0) - 12))
+                        .fill(Color.surfaceContainerLowest)
+                        .shadow(color: color.opacity(0.3), radius: 3, x: 0, y: 1)
+                        .frame(width: 22, height: 22)
+                        .offset(
+                            x: max(0, (geo.size.width * CGFloat(percentile) / 100.0 * (animateGauges ? 1.0 : 0.0)) - 11)
+                        )
                 }
             }
-            .frame(height: 24)
+            .frame(height: 22)
             
             // Interpretive Text
             Text(interpretiveText(for: title, percentile: percentile))
                 .font(.bodyMD)
                 .foregroundColor(.secondaryText)
+                .lineSpacing(4)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.top, 4)
+                .padding(.top, 2)
         }
+        .padding(16)
+        .background(Color.surfaceContainerLowest)
+        .cornerRadius(AppRadius.md)
+        .overlay(
+            RoundedRectangle(cornerRadius: AppRadius.md)
+                .stroke(Color.primary.opacity(0.06), lineWidth: 1)
+        )
+        .shadow(color: Color.black.opacity(0.02), radius: 6, x: 0, y: 2)
     }
     
     private func interpretiveText(for category: String, percentile: Int) -> String {

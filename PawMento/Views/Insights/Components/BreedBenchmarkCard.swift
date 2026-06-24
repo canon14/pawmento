@@ -5,6 +5,8 @@ struct BreedBenchmarkCard: View {
     let isPremium: Bool
     var onCardTapped: (() -> Void)?
     
+    @State private var animatedPercent: Double = 0
+    
     private var isLocked: Bool {
         !isPremium
     }
@@ -16,89 +18,123 @@ struct BreedBenchmarkCard: View {
             VStack(alignment: .leading, spacing: 16) {
                 // Header
                 HStack(alignment: .top) {
-                    Text("🐕 vs other \(benchmark.breed), age \(benchmark.age)")
-                        .font(.labelLG)
-                        .foregroundColor(.ink900)
+                    HStack(spacing: 6) {
+                        Text("🐕")
+                            .font(.system(size: 14))
+                        Text("vs other \(benchmark.breed), age \(benchmark.age)")
+                            .font(.headlineSM)
+                            .foregroundColor(.primaryText)
+                    }
                     
                     Spacer()
                     
-                    Text("Premium")
-                        .font(.caption)
-                        .padding(.horizontal, 6)
-                        .frame(height: 14)
-                        .background(Color.ink900)
-                        .foregroundColor(.white)
-                        .clipShape(Capsule())
+                    HStack(spacing: 3) {
+                        Image(systemName: "crown.fill")
+                            .font(.system(size: 8))
+                        Text("Premium")
+                            .font(.system(size: 10, weight: .semibold))
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.ink900.opacity(0.9))
+                    .foregroundColor(.white)
+                    .clipShape(Capsule())
                 }
                 
-                // Bars
-                VStack(spacing: 12) {
-                    benchmarkRow(label: "Activity", percentile: benchmark.activityPercentile, isLocked: isLocked)
-                    benchmarkRow(label: "Symptoms", percentile: benchmark.symptomsPercentile, isLocked: isLocked)
-                    benchmarkRow(label: "Sleep", percentile: benchmark.sleepPercentile, isLocked: isLocked)
+                // Animated Bars
+                VStack(spacing: 14) {
+                    benchmarkRow(label: "Activity", percentile: benchmark.activityPercentile, color: .amber, isLocked: isLocked)
+                    benchmarkRow(label: "Symptoms", percentile: benchmark.symptomsPercentile, color: .coral500, isLocked: isLocked)
+                    benchmarkRow(label: "Sleep", percentile: benchmark.sleepPercentile, color: .primary, isLocked: isLocked)
                 }
                 .blur(radius: isLocked ? 4 : 0)
                 
                 // Footer
-                Text("See full breakdown ›")
-                    .font(.bodySM)
-                    .foregroundColor(Color.primary)
-                    .padding(.top, 4)
-                    .blur(radius: isLocked ? 2 : 0)
+                HStack {
+                    Spacer()
+                    HStack(spacing: 4) {
+                        Text("See full breakdown")
+                            .font(.labelSemibold)
+                            .foregroundColor(.primary)
+                        Image(systemName: "arrow.up.right")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(.primary.opacity(0.6))
+                    }
+                }
+                .blur(radius: isLocked ? 2 : 0)
             }
             .padding(20)
-            .background(Color.surface0)
+            .background(Color.surfaceContainerLowest)
             .cornerRadius(AppRadius.md)
             .overlay(
-                RoundedRectangle(cornerRadius: 16)
-                    .stroke(Color.ink900.opacity(0.1), lineWidth: 1)
+                RoundedRectangle(cornerRadius: AppRadius.md)
+                    .stroke(Color.primary.opacity(0.08), lineWidth: 1)
             )
+            .shadow(color: Color.black.opacity(0.03), radius: 8, x: 0, y: 3)
             .overlay(
                 Group {
                     if isLocked {
                         VStack(spacing: 8) {
-                            Image(systemName: "lock.fill")
-                                .font(.headlineLG)
-                                .foregroundColor(.ink900)
+                            ZStack {
+                                Circle()
+                                    .fill(Color.primary.opacity(0.1))
+                                    .frame(width: 48, height: 48)
+                                Image(systemName: "lock.fill")
+                                    .font(.system(size: 20))
+                                    .foregroundColor(.primary)
+                            }
                             Text("Unlock Benchmarks")
-                                .font(.labelLG)
-                                .foregroundColor(.ink900)
+                                .font(.labelSemibold)
+                                .foregroundColor(.primaryText)
                         }
-                        .padding(16)
-                        .background(Color.surface0.opacity(0.8))
-                        .cornerRadius(AppRadius.input)
+                        .padding(18)
+                        .background(
+                            RoundedRectangle(cornerRadius: AppRadius.input)
+                                .fill(.ultraThinMaterial)
+                        )
                     }
                 }
             )
         }
-        .buttonStyle(PlainButtonStyle())
+        .buttonStyle(SquishyCardStyle())
+        .onAppear {
+            withAnimation(.easeOut(duration: 0.8).delay(0.2)) {
+                animatedPercent = 1.0
+            }
+        }
     }
     
     @ViewBuilder
-    private func benchmarkRow(label: String, percentile: Int, isLocked: Bool) -> some View {
+    private func benchmarkRow(label: String, percentile: Int, color: Color, isLocked: Bool) -> some View {
         HStack(spacing: 12) {
             Text(label)
-                .font(.bodySM)
-                .foregroundColor(.ink900)
-                .frame(width: 80, alignment: .leading)
+                .font(.labelSemibold)
+                .foregroundColor(.primaryText)
+                .frame(width: 72, alignment: .leading)
             
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     Capsule()
-                        .fill(Color.ink900.opacity(0.1))
-                        .frame(height: 8)
+                        .fill(color.opacity(0.12))
+                        .frame(height: 10)
                     
                     Capsule()
-                        .fill(Color.primary)
-                        .frame(width: geo.size.width * CGFloat(percentile) / 100.0, height: 8)
+                        .fill(
+                            LinearGradient(
+                                colors: [color, color.opacity(0.75)],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+                        .frame(width: geo.size.width * CGFloat(percentile) / 100.0 * animatedPercent, height: 10)
                 }
             }
-            .frame(height: 8)
+            .frame(height: 10)
             
-            Text(label == "Symptoms" ? "better than \(percentile)%" : "\(percentile)nd percentile")
-                .font(.caption)
-                .foregroundColor(.ink900.opacity(0.6))
-                .frame(width: 120, alignment: .leading) // approximate tabular width
+            Text(label == "Symptoms" ? "better than \(percentile)%" : "\(percentile)th %ile")
+                .font(.labelSM)
+                .foregroundColor(.secondaryText)
+                .frame(width: 90, alignment: .trailing)
         }
     }
 }

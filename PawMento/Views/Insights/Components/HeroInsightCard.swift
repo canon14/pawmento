@@ -7,7 +7,6 @@ struct HeroInsightCard: View {
     var onActionTapped: ((InsightAction) -> Void)?
     var onCardTapped: (() -> Void)?
     
-    // For blurring free users
     private var isLocked: Bool {
         insight.isPremiumGated && !isPremium
     }
@@ -20,15 +19,14 @@ struct HeroInsightCard: View {
                 // Header Row
                 HStack(alignment: .top) {
                     // Confidence Pill
-                    HStack(spacing: 4) {
+                    HStack(spacing: 5) {
                         Image(systemName: insight.tier.iconName)
-                            .font(.caption)
-                            .foregroundColor(insight.tier.accentColor)
+                            .font(.system(size: 10))
                         Text(insight.tier.label)
-                            .font(.caption)
+                            .font(.labelSM)
                     }
-                    .padding(.horizontal, 8)
-                    .frame(height: 24)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
                     .background(Color.primary)
                     .foregroundColor(.white)
                     .clipShape(Capsule())
@@ -36,13 +34,17 @@ struct HeroInsightCard: View {
                     Spacer()
                     
                     if insight.isPremiumGated {
-                        Text("Premium")
-                            .font(.caption)
-                            .padding(.horizontal, 6)
-                            .frame(height: 14) // Slightly larger than 11pt for touch/render
-                            .background(Color.ink900)
-                            .foregroundColor(.white)
-                            .clipShape(Capsule())
+                        HStack(spacing: 3) {
+                            Image(systemName: "crown.fill")
+                                .font(.system(size: 8))
+                            Text("Premium")
+                                .font(.system(size: 10, weight: .semibold))
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.ink900.opacity(0.9))
+                        .foregroundColor(.white)
+                        .clipShape(Capsule())
                     }
                 }
                 .padding([.top, .horizontal], 20)
@@ -51,18 +53,18 @@ struct HeroInsightCard: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(insight.headline)
                         .font(.headlineMD)
-                        .foregroundColor(.ink900)
+                        .foregroundColor(.primaryText)
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
                     
                     Text(insight.narrative)
-                        .font(.labelLG)
-                        .foregroundColor(.ink900.opacity(0.8))
-                        .lineSpacing(4) // approx 1.5 line height
+                        .font(.bodyMD)
+                        .foregroundColor(.secondaryText)
+                        .lineSpacing(4)
                         .lineLimit(3)
                         .multilineTextAlignment(.leading)
                 }
-                .padding(.top, 12)
+                .padding(.top, 14)
                 .padding(.horizontal, 20)
                 .blur(radius: isLocked ? 4 : 0)
                 
@@ -74,22 +76,39 @@ struct HeroInsightCard: View {
                     .blur(radius: isLocked ? 6 : 0)
                 
                 // Footer
-                VStack(alignment: .leading, spacing: 16) {
-                    Text("Based on \(insight.evidenceCount) logged events · Confidence: \(Int(insight.confidence * 100))%")
-                        .font(.caption)
-                        .foregroundColor(.ink900.opacity(0.5))
+                VStack(alignment: .leading, spacing: 14) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "doc.text.magnifyingglass")
+                            .font(.system(size: 11))
+                            .foregroundColor(.primary)
+                        Text("Based on \(insight.evidenceCount) logged events · Confidence: \(Int(insight.confidence * 100))%")
+                            .font(.labelSM)
+                            .foregroundColor(.tertiaryText)
+                    }
                     
-                    HStack(spacing: 12) {
+                    HStack(spacing: 10) {
                         if insight.actions.count > 0 {
                             let primary = insight.actions[0]
                             Button(action: { onActionTapped?(primary) }) {
                                 Text(primary.title)
-                                    .font(.bodySM)
+                                    .font(.labelSemibold)
                                     .frame(maxWidth: .infinity)
-                                    .frame(height: 44)
-                                    .background(isLocked ? Color.primary.opacity(0.3) : Color.primary)
+                                    .frame(height: 46)
+                                    .background(
+                                        LinearGradient(
+                                            colors: isLocked
+                                                ? [Color.primary.opacity(0.3), Color.primary.opacity(0.2)]
+                                                : [Color.primary, Color.primary.opacity(0.85)],
+                                            startPoint: .topLeading,
+                                            endPoint: .bottomTrailing
+                                        )
+                                    )
                                     .foregroundColor(.white)
-                                    .cornerRadius(AppRadius.input)
+                                    .clipShape(RoundedRectangle(cornerRadius: AppRadius.input))
+                                    .shadow(
+                                        color: isLocked ? Color.clear : Color.primary.opacity(0.2),
+                                        radius: 4, x: 0, y: 2
+                                    )
                             }
                             .disabled(isLocked)
                         }
@@ -98,15 +117,15 @@ struct HeroInsightCard: View {
                             let secondary = insight.actions[1]
                             Button(action: { onActionTapped?(secondary) }) {
                                 Text(secondary.title)
-                                    .font(.bodySM)
+                                    .font(.labelSemibold)
                                     .frame(maxWidth: .infinity)
-                                    .frame(height: 44)
-                                    .background(Color.surface0)
-                                    .foregroundColor(.ink900)
-                                    .cornerRadius(AppRadius.input)
+                                    .frame(height: 46)
+                                    .background(Color.surfaceContainerLowest)
+                                    .foregroundColor(.primaryText)
+                                    .clipShape(RoundedRectangle(cornerRadius: AppRadius.input))
                                     .overlay(
-                                        RoundedRectangle(cornerRadius: 12)
-                                            .stroke(Color.ink900.opacity(0.2), lineWidth: 1)
+                                        RoundedRectangle(cornerRadius: AppRadius.input)
+                                            .stroke(Color.primary.opacity(0.15), lineWidth: 1)
                                     )
                             }
                         }
@@ -115,32 +134,39 @@ struct HeroInsightCard: View {
                 .padding(20)
                 .blur(radius: isLocked ? 4 : 0)
             }
-            .background(Color.surface0)
-            .cornerRadius(AppRadius.md)
+            .background(Color.surfaceContainerLowest)
+            .cornerRadius(AppRadius.lg)
             .overlay(
-                RoundedRectangle(cornerRadius: 20)
-                    .stroke(Color.primary.opacity(0.5), lineWidth: 2)
+                RoundedRectangle(cornerRadius: AppRadius.lg)
+                    .stroke(Color.primary.opacity(0.35), lineWidth: 1.5)
             )
-            .shadow(color: Color(red: 44/255, green: 95/255, blue: 93/255).opacity(0.08), radius: 12, x: 0, y: 2)
+            .shadow(color: Color.primary.opacity(0.08), radius: 16, x: 0, y: 6)
             .overlay(
                 // Paywall overlay for free users
                 Group {
                     if isLocked {
-                        VStack(spacing: 8) {
-                            Image(systemName: "lock.fill")
-                                .font(.headlineLG)
-                                .foregroundColor(.ink900)
+                        VStack(spacing: 10) {
+                            ZStack {
+                                Circle()
+                                    .fill(Color.primary.opacity(0.1))
+                                    .frame(width: 52, height: 52)
+                                Image(systemName: "lock.fill")
+                                    .font(.system(size: 22))
+                                    .foregroundColor(.primary)
+                            }
                             Text("Unlock this insight for \(petName)")
-                                .font(.labelLG)
-                                .foregroundColor(.ink900)
+                                .font(.labelSemibold)
+                                .foregroundColor(.primaryText)
                         }
-                        .padding(16)
-                        .background(Color.surface0.opacity(0.8))
-                        .cornerRadius(AppRadius.input)
+                        .padding(20)
+                        .background(
+                            RoundedRectangle(cornerRadius: AppRadius.md)
+                                .fill(.ultraThinMaterial)
+                        )
                     }
                 }
             )
         }
-        .buttonStyle(PlainButtonStyle())
+        .buttonStyle(SquishyCardStyle())
     }
 }
