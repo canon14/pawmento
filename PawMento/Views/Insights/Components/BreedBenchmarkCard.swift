@@ -54,7 +54,7 @@ struct BreedBenchmarkCard: View {
                     Spacer()
                     HStack(spacing: 4) {
                         Text("See full breakdown")
-                            .font(.labelSemibold)
+                            .font(.labelSM)
                             .foregroundColor(.primary)
                         Image(systemName: "arrow.up.right")
                             .font(.system(size: 11, weight: .bold))
@@ -84,7 +84,7 @@ struct BreedBenchmarkCard: View {
                                     .foregroundColor(.primary)
                             }
                             Text("Unlock Benchmarks")
-                                .font(.labelSemibold)
+                                .font(.labelSM)
                                 .foregroundColor(.primaryText)
                         }
                         .padding(18)
@@ -108,7 +108,7 @@ struct BreedBenchmarkCard: View {
     private func benchmarkRow(label: String, percentile: Int, color: Color, isLocked: Bool) -> some View {
         HStack(spacing: 12) {
             Text(label)
-                .font(.labelSemibold)
+                .font(.labelSM)
                 .foregroundColor(.primaryText)
                 .frame(width: 72, alignment: .leading)
             

@@ -154,7 +154,7 @@ struct HeroCardView: View {
                         .font(.labelMD)
                     HStack(spacing: 8) {
                         Text(viewModel.scoreTrend)
-                            .font(.labelSemibold)
+                            .font(.labelSM)
                             .foregroundColor(trendColor)
                         Text(viewModel.scoreDelta)
                             .font(.captionTabular)
@@ -216,7 +216,7 @@ struct AICoachCardView: View {
                     .foregroundColor(.primary)
                     .font(.headlineSM)
                 Text("AI Coach · \(pet.name)")
-                    .font(.labelSemibold)
+                    .font(.labelSM)
             }
             
             if viewModel.isGeneratingInsight {
@@ -266,7 +266,7 @@ struct AICoachCardView: View {
                     Spacer()
                     Image(systemName: "arrow.right")
                 }
-                .font(.labelSemibold)
+                .font(.labelSM)
                 .foregroundColor(.white)
                 .padding()
                 .background(Color.primary)

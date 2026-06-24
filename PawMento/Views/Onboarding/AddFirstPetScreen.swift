@@ -56,7 +56,7 @@ struct AddFirstPetScreen: View {
                     Button("Done") {
                         submitForm()
                     }
-                    .font(.labelLarge)
+                    .font(.labelMD)
                     .foregroundColor(.primary)
                     .disabled(isSubmitting)
                 }
@@ -87,7 +87,7 @@ struct AddFirstPetScreen: View {
                         // Name
                         VStack(alignment: .leading, spacing: 6) {
                             Text("Pet's name")
-                                .font(.labelSemibold)
+                                .font(.labelSM)
                                 .foregroundColor(.primaryText)
                             FormTextField(placeholder: "e.g. Max", text: $name, isError: showError && name.isEmpty)
                             if showError && name.isEmpty {
@@ -102,7 +102,7 @@ struct AddFirstPetScreen: View {
                         // Species
                         VStack(alignment: .leading, spacing: 6) {
                             Text("Species")
-                                .font(.labelSemibold)
+                                .font(.labelSM)
                                 .foregroundColor(.primaryText)
                             SpeciesSelectorView(selectedSpecies: $selectedSpecies)
                             if showError && selectedSpecies == nil {
@@ -118,10 +118,10 @@ struct AddFirstPetScreen: View {
                         VStack(alignment: .leading, spacing: 6) {
                             HStack(spacing: 4) {
                                 Text("Breed")
-                                    .font(.labelSemibold)
+                                    .font(.labelSM)
                                     .foregroundColor(.primaryText)
                                 Text("(optional)")
-                                    .font(.labelRegular)
+                                    .font(.bodyXS)
                                     .foregroundColor(.secondaryText)
                             }
                             FormTextField(placeholder: "e.g. Golden Retriever", text: $breed)
@@ -185,10 +185,10 @@ struct AddFirstPetScreen: View {
                         VStack(alignment: .leading, spacing: 6) {
                             HStack(spacing: 4) {
                                 Text("Birthday")
-                                    .font(.labelSemibold)
+                                    .font(.labelSM)
                                     .foregroundColor(.primaryText)
                                 Text("(optional)")
-                                    .font(.labelRegular)
+                                    .font(.bodyXS)
                                     .foregroundColor(.secondaryText)
                             }
                             BirthdayPickerField(selectedDateComponents: $birthday)
@@ -199,10 +199,10 @@ struct AddFirstPetScreen: View {
                         VStack(alignment: .leading, spacing: 6) {
                             HStack(spacing: 4) {
                                 Text("Weight")
-                                    .font(.labelSemibold)
+                                    .font(.labelSM)
                                     .foregroundColor(.primaryText)
                                 Text("(optional)")
-                                    .font(.labelRegular)
+                                    .font(.bodyXS)
                                     .foregroundColor(.secondaryText)
                             }
                             WeightFieldView(weightText: $weight, isKg: $isKg)

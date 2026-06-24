@@ -91,7 +91,7 @@ struct HeroInsightCard: View {
                             let primary = insight.actions[0]
                             Button(action: { onActionTapped?(primary) }) {
                                 Text(primary.title)
-                                    .font(.labelSemibold)
+                                    .font(.labelSM)
                                     .frame(maxWidth: .infinity)
                                     .frame(height: 46)
                                     .background(
@@ -117,7 +117,7 @@ struct HeroInsightCard: View {
                             let secondary = insight.actions[1]
                             Button(action: { onActionTapped?(secondary) }) {
                                 Text(secondary.title)
-                                    .font(.labelSemibold)
+                                    .font(.labelSM)
                                     .frame(maxWidth: .infinity)
                                     .frame(height: 46)
                                     .background(Color.surfaceContainerLowest)
@@ -155,7 +155,7 @@ struct HeroInsightCard: View {
                                     .foregroundColor(.primary)
                             }
                             Text("Unlock this insight for \(petName)")
-                                .font(.labelSemibold)
+                                .font(.labelSM)
                                 .foregroundColor(.primaryText)
                         }
                         .padding(20)

@@ -114,7 +114,7 @@ struct PatternCard: View {
                                     .foregroundColor(.primary)
                             }
                             Text("Unlock insight")
-                                .font(.labelSemibold)
+                                .font(.labelSM)
                                 .foregroundColor(.primaryText)
                         }
                         .padding(14)

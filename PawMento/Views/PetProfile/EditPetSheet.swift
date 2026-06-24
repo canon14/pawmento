@@ -50,7 +50,7 @@ struct EditPetSheet: View {
                             // Name
                             VStack(alignment: .leading, spacing: 6) {
                                 Text("Pet's Name")
-                                    .font(.labelSemibold)
+                                    .font(.labelSM)
                                     .foregroundColor(.primaryText)
                                 FormTextField(placeholder: "e.g. Max", text: $name)
                             }
@@ -58,7 +58,7 @@ struct EditPetSheet: View {
                             // Species
                             VStack(alignment: .leading, spacing: 6) {
                                 Text("Species")
-                                    .font(.labelSemibold)
+                                    .font(.labelSM)
                                     .foregroundColor(.primaryText)
                                 SpeciesSelectorView(selectedSpecies: $selectedSpecies)
                             }
@@ -67,10 +67,10 @@ struct EditPetSheet: View {
                             VStack(alignment: .leading, spacing: 6) {
                                 HStack(spacing: 4) {
                                     Text("Breed")
-                                        .font(.labelSemibold)
+                                        .font(.labelSM)
                                         .foregroundColor(.primaryText)
                                     Text("(optional)")
-                                        .font(.labelRegular)
+                                        .font(.bodyXS)
                                         .foregroundColor(.secondaryText)
                                 }
                                 FormTextField(placeholder: "e.g. Golden Retriever", text: $breed)
@@ -121,10 +121,10 @@ struct EditPetSheet: View {
                             VStack(alignment: .leading, spacing: 6) {
                                 HStack(spacing: 4) {
                                     Text("Birthday")
-                                        .font(.labelSemibold)
+                                        .font(.labelSM)
                                         .foregroundColor(.primaryText)
                                     Text("(optional)")
-                                        .font(.labelRegular)
+                                        .font(.bodyXS)
                                         .foregroundColor(.secondaryText)
                                 }
                                 BirthdayPickerField(selectedDateComponents: $birthday)
@@ -134,10 +134,10 @@ struct EditPetSheet: View {
                             VStack(alignment: .leading, spacing: 6) {
                                 HStack(spacing: 4) {
                                     Text("Weight")
-                                        .font(.labelSemibold)
+                                        .font(.labelSM)
                                         .foregroundColor(.primaryText)
                                     Text("(optional)")
-                                        .font(.labelRegular)
+                                        .font(.bodyXS)
                                         .foregroundColor(.secondaryText)
                                 }
                                 WeightFieldView(weightText: $weight, isKg: $isKg)

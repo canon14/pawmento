@@ -130,7 +130,7 @@ struct FullTimelineView: View {
             Spacer()
             
             Text(petStore.activePet?.name ?? "Pet")
-                .font(.bodySSemibold)
+                .font(.labelSM)
                 .foregroundColor(.ink900)
             
             Spacer()
@@ -182,7 +182,7 @@ struct FullTimelineView: View {
                     .padding(.top, 8)
             } else {
                 Text("Timeline")
-                    .font(.displayM)
+                    .font(.displaySM)
                     .foregroundColor(.ink900)
                 
                 Text("\(logStore.logs.count) events · \(viewModel.lastLoggedTimeText)")
@@ -205,7 +205,7 @@ struct FullTimelineView: View {
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
                     Text(insight.tier.label.capitalized)
-                        .font(.bodySSemibold)
+                        .font(.labelSM)
                         .foregroundColor(.sage700)
                     Spacer()
                     if insight.isPremiumGated {
@@ -220,13 +220,13 @@ struct FullTimelineView: View {
                 }
                 
                 Text(insight.headline)
-                    .font(.bodyS)
+                    .font(.bodySM)
                     .foregroundColor(.ink900)
                     .fixedSize(horizontal: false, vertical: true)
                 
                 Button(action: { viewModel.showPremiumAlert = true }) {
                     Text("See deep dive ›")
-                        .font(.bodySSemibold)
+                        .font(.labelSM)
                         .foregroundColor(.sage700)
                         .padding(.top, 2)
                 }
@@ -256,7 +256,7 @@ struct FullTimelineView: View {
                         }
                     }) {
                         Text(option)
-                            .font(isActive ? .bodySMedium : .bodyS)
+                            .font(isActive ? .labelMD : .bodySM)
                             .padding(.horizontal, 14)
                             .frame(height: 32)
                             .background(isActive ? Color.ink900 : Color.surface1)
@@ -281,11 +281,11 @@ struct FullTimelineView: View {
             
             HStack(spacing: 4) {
                 Text(group.bucket.title)
-                    .font(.captionSemibold)
+                    .font(.labelXS)
                     .tracking(0.5)
                 if let sub = group.headerSubtitle {
                     Text("· \(sub)")
-                        .font(.captionSemibold)
+                        .font(.labelXS)
                         .tracking(0.5)
                 }
             }
@@ -327,7 +327,7 @@ struct FullTimelineView: View {
                     }
                 }) {
                     Text("\(group.logs.count - 5) more events collapsed — Tap to expand")
-                        .font(.bodySMedium)
+                        .font(.labelMD)
                         .foregroundColor(.sage700)
                         .frame(height: 44)
                         .frame(maxWidth: .infinity)
@@ -343,7 +343,7 @@ struct FullTimelineView: View {
         Button(action: { viewModel.showPremiumAlert = true }) {
             HStack {
                 Text(viewModel.selectedFilter == "All" ? "Export this month as Vet PDF" : "Export filtered view as PDF")
-                    .font(.bodySSemibold)
+                    .font(.labelSM)
                     .foregroundColor(.white)
                 
                 Spacer()
@@ -397,7 +397,7 @@ struct FullTimelineView: View {
             Button("Clear filter") {
                 withAnimation { viewModel.selectedFilter = "All" }
             }
-            .font(.bodySSemibold)
+            .font(.labelSM)
             .foregroundColor(.sage700)
             .padding(.top, 8)
             
@@ -451,7 +451,7 @@ struct TimelineItemRowV2: View {
                     // Title Line
                     let title = log.note?.isEmpty == false && !isSymptom ? log.note! : log.category.rawValue
                     Text(isSymptom ? "\(log.category.rawValue) — Symptom" : title)
-                        .font(.bodySSemibold)
+                        .font(.labelSM)
                         .foregroundColor(.ink900)
                         .lineLimit(1)
                     
@@ -462,14 +462,14 @@ struct TimelineItemRowV2: View {
                                 .font(.caption)
                             Text(badge)
                         }
-                        .font(.captionSemibold)
+                        .font(.labelXS)
                         .foregroundColor(.sage700)
                     }
                     
                     // Note
                     if let note = log.note, !note.isEmpty, isSymptom {
                         Text(note)
-                            .font(.bodyS)
+                            .font(.bodySM)
                             .foregroundColor(.ink700)
                             .lineLimit(2)
                     }

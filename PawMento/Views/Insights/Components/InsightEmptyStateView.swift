@@ -49,7 +49,7 @@ struct InsightEmptyStateView: View {
             
             Button(action: onAction) {
                 Text(buttonTitle)
-                    .font(.labelSemibold)
+                    .font(.labelSM)
                     .foregroundColor(.white)
                     .padding(.horizontal, 24)
                     .padding(.vertical, 12)

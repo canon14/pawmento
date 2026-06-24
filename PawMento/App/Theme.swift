@@ -132,7 +132,7 @@ extension Font {
     // Displays
     static let displayLG = Font.custom("PlusJakartaSans-Bold", size: 40)
     static let displayMD = Font.custom("PlusJakartaSans-Bold", size: 32)
-    static let displaySM = Font.custom("PlusJakartaSans-Bold", size: 28) // Replaces headlineOnboarding / displayM
+    static let displaySM = Font.custom("PlusJakartaSans-Bold", size: 28)
     
     // Headlines
     static let headlineLG = Font.custom("PlusJakartaSans-SemiBold", size: 24)
@@ -141,35 +141,20 @@ extension Font {
     
     // Body (Regular)
     static let bodyLG = Font.custom("PlusJakartaSans-Regular", size: 18)
-    static let bodyMD = Font.custom("PlusJakartaSans-Regular", size: 16) // Replaces bodyOnboarding
-    static let bodySM = Font.custom("PlusJakartaSans-Regular", size: 14) // Replaces bodyS
-    static let bodyXS = Font.custom("PlusJakartaSans-Regular", size: 13) // Replaces labelRegular, caption
+    static let bodyMD = Font.custom("PlusJakartaSans-Regular", size: 16)
+    static let bodySM = Font.custom("PlusJakartaSans-Regular", size: 14)
+    static let bodyXS = Font.custom("PlusJakartaSans-Regular", size: 13)
     
     // Labels (Medium/SemiBold)
     static let labelLG = Font.custom("PlusJakartaSans-SemiBold", size: 16)
-    static let labelMD = Font.custom("PlusJakartaSans-Medium", size: 14) // Replaces skipOnboarding, bodySMedium
-    static let labelSM = Font.custom("PlusJakartaSans-SemiBold", size: 13) // Replaces labelSemibold
-    static let labelXS = Font.custom("PlusJakartaSans-SemiBold", size: 12) // Replaces captionSemibold
+    static let labelMD = Font.custom("PlusJakartaSans-Medium", size: 14)
+    static let labelSM = Font.custom("PlusJakartaSans-SemiBold", size: 13)
+    static let labelXS = Font.custom("PlusJakartaSans-SemiBold", size: 12)
     
     // Captions & Specialties
     static let caption = Font.custom("PlusJakartaSans-Regular", size: 12)
     static let captionTabular = Font.custom("PlusJakartaSans-Regular", size: 12).monospacedDigit()
-    static let cta = Font.custom("PlusJakartaSans-SemiBold", size: 17) // Replaces ctaOnboarding
-    
-    // Aliases for backwards compatibility during migration (Will be cleaned up via script)
-    static let headlineXL = displayLG
-    static let headlineOnboarding = displaySM
-    static let displayM = Font.custom("PlusJakartaSans-SemiBold", size: 28)
-    static let bodyOnboarding = bodyMD
-    static let ctaOnboarding = cta
-    static let skipOnboarding = labelMD
-    static let labelSemibold = labelSM
-    static let labelRegular = bodyXS
-    static let labelLarge = Font.custom("PlusJakartaSans-Medium", size: 15)
-    static let captionSemibold = labelXS
-    static let bodyS = bodySM
-    static let bodySMedium = labelMD
-    static let bodySSemibold = Font.custom("PlusJakartaSans-SemiBold", size: 14)
+    static let cta = Font.custom("PlusJakartaSans-SemiBold", size: 17)
 }
 
 // MARK: - Button Styles

@@ -110,7 +110,7 @@ struct BreedBenchmarkDetailScreen: View {
                         .fill(color)
                         .frame(width: 8, height: 8)
                     Text("\(percentile)th Percentile")
-                        .font(.labelSemibold)
+                        .font(.labelSM)
                         .foregroundColor(color)
                 }
                 .padding(.horizontal, 10)

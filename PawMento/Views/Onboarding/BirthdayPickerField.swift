@@ -65,7 +65,7 @@ struct BirthdayPickerField: View {
                                 isExpanded = false
                             }
                         }
-                        .font(.labelSemibold)
+                        .font(.labelSM)
                         .foregroundColor(.primary)
                         .padding(.top, 8)
                         .padding(.trailing, 16)

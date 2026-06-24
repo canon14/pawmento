@@ -51,7 +51,7 @@ struct QuickLogSheetView: View {
                         // Subtitle
                         let petName = petStore.activePet?.name ?? "your pet"
                         Text(AppStrings.QuickLog.subtitleJustNow(petName))
-                            .font(.labelRegular)
+                            .font(.bodyXS)
                             .foregroundColor(.secondaryText)
                     }
                     
@@ -90,14 +90,14 @@ struct QuickLogSheetView: View {
                             showDraftBanner = false
                             UserDefaults.standard.removeObject(forKey: draftKey)
                         }
-                        .font(.labelSemibold)
+                        .font(.labelSM)
                         .foregroundColor(.primary)
                         
                         Button(AppStrings.QuickLog.discard) {
                             showDraftBanner = false
                             UserDefaults.standard.removeObject(forKey: draftKey)
                         }
-                        .font(.labelSemibold)
+                        .font(.labelSM)
                         .foregroundColor(.tertiaryText)
                     }
                     .padding()
@@ -123,7 +123,7 @@ struct QuickLogSheetView: View {
                         if selectedCategory == .med {
                             VStack(alignment: .leading, spacing: 8) {
                                 Text("Medication Dose")
-                                    .font(.labelSemibold)
+                                    .font(.labelSM)
                                     .foregroundColor(.primaryText)
                                 TextField("e.g. 16mg, 1 tablet", text: $dose)
                                     .padding()

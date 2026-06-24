@@ -7,7 +7,7 @@ struct CategoryScrollerView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text(AppStrings.QuickLog.whatHappened)
-                .font(.labelSemibold)
+                .font(.labelSM)
                 .foregroundColor(.primaryText)
             
             ScrollView(.horizontal, showsIndicators: false) {
@@ -69,7 +69,7 @@ struct CategoryScrollerView: View {
                     .scaleEffect(isSelected ? 1.1 : 1.0)
                 
                 Text(category.rawValue)
-                    .font(isSelected ? .labelSemibold : .labelMD)
+                    .font(isSelected ? .labelSM : .labelMD)
                     .minimumScaleFactor(0.8)
                     .lineLimit(1)
             }
@@ -126,7 +126,7 @@ struct FullCategoryGridView: View {
                                     .scaleEffect(isSelected ? 1.1 : 1.0)
                                 
                                 Text(category.rawValue)
-                                    .font(isSelected ? .labelSemibold : .labelSM)
+                                    .font(isSelected ? .labelSM : .labelSM)
                                     .minimumScaleFactor(0.7)
                                     .lineLimit(1)
                             }

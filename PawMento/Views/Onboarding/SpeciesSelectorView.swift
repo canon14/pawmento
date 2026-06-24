@@ -53,7 +53,7 @@ struct SpeciesPill: View {
         Button(action: action) {
             HStack {
                 Text(icon).font(.headlineMD)
-                Text(label).font(.labelLarge)
+                Text(label).font(.labelMD)
             }
             .frame(maxWidth: .infinity)
             .frame(height: 52)

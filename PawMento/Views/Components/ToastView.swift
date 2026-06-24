@@ -21,7 +21,7 @@ struct ToastView: View {
                             toastManager.dismiss()
                         }) {
                             Text(actionLabel)
-                                .font(.labelSemibold)
+                                .font(.labelSM)
                                 .foregroundColor(.primary)
                         }
                     }

@@ -9,7 +9,7 @@ struct SeveritySliderView: View {
         VStack(spacing: 16) {
             HStack {
                 Text(AppStrings.QuickLog.severity)
-                    .font(.labelSemibold)
+                    .font(.labelSM)
                     .foregroundColor(.primaryText)
                 
                 Spacer()
@@ -19,7 +19,7 @@ struct SeveritySliderView: View {
                         .fill(colorForSeverity(severity))
                         .frame(width: 8, height: 8)
                     Text(labels[severity - 1])
-                        .font(.labelSemibold)
+                        .font(.labelSM)
                         .foregroundColor(colorForSeverity(severity))
                 }
                 .padding(.horizontal, 10)

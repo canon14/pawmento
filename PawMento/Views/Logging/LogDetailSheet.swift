@@ -45,7 +45,7 @@ struct LogDetailSheet: View {
                         
                         let petName = petStore.activePet?.name ?? "your pet"
                         Text("For \(petName)")
-                            .font(.labelRegular)
+                            .font(.bodyXS)
                             .foregroundColor(.secondaryText)
                     }
                     
@@ -117,7 +117,7 @@ struct LogDetailSheet: View {
                             } else if showSuccess {
                                 Image(systemName: "checkmark").font(.headlineSM)
                             } else {
-                                Text("Save Details").font(.ctaOnboarding)
+                                Text("Save Details").font(.cta)
                             }
                         }
                         .foregroundColor(.white)

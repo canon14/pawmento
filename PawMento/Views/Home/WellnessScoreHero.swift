@@ -61,7 +61,7 @@ struct WellnessScoreHero: View {
                         if confidence == .insufficient {
                             VStack(spacing: 2) {
                                 Text("—")
-                                    .font(.headlineXL)
+                                    .font(.displayLG)
                                     .foregroundColor(.onSurfaceVariant)
                                 Text("/100")
                                     .font(.labelMD)

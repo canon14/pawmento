@@ -55,7 +55,7 @@ struct AskCoachInsightCard: View {
                     Spacer()
                     HStack(spacing: 4) {
                         Text("Open chat")
-                            .font(.labelSemibold)
+                            .font(.labelSM)
                             .foregroundColor(.primary)
                         Image(systemName: "arrow.up.right")
                             .font(.system(size: 11, weight: .bold))

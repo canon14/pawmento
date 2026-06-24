@@ -170,7 +170,7 @@ struct SettingsView: View {
                         // App Version Footer
                         VStack(spacing: 4) {
                             Text("PawMento")
-                                .font(.labelSemibold)
+                                .font(.labelSM)
                                 .foregroundColor(.tertiaryText)
                             Text("v\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0") (\(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"))")
                                 .font(.labelSM)
