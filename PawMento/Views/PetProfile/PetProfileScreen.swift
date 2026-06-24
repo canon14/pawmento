@@ -34,8 +34,35 @@ struct PetProfileScreen: View {
                         
                         ArchiveButton(pet: pet)
                     } else {
-                        Text("No pet selected")
-                            .padding(.top, 40)
+                        // Empty state (🟡 11.1 — was plain text)
+                        VStack(spacing: 16) {
+                            ZStack {
+                                Circle()
+                                    .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+                                    .frame(width: 100, height: 100)
+                                
+                                Circle()
+                                    .fill(Color.primary.opacity(0.1))
+                                    .frame(width: 72, height: 72)
+                                
+                                Image(systemName: "pawprint.fill")
+                                    .font(.system(size: 28, weight: .medium))
+                                    .foregroundColor(.primary)
+                            }
+                            .padding(.bottom, 4)
+                            
+                            Text("No pet selected")
+                                .font(.headlineMD)
+                                .foregroundColor(.primaryText)
+                            
+                            Text("Select a pet from the tab bar or add your first pet to get started.")
+                                .font(.bodyMD)
+                                .foregroundColor(.secondaryText)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 32)
+                        }
+                        .padding(.vertical, 80)
+                        .frame(maxWidth: .infinity)
                     }
                 }
                 .padding(.horizontal, 20)

@@ -74,7 +74,7 @@ struct EditPetSheet: View {
                                         .foregroundColor(.secondaryText)
                                 }
                                 FormTextField(placeholder: "e.g. Golden Retriever", text: $breed)
-                                    .onChange(of: breed) { newValue in
+                                    .onChange(of: breed) { _, newValue in
                                         if let species = selectedSpecies {
                                             breedSuggestions = BreedStore.shared.suggestBreeds(for: species, query: newValue)
                                             isShowingBreedSuggestions = !breedSuggestions.isEmpty && !breedSuggestions.contains(newValue)
@@ -82,7 +82,7 @@ struct EditPetSheet: View {
                                             isShowingBreedSuggestions = false
                                         }
                                     }
-                                    .onChange(of: selectedSpecies) { _ in
+                                    .onChange(of: selectedSpecies) { _, _ in
                                         breed = ""
                                         isShowingBreedSuggestions = false
                                     }

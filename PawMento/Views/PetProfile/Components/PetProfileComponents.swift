@@ -116,11 +116,11 @@ struct HeroCardView: View {
                         .foregroundColor(.primaryText)
                     
                     Text(pet.breed ?? "Mixed Breed")
-                        .font(.bodyS)
+                        .font(.bodySM)
                         .foregroundColor(.secondaryText)
                     
                     Text("\(ageString) · \(formattedWeight)")
-                        .font(.labelRegular)
+                        .font(.bodyXS)
                         .foregroundColor(.tertiaryText)
                 }
                 
@@ -144,14 +144,14 @@ struct HeroCardView: View {
                     Text("\(viewModel.wellnessScore)")
                         .monospacedDigit()
                         .contentTransition(.numericText())
-                        .font(.headlineOnboarding)
+                        .font(.headlineLG)
                         .foregroundColor(.primaryText)
                 }
                 .frame(width: 80, height: 80)
                 
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Wellness Score")
-                        .font(.labelLarge)
+                        .font(.labelMD)
                     HStack(spacing: 8) {
                         Text(viewModel.scoreTrend)
                             .font(.labelSemibold)
@@ -186,7 +186,7 @@ struct HeroCardView: View {
     
     private var ringColor: Color {
         if viewModel.wellnessScore >= 80 { return .primary }
-        if viewModel.wellnessScore >= 60 { return .primary }
+        if viewModel.wellnessScore >= 60 { return .amber }
         return .error
     }
     
@@ -223,12 +223,12 @@ struct AICoachCardView: View {
                 HStack {
                     ProgressView()
                     Text("Thinking...")
-                        .font(.labelLarge)
+                        .font(.labelMD)
                         .foregroundColor(.secondaryText)
                 }
             } else {
                 Text(viewModel.aiInsight ?? "Log \(pet.name) for a few more days and I'll start noticing patterns.")
-                    .font(.labelLarge)
+                    .font(.labelMD)
                     .foregroundColor(.primaryText)
                     .lineSpacing(4)
             }
@@ -237,7 +237,7 @@ struct AICoachCardView: View {
                 HStack {
                     Spacer()
                     Text("See Full Pattern Analysis")
-                        .font(.labelLarge)
+                        .font(.labelMD)
                         .foregroundColor(.primary)
                     Spacer()
                     Text("Premium 🔒")
@@ -290,17 +290,16 @@ struct HealthStatsSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
-                Text("Health Stats")
-                    .font(.ctaOnboarding)
+                SectionHeader("Health Stats")
                 Spacer()
                 Text("Last 30 d")
-                    .font(.labelRegular)
+                    .font(.bodyXS)
                     .foregroundColor(.tertiaryText)
             }
             
             VStack(spacing: 8) {
                 Text("Not enough data yet")
-                    .font(.labelLarge)
+                    .font(.labelMD)
                     .foregroundColor(.secondaryText)
             }
             .frame(maxWidth: .infinity, alignment: .center)
@@ -320,12 +319,11 @@ struct RecentActivityPreview: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
-                Text("Recent Activity")
-                    .font(.ctaOnboarding)
+                SectionHeader("Recent Activity")
                 Spacer()
                 Button(action: { showTimeline = true }) {
                     Text("See all \(logs.count) →")
-                        .font(.bodyS)
+                        .font(.bodySM)
                         .foregroundColor(.primary)
                 }
             }
@@ -333,7 +331,7 @@ struct RecentActivityPreview: View {
             VStack(spacing: 0) {
                 if logs.isEmpty {
                     Text("Log \(petName)'s first activity to see it here.")
-                        .font(.bodyS)
+                        .font(.bodySM)
                         .foregroundColor(.secondaryText)
                         .padding()
                 } else {
@@ -342,11 +340,11 @@ struct RecentActivityPreview: View {
                             Text(log.category.emoji)
                                 .font(.headlineMD)
                             Text(log.category.rawValue)
-                                .font(.labelLarge)
+                                .font(.labelMD)
                                 .foregroundColor(.primaryText)
                             Spacer()
                             Text(log.note ?? "")
-                                .font(.bodyS)
+                                .font(.bodySM)
                                 .foregroundColor(.secondaryText)
                                 .lineLimit(1)
                                 .truncationMode(.tail)
@@ -373,12 +371,11 @@ struct RecentActivityPreview: View {
 struct CareTeamCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Care Team")
-                .font(.ctaOnboarding)
+            SectionHeader("Care Team")
             
             VStack(alignment: .leading, spacing: 12) {
                 Text("No care team added yet.")
-                    .font(.labelLarge)
+                    .font(.labelMD)
                     .foregroundColor(.secondaryText)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -398,14 +395,14 @@ struct VetPDFCTACard: View {
         Button(action: { showPaywall = true }) {
             HStack(spacing: 12) {
                 Text("📄")
-                    .font(.displayM)
+                    .font(.displaySM)
                 
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Generate Vet PDF")
                         .font(.bodyMD)
                         .foregroundColor(.primaryText)
                     Text("Last 30 days · \(logCount) entries")
-                        .font(.labelRegular)
+                        .font(.bodyXS)
                         .foregroundColor(.secondaryText)
                 }
                 
@@ -445,12 +442,11 @@ struct MedicationsCard: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Medications & Routines")
-                .font(.ctaOnboarding)
+            SectionHeader("Medications & Routines")
             
             if medications.isEmpty {
                 Text("No medications or routines added yet.")
-                    .font(.labelLarge)
+                    .font(.labelMD)
                     .foregroundColor(.secondaryText)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(16)
@@ -464,7 +460,7 @@ struct MedicationsCard: View {
                                 .font(.headlineMD)
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("\(med.name)\(med.dose.map { " · \($0)" } ?? "")")
-                                    .font(.labelLarge)
+                                    .font(.labelMD)
                                 
                                 if med.loggedToday {
                                     Text("Logged today · \(med.streakCount) day streak ✓")
@@ -492,7 +488,7 @@ struct MedicationsCard: View {
                             }
                             Spacer()
                             Text(med.frequency)
-                                .font(.bodyS)
+                                .font(.bodySM)
                                 .foregroundColor(.secondaryText)
                         }
                         .padding(16)
@@ -520,19 +516,18 @@ struct VitalRecordsList: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
-                Text("Vital Records")
-                    .font(.ctaOnboarding)
+                SectionHeader("Vital Records")
                 Spacer()
                 Button(action: { showManageRecords = true }) {
                     Text("Manage →")
-                        .font(.bodyS)
+                        .font(.bodySM)
                         .foregroundColor(.primary)
                 }
             }
             
             VStack(alignment: .leading, spacing: 12) {
                 Text("No vital records added yet.")
-                    .font(.labelLarge)
+                    .font(.labelMD)
                     .foregroundColor(.secondaryText)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -566,7 +561,7 @@ struct ArchiveButton: View {
                 }
                 Text(isArchiving ? "Archiving..." : "Archive \(pet.name)'s profile")
             }
-                .font(.labelLarge)
+                .font(.labelMD)
                 .foregroundColor(.error)
                 .frame(maxWidth: .infinity)
                 .frame(height: 52)
@@ -664,7 +659,7 @@ struct PetSwitcherSheet: View {
                                 )
                                 
                                 Text(pet.name)
-                                    .font(.bodyS)
+                                    .font(.bodySM)
                                     .foregroundColor(.primaryText)
                             }
                         }

@@ -7,7 +7,7 @@ struct SettingsView: View {
     @EnvironmentObject var toastManager: ToastManager
     
     @State private var userEmail: String = "Loading..."
-    @State private var pushNotificationsEnabled = true
+    @State private var displayName: String = "PawMento User"
     
     // Delete Account State
     @State private var showDeleteConfirmation = false
@@ -30,22 +30,22 @@ struct SettingsView: View {
                             ZStack {
                                 Circle()
                                     .fill(
-                                        LinearGradient(colors: [Color.primary, Color(hex: "#7A6C5D")], startPoint: .topLeading, endPoint: .bottomTrailing)
+                                        LinearGradient(colors: [Color.primary, Color.primary.opacity(0.7)], startPoint: .topLeading, endPoint: .bottomTrailing)
                                     )
                                     .frame(width: 80, height: 80)
-                                    .shadow(color: Color.primary.opacity(0.3), radius: 12, x: 0, y: 6)
+                                    .shadow(color: Color.primary.opacity(0.25), radius: 12, x: 0, y: 6)
                                 
-                                Text(userEmail.prefix(1).uppercased())
+                                Text(displayName.prefix(1).uppercased())
                                     .font(.system(size: 32, weight: .bold))
                                     .foregroundColor(.white)
                             }
                             
                             VStack(spacing: 4) {
-                                Text("PawMento User")
-                                    .font(.title3.weight(.bold))
+                                Text(displayName)
+                                    .font(.headlineMD)
                                     .foregroundColor(.primaryText)
                                 Text(userEmail)
-                                    .font(.subheadline)
+                                    .font(.bodySM)
                                     .foregroundColor(.secondaryText)
                             }
                         }
@@ -87,7 +87,13 @@ struct SettingsView: View {
                         
                         // Preferences Section
                         SettingsSection(title: "PREFERENCES") {
-                            SettingsToggleRow(icon: "bell.badge.fill", iconColor: .orange, title: "Push Notifications", isOn: $pushNotificationsEnabled)
+                            SettingsRow(icon: "bell.badge.fill", iconColor: .orange, title: "Push Notifications") {
+                                Text("Coming Soon")
+                                    .font(.labelSM)
+                                    .foregroundColor(.tertiaryText)
+                            } action: {
+                                toastManager.show("Push Notifications coming soon", actionLabel: nil, action: nil)
+                            }
                         }
                         
                         // Support Section
@@ -160,6 +166,17 @@ struct SettingsView: View {
                             .buttonStyle(SquishyCardStyle())
                         }
                         .padding(.horizontal, 20)
+                        
+                        // App Version Footer
+                        VStack(spacing: 4) {
+                            Text("PawMento")
+                                .font(.labelSemibold)
+                                .foregroundColor(.tertiaryText)
+                            Text("v\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0") (\(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"))")
+                                .font(.labelSM)
+                                .foregroundColor(.tertiaryText.opacity(0.6))
+                        }
+                        .frame(maxWidth: .infinity)
                         .padding(.bottom, 40)
                     }
                 }
@@ -193,6 +210,12 @@ struct SettingsView: View {
                 Task {
                     if let email = await authManager.getCurrentUserEmail() {
                         userEmail = email
+                        // Derive display name from email (text before @)
+                        let nameFromEmail = email.components(separatedBy: "@").first ?? "User"
+                        displayName = nameFromEmail
+                            .replacingOccurrences(of: ".", with: " ")
+                            .replacingOccurrences(of: "_", with: " ")
+                            .capitalized
                     } else {
                         userEmail = "user@example.com"
                     }
