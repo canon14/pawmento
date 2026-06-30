@@ -288,55 +288,87 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 REVOKE EXECUTE ON FUNCTION public.delete_user() FROM public;
 GRANT EXECUTE ON FUNCTION public.delete_user() TO authenticated;
 
--- (Fix S9) Atomically increment question usage and return remaining count.
--- Bypasses SELECT-only RLS via SECURITY DEFINER; prevents lost updates from concurrent sends.
+-- (Fix S9 + DB-M2) Atomically increment question usage and return remaining count.
+-- Derives quota from plan_type/status: paid plans return -1 (unlimited).
 CREATE OR REPLACE FUNCTION public.increment_question_usage()
 RETURNS INTEGER
 LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
-  new_used INTEGER;
+  new_used   INTEGER;
+  plan       TEXT;
+  sub_status TEXT;
+  quota      INTEGER;
 BEGIN
   UPDATE public.subscriptions
     SET questions_used = questions_used + 1
     WHERE user_id = auth.uid()
-  RETURNING questions_used INTO new_used;
-  RETURN GREATEST(0, 5 - COALESCE(new_used, 0));
+  RETURNING questions_used, plan_type, status
+    INTO new_used, plan, sub_status;
+
+  -- Paid / active plans are unlimited
+  IF sub_status = 'active' OR plan IN ('premium', 'pro') THEN
+    RETURN -1;
+  END IF;
+
+  quota := 5; -- free-tier default
+  RETURN GREATEST(0, quota - COALESCE(new_used, 0));
 END;
 $$;
 
 REVOKE EXECUTE ON FUNCTION public.increment_question_usage() FROM public;
 GRANT EXECUTE ON FUNCTION public.increment_question_usage() TO authenticated;
 
--- (Fix S9) Atomically decrement question usage (refund) and return remaining count.
+-- (Fix S9 + DB-M2) Atomically decrement question usage (refund) and return remaining count.
 CREATE OR REPLACE FUNCTION public.decrement_question_usage()
 RETURNS INTEGER
 LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
-  new_used INTEGER;
+  new_used   INTEGER;
+  plan       TEXT;
+  sub_status TEXT;
+  quota      INTEGER;
 BEGIN
   UPDATE public.subscriptions
     SET questions_used = GREATEST(0, questions_used - 1)
     WHERE user_id = auth.uid()
-  RETURNING questions_used INTO new_used;
-  RETURN GREATEST(0, 5 - COALESCE(new_used, 0));
+  RETURNING questions_used, plan_type, status
+    INTO new_used, plan, sub_status;
+
+  IF sub_status = 'active' OR plan IN ('premium', 'pro') THEN
+    RETURN -1;
+  END IF;
+
+  quota := 5;
+  RETURN GREATEST(0, quota - COALESCE(new_used, 0));
 END;
 $$;
 
 REVOKE EXECUTE ON FUNCTION public.decrement_question_usage() FROM public;
 GRANT EXECUTE ON FUNCTION public.decrement_question_usage() TO authenticated;
 
--- Reset question period: zeros out questions_used and sets period_start to now.
--- Used by CoachViewModel when the 30-day period has expired.
+-- (DB-M2) Reset question period: zeros out questions_used and sets period_start to now.
+-- Returns the full quota for the user's plan (-1 for paid = unlimited).
 CREATE OR REPLACE FUNCTION public.reset_question_period()
 RETURNS INTEGER
 LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+  plan       TEXT;
+  sub_status TEXT;
 BEGIN
   UPDATE public.subscriptions
     SET questions_used = 0, period_start = NOW()
-    WHERE user_id = auth.uid();
-  RETURN 5; -- Full quota
+    WHERE user_id = auth.uid()
+  RETURNING plan_type, status
+    INTO plan, sub_status;
+
+  IF sub_status = 'active' OR plan IN ('premium', 'pro') THEN
+    RETURN -1;
+  END IF;
+
+  RETURN 5; -- free-tier full quota
 END;
 $$;
 
 REVOKE EXECUTE ON FUNCTION public.reset_question_period() FROM public;
 GRANT EXECUTE ON FUNCTION public.reset_question_period() TO authenticated;
+
