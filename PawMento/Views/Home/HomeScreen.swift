@@ -63,7 +63,8 @@ struct HomeScreen: View {
             guard let petId = petStore.activePet?.id else { return }
             async let logs: Void = logStore.fetchLogs(for: petId)
             async let meds: Void = medicationStore.fetchMedications(for: petId)
-            _ = await (logs, meds)
+            async let reminders: Void = reminderStore.fetchReminders()
+            _ = await (logs, meds, reminders)
         }
         .sheet(isPresented: $showCreateReminder) {
             CreateReminderSheet()
