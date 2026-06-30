@@ -2,6 +2,7 @@ import SwiftUI
 
 struct AskCoachCard: View {
     @EnvironmentObject var petStore: PetStore
+    @EnvironmentObject var coachViewModel: CoachViewModel
     var action: () -> Void = {}
     
     var body: some View {
@@ -49,19 +50,21 @@ struct AskCoachCard: View {
                 
                 Spacer(minLength: 0)
                 
-                // Usage badge
-                HStack(spacing: 4) {
-                    Image(systemName: "sparkle")
-                        .font(.system(size: 9))
-                    Text("4 free questions left")
-                        .font(.labelSM)
+                // Usage badge — hidden for premium/unlimited plans
+                if !coachViewModel.isPremium {
+                    HStack(spacing: 4) {
+                        Image(systemName: "sparkle")
+                            .font(.system(size: 9))
+                        Text("\(coachViewModel.freeQuestionsRemaining) free question\(coachViewModel.freeQuestionsRemaining == 1 ? "" : "s") left")
+                            .font(.labelSM)
+                    }
+                    .foregroundColor(.onSurfaceVariant)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(.ultraThinMaterial)
+                    .clipShape(Capsule())
+                    .overlay(Capsule().stroke(Color.primary.opacity(0.15), lineWidth: 1))
                 }
-                .foregroundColor(.onSurfaceVariant)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
-                .background(.ultraThinMaterial)
-                .clipShape(Capsule())
-                .overlay(Capsule().stroke(Color.primary.opacity(0.15), lineWidth: 1))
             }
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
