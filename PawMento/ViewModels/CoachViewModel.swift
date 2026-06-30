@@ -11,6 +11,7 @@ class CoachViewModel: ObservableObject {
     private var hasShownLowQuotaWarning = false
     @Published var isPremium: Bool = false
     @Published var showPremiumWall: Bool = false
+    @Published var showAuthError: Bool = false
     
     // Quick Replies context
     @Published var quickReplies: [String] = []
@@ -236,7 +237,10 @@ class CoachViewModel: ObservableObject {
             }
             
             if let index = messages.firstIndex(where: { $0.id == assistantMessageId }) {
-                if let urlError = error as? URLError, urlError.code == .notConnectedToInternet {
+            if let authError = error as? AICoachError, authError == .authenticationRequired {
+                    messages[index].content = "Your session has expired. Please sign in again to continue."
+                    showAuthError = true
+                } else if let urlError = error as? URLError, urlError.code == .notConnectedToInternet {
                     messages[index].content = "I lost connection — tap to retry."
                 } else {
                     messages[index].content = "Something went wrong on my end. Please try again in a moment."
@@ -250,6 +254,7 @@ class CoachViewModel: ObservableObject {
         messages = []
         isTyping = false
         showPremiumWall = false
+        showAuthError = false
         quickReplies = []
         loadedPetId = nil
         // we deliberately keep freeQuestionsRemaining so we don't reset until initializeQuotaAndSubscription runs.

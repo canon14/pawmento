@@ -5,6 +5,33 @@ import Supabase
 // Fix C5: Made AICoachClient a final class with immutable config.
 // Provider is no longer mutable shared state — it's Anthropic-only via the proxy.
 
+/// Typed errors surfaced to the UI layer for actionable handling.
+enum AICoachError: LocalizedError, Equatable {
+    case authenticationRequired
+    case serverError(statusCode: Int, message: String)
+    case noContent
+    
+    var errorDescription: String? {
+        switch self {
+        case .authenticationRequired:
+            return "Your session has expired. Please sign in again."
+        case .serverError(let code, let message):
+            return "Server error (\(code)): \(message)"
+        case .noContent:
+            return "No content received from AI provider"
+        }
+    }
+    
+    var recoverySuggestion: String? {
+        switch self {
+        case .authenticationRequired:
+            return "Sign in again to continue using the AI Coach."
+        default:
+            return nil
+        }
+    }
+}
+
 final class AICoachClient: Sendable {
     static let shared = AICoachClient()
     
@@ -79,10 +106,11 @@ final class AICoachClient: Sendable {
         request.timeoutInterval = AIConfig.requestTimeout
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         
-        // Auth: user's Supabase session token
-        if let session = try? await SupabaseManager.shared.client.auth.session {
-            request.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
+        // Auth: user's Supabase session token — short-circuit if missing
+        guard let session = try? await SupabaseManager.shared.client.auth.session else {
+            throw AICoachError.authenticationRequired
         }
+        request.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
         
         // Fix C5: Provider is no longer mutable — Anthropic-only via proxy
         let body: [String: Any] = [
@@ -182,7 +210,7 @@ final class AICoachClient: Sendable {
         
         // Fix C4: Zero-token guard — if we got 200 but yielded nothing, that's an error
         if tokensYielded == 0 {
-            throw NSError(domain: "AIProxy", code: -1, userInfo: [NSLocalizedDescriptionKey: "No content received from AI provider"])
+            throw AICoachError.noContent
         }
         
         continuation.finish()
