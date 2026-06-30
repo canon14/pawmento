@@ -31,6 +31,24 @@ CREATE TABLE IF NOT EXISTS public.subscriptions (
 ALTER TABLE public.subscriptions ADD COLUMN IF NOT EXISTS questions_used INTEGER DEFAULT 0;
 ALTER TABLE public.subscriptions ADD COLUMN IF NOT EXISTS period_start TIMESTAMP WITH TIME ZONE DEFAULT NOW();
 
+-- Migration: de-duplicate subscriptions keeping the earliest row per user_id,
+-- then add a UNIQUE constraint so ON CONFLICT (user_id) has a real target.
+DELETE FROM public.subscriptions s
+  USING public.subscriptions s2
+  WHERE s.user_id = s2.user_id
+    AND s.created_at > s2.created_at;
+
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'subscriptions_user_id_key'
+      AND conrelid = 'public.subscriptions'::regclass
+  ) THEN
+    ALTER TABLE public.subscriptions
+      ADD CONSTRAINT subscriptions_user_id_key UNIQUE (user_id);
+  END IF;
+END $$;
+
 -- 3. Pets Table
 CREATE TABLE IF NOT EXISTS public.pets (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -214,7 +232,7 @@ BEGIN
   -- Fix 5: seed a default free subscription so reads never fail
   INSERT INTO public.subscriptions (user_id, status, plan_type, questions_used, period_start)
   VALUES (new.id, 'free', 'free', 0, NOW())
-  ON CONFLICT DO NOTHING;
+  ON CONFLICT (user_id) DO NOTHING;
 
   RETURN new;
 END;
