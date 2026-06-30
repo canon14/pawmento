@@ -15,7 +15,7 @@ struct HomeScreen: View {
     @State private var showCreateReminder = false
     @State private var reminderToEdit: Reminder? = nil
     @State private var showFullTimeline = false
-    @State private var isFetchingLogs = false
+
     
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -58,13 +58,9 @@ struct HomeScreen: View {
         .sheet(isPresented: $showAddPetSheet) {
             AddPetSheet()
         }
-        .onChange(of: petStore.activePet?.id) { _, newPetId in
-            guard let petId = newPetId, !isFetchingLogs else { return }
-            Task {
-                isFetchingLogs = true
-                await logStore.fetchLogs(for: petId)
-                isFetchingLogs = false
-            }
+        .task(id: petStore.activePet?.id) {
+            guard let petId = petStore.activePet?.id else { return }
+            await logStore.fetchLogs(for: petId)
         }
         .sheet(isPresented: $showCreateReminder) {
             CreateReminderSheet()
