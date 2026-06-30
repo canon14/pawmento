@@ -10,6 +10,7 @@ struct HomeScreen: View {
     
     @EnvironmentObject var petStore: PetStore
     @EnvironmentObject var logStore: LogStore
+    @EnvironmentObject var medicationStore: MedicationStore
     @StateObject private var reminderStore = ReminderStore.shared
     
     @State private var showCreateReminder = false
@@ -60,7 +61,9 @@ struct HomeScreen: View {
         }
         .task(id: petStore.activePet?.id) {
             guard let petId = petStore.activePet?.id else { return }
-            await logStore.fetchLogs(for: petId)
+            async let logs: Void = logStore.fetchLogs(for: petId)
+            async let meds: Void = medicationStore.fetchMedications(for: petId)
+            _ = await (logs, meds)
         }
         .sheet(isPresented: $showCreateReminder) {
             CreateReminderSheet()
