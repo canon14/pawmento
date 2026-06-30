@@ -7,6 +7,8 @@ struct TodayLogGridItem: Identifiable {
     let subtitle: String
     let subtitleIcon: String
     let isLogged: Bool
+    var photoImage: UIImage? = nil
+    var photoURL: URL? = nil
 }
 
 struct TodayLogGrid: View {
@@ -29,7 +31,9 @@ struct TodayLogGrid: View {
                 title: title,
                 subtitle: formatter.string(from: log.recordedAt).lowercased(),
                 subtitleIcon: "checkmark.circle.fill",
-                isLogged: true
+                isLogged: true,
+                photoImage: log.photoImage,
+                photoURL: log.photoLocalURL
             ))
         }
         
@@ -99,7 +103,9 @@ struct TodayLogGrid: View {
                             title: item.title,
                             subtitle: item.subtitle,
                             subtitleIcon: item.subtitleIcon,
-                            isLogged: item.isLogged
+                            isLogged: item.isLogged,
+                            photoImage: item.photoImage,
+                            photoURL: item.photoURL
                         )
                     }
                     .buttonStyle(SquishyCardStyle())
@@ -115,14 +121,32 @@ struct LogItemCard: View {
     let subtitle: String
     let subtitleIcon: String
     let isLogged: Bool
+    var photoImage: UIImage? = nil
+    var photoURL: URL? = nil
     
     var body: some View {
         VStack(alignment: .leading) {
-            Text(icon)
-                .font(.system(size: 32))
-                .shadow(color: Color.black.opacity(0.1), radius: 2, x: 0, y: 2)
-                .grayscale(isLogged ? 0 : 1.0)
-                .opacity(isLogged ? 1.0 : 0.5)
+            if let uiImage = photoImage {
+                Image(uiImage: uiImage)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 32, height: 32)
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+            } else if photoURL != nil {
+                CachedAsyncImage(url: photoURL) { img in
+                    img.resizable().scaledToFill()
+                } placeholder: {
+                    ProgressView()
+                }
+                .frame(width: 32, height: 32)
+                .clipShape(RoundedRectangle(cornerRadius: 6))
+            } else {
+                Text(icon)
+                    .font(.system(size: 32))
+                    .shadow(color: Color.black.opacity(0.1), radius: 2, x: 0, y: 2)
+                    .grayscale(isLogged ? 0 : 1.0)
+                    .opacity(isLogged ? 1.0 : 0.5)
+            }
             
             Spacer()
             

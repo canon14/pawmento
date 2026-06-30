@@ -29,7 +29,9 @@ struct RecentActivityTimeline: View {
                             TimelineItem(
                                 iconText: log.category.emoji,
                                 title: log.note ?? "Logged activity",
-                                time: formatTime(log.recordedAt)
+                                time: formatTime(log.recordedAt),
+                                photoImage: log.photoImage,
+                                photoURL: log.photoLocalURL
                             )
                         }
                     }
@@ -88,6 +90,8 @@ struct TimelineItem: View {
     let iconText: String
     let title: String
     let time: String
+    var photoImage: UIImage? = nil
+    var photoURL: URL? = nil
     
     var body: some View {
         HStack(alignment: .top, spacing: 20) {
@@ -112,6 +116,22 @@ struct TimelineItem: View {
             .padding(.top, 4)
             
             Spacer()
+            
+            if let uiImage = photoImage {
+                Image(uiImage: uiImage)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 40, height: 40)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+            } else if photoURL != nil {
+                CachedAsyncImage(url: photoURL) { img in
+                    img.resizable().scaledToFill()
+                } placeholder: {
+                    ProgressView()
+                }
+                .frame(width: 40, height: 40)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+            }
         }
     }
 }
