@@ -142,8 +142,10 @@ struct HomeScreen: View {
     
     @ViewBuilder
     private var upNextRemindersSection: some View {
-        let petId = petStore.activePet?.id ?? UUID()
-        let petReminders = reminderStore.reminders(for: petId)
+        let petReminders: [Reminder] = {
+            guard let petId = petStore.activePet?.id else { return [] }
+            return reminderStore.reminders(for: petId)
+        }()
         
         VStack(alignment: .leading, spacing: 12) {
             SectionHeader("Up Next") {
