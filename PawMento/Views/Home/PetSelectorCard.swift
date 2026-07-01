@@ -3,6 +3,7 @@ import SwiftUI
 struct PetSelectorCard: View {
     @EnvironmentObject var petStore: PetStore
     var onAddPet: () -> Void = {}
+    @State private var showPetSwitcher = false
     
     var petAgeString: String? {
         guard let pet = petStore.activePet,
@@ -75,7 +76,9 @@ struct PetSelectorCard: View {
             }
             .background(Color.surfaceContainerLowest.opacity(0.01))
             .onTapGesture {
-                // Action for pet switcher hook
+                if petStore.pets.count > 1 {
+                    showPetSwitcher = true
+                }
             }
             
             Spacer()
@@ -98,6 +101,13 @@ struct PetSelectorCard: View {
                 .stroke(Color.surfaceContainerLow, lineWidth: 1)
         )
         .warmShadow()
+        .confirmationDialog("Switch Pet", isPresented: $showPetSwitcher, titleVisibility: .visible) {
+            ForEach(petStore.pets) { pet in
+                Button(pet.id == petStore.activePet?.id ? "\(pet.name) ✓" : pet.name) {
+                    petStore.activePet = pet
+                }
+            }
+        }
     }
 }
 
