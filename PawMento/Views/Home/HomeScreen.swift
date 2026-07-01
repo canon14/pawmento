@@ -91,6 +91,52 @@ struct HomeScreen: View {
                     // ── Up Next ──
                     upNextRemindersSection
                     
+                    // ── Loading / Error feedback ──
+                    if logStore.isFetching {
+                        HStack(spacing: 8) {
+                            ProgressView()
+                                .tint(.primary)
+                            Text("Loading logs…")
+                                .font(.bodySM)
+                                .foregroundColor(.onSurfaceVariant)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                    }
+                    
+                    if let error = logStore.fetchError {
+                        VStack(spacing: 8) {
+                            Text("Couldn't load logs")
+                                .font(.labelLG)
+                                .foregroundColor(.onSurface)
+                            Text(error)
+                                .font(.caption)
+                                .foregroundColor(.onSurfaceVariant)
+                                .lineLimit(2)
+                            Button {
+                                Task {
+                                    guard let petId = petStore.activePet?.id else { return }
+                                    await logStore.fetchLogs(for: petId)
+                                }
+                            } label: {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "arrow.clockwise")
+                                    Text("Retry")
+                                }
+                                .font(.labelSM)
+                                .foregroundColor(.primary)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 8)
+                                .background(Color.primaryContainer.opacity(0.3))
+                                .cornerRadius(AppRadius.sm)
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(16)
+                        .background(Color.warningBackground.opacity(0.5))
+                        .cornerRadius(AppRadius.md)
+                    }
+                    
                     // ── Today ──
                     TodayLogGrid(onLogAction: {
                         showQuickLog = true

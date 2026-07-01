@@ -4,39 +4,40 @@ struct TopHeaderView: View {
     @EnvironmentObject var petStore: PetStore
     @State private var showSettings = false
     
+    // Time-of-day aware emoji
+    private var greetingEmoji: String {
+        let hour = Calendar.current.component(.hour, from: Date())
+        if hour < 6 { return "🌙" }
+        if hour < 12 { return "☀️" }
+        if hour < 18 { return "🌤️" }
+        return "🌙"
+    }
+    
     var body: some View {
         HStack {
             HStack(spacing: 12) {
-                if let pet = petStore.activePet, let image = pet.photoImage {
-                    Image(uiImage: image)
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: 40, height: 40)
-                        .clipShape(Circle())
-                        .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
-                } else {
-                    let emoji: String = {
-                        guard let pet = petStore.activePet else { return "🐾" }
-                        switch pet.species {
-                        case .dog: return "🐶"
-                        case .cat: return "🐱"
-                        case .rabbit: return "🐰"
-                        case .other: return "🐾"
+                // Pet avatar: prefer photoImage → photoLocalURL → species emoji
+                Group {
+                    if let pet = petStore.activePet, let image = pet.photoImage {
+                        Image(uiImage: image)
+                            .resizable()
+                            .scaledToFill()
+                    } else if let pet = petStore.activePet, let photoURL = pet.photoLocalURL {
+                        CachedAsyncImage(url: photoURL) { img in
+                            img.resizable().scaledToFill()
+                        } placeholder: {
+                            speciesEmojiCircle
                         }
-                    }()
-                    
-                    Circle()
-                        .fill(Color.primaryContainer)
-                        .frame(width: 40, height: 40)
-                        .overlay(
-                            Text(emoji)
-                                .font(.headlineMD)
-                        )
-                        .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
+                    } else {
+                        speciesEmojiCircle
+                    }
                 }
+                .frame(width: 40, height: 40)
+                .clipShape(Circle())
+                .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
                 
                 VStack(alignment: .leading, spacing: 0) {
-                    Text("\(greetingTimeOfDay) ☀️")
+                    Text("\(greetingTimeOfDay) \(greetingEmoji)")
                         .font(.headlineSM)
                         .foregroundColor(.primary)
                         .tracking(-0.5) // tracking-tight
@@ -67,6 +68,28 @@ struct TopHeaderView: View {
         }
     }
     
+    // MARK: - Species emoji fallback (no photo available)
+    
+    private var speciesEmojiCircle: some View {
+        let emoji: String = {
+            guard let pet = petStore.activePet else { return "🐾" }
+            switch pet.species {
+            case .dog: return "🐶"
+            case .cat: return "🐱"
+            case .rabbit: return "🐰"
+            case .other: return "🐾"
+            }
+        }()
+        
+        return Circle()
+            .fill(Color.primaryContainer)
+            .frame(width: 40, height: 40)
+            .overlay(
+                Text(emoji)
+                    .font(.headlineMD)
+            )
+    }
+    
     private var greetingTimeOfDay: String {
         let hour = Calendar.current.component(.hour, from: Date())
         if hour < 12 { return "Good morning" }
@@ -74,13 +97,18 @@ struct TopHeaderView: View {
         return "Good evening"
     }
     
-    private var formattedDate: String {
+    private static let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateFormat = "EEEE, MMM d"
-        return formatter.string(from: Date())
+        return formatter
+    }()
+    
+    private var formattedDate: String {
+        Self.dateFormatter.string(from: Date())
     }
 }
 
 #Preview {
     TopHeaderView()
+        .environmentObject(PetStore())
 }
