@@ -59,12 +59,12 @@ actor InsightEngine {
         
         var finalInsights: [Insight] = []
         
-        // Convert rule-based directly
+        // Convert rule-based directly — derive tier from candidate type
         for rb in ruleBasedCandidates {
             let insight = Insight(
                 id: UUID(),
                 type: rb.type,
-                tier: .positive,
+                tier: tierForType(rb.type),
                 headline: rb.precomputedHeadline ?? "Positive Update",
                 narrative: rb.precomputedNarrative ?? "",
                 confidence: 1.0,
@@ -102,5 +102,18 @@ actor InsightEngine {
         cache[key] = CacheEntry(insights: topInsights, signalCount: signals.count, generatedAt: Date())
         
         return (topInsights, signals.count)
+    }
+    
+    // MARK: - Tier Mapping
+    
+    /// Derives the appropriate ConfidenceTier from an InsightType.
+    /// Rule-based candidates use this instead of hardcoding .positive.
+    private func tierForType(_ type: InsightType) -> ConfidenceTier {
+        switch type {
+        case .correlation: return .strong
+        case .temporal:    return .moderate
+        case .trend:       return .moderate
+        case .positive:    return .positive
+        }
     }
 }
