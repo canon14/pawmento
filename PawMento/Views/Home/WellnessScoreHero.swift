@@ -219,6 +219,8 @@ struct WellnessScoreHero: View {
 #Preview {
     WellnessScoreHero()
         .environmentObject(PetStore())
+        .environmentObject(LogStore())
+        .environmentObject(MedicationStore())
         .padding()
         .background(Color.background)
 }

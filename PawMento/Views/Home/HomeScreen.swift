@@ -215,4 +215,8 @@ struct HomeScreen: View {
 
 #Preview {
     HomeScreen()
+        .environmentObject(PetStore())
+        .environmentObject(LogStore())
+        .environmentObject(MedicationStore())
+        .environmentObject(CoachViewModel())
 }
