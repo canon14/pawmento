@@ -5,9 +5,16 @@ struct PetSelectorCard: View {
     var onAddPet: () -> Void = {}
     
     var petAgeString: String? {
-        guard let pet = petStore.activePet, let bday = pet.birthday, let year = bday.year else { return nil }
-        let age = Calendar.current.component(.year, from: Date()) - year
-        return age > 0 ? "\(age) yrs" : nil
+        guard let pet = petStore.activePet,
+              let bday = pet.birthday,
+              let bdayDate = Calendar.current.date(from: bday) else { return nil }
+        let diff = Calendar.current.dateComponents([.year, .month], from: bdayDate, to: Date())
+        let years = diff.year ?? 0
+        let months = diff.month ?? 0
+        if years <= 0 && months <= 0 { return nil }
+        if years < 1 { return "\(months) mo" }
+        if months == 0 { return "\(years)y" }
+        return "\(years)y \(months)m"
     }
     
     var body: some View {
