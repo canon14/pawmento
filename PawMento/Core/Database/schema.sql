@@ -72,9 +72,14 @@ CREATE TABLE IF NOT EXISTS public.logs (
     description TEXT,
     photo_url TEXT,
     severity INTEGER CHECK (severity >= 1 AND severity <= 5),
-    timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW(),   -- user-facing event time (recordedAt)
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),  -- row-insertion time (server)
     created_by UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE
 );
+
+-- DB-L3: Idempotent migration — add created_at to logs if it doesn't exist yet.
+-- Existing rows get NOW() as default; new rows auto-populate both columns.
+ALTER TABLE public.logs ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
 
 -- 5. Symptoms Table — ⚠️  RESERVED / CURRENTLY UNUSED
 -- Symptoms are stored in the `logs` table with log_type = 'Symptom' (see LogCategory.symptom).
