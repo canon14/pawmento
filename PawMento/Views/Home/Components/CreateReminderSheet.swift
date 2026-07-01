@@ -10,6 +10,7 @@ struct CreateReminderSheet: View {
     @State private var selectedCategory: LogCategory = .meal
     @State private var time: Date = Date()
     @State private var frequency: ReminderFrequency = .daily
+    @State private var isSaving = false
     
     var body: some View {
         NavigationStack {
@@ -45,10 +46,10 @@ struct CreateReminderSheet: View {
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Save") {
-                        saveReminder()
+                        Task { await saveReminder() }
                     }
                     .fontWeight(.semibold)
-                    .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .disabled(title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSaving)
                 }
             }
         }
@@ -64,38 +65,32 @@ struct CreateReminderSheet: View {
         }
     }
     
-    private func saveReminder() {
+    private func saveReminder() async {
         guard let petId = petStore.activePet?.id else { return }
+        guard !isSaving else { return }
+        isSaving = true
+        defer { isSaving = false }
         
-        if var reminder = existingReminder {
-            reminder.title = title.trimmingCharacters(in: .whitespacesAndNewlines)
-            reminder.categoryId = selectedCategory.rawValue
-            reminder.time = time
-            reminder.frequency = frequency
-            Task {
-                do {
-                    try await ReminderStore.shared.updateReminder(reminder)
-                } catch {
-                    ToastManager.shared.show("Failed to update reminder. Check your connection.", duration: 4.0)
-                }
+        do {
+            if var reminder = existingReminder {
+                reminder.title = title.trimmingCharacters(in: .whitespacesAndNewlines)
+                reminder.categoryId = selectedCategory.rawValue
+                reminder.time = time
+                reminder.frequency = frequency
+                try await ReminderStore.shared.updateReminder(reminder)
+            } else {
+                let newReminder = Reminder(
+                    petId: petId,
+                    title: title.trimmingCharacters(in: .whitespacesAndNewlines),
+                    time: time,
+                    frequency: frequency,
+                    categoryId: selectedCategory.rawValue
+                )
+                try await ReminderStore.shared.addReminder(newReminder)
             }
-        } else {
-            let newReminder = Reminder(
-                petId: petId,
-                title: title.trimmingCharacters(in: .whitespacesAndNewlines),
-                time: time,
-                frequency: frequency,
-                categoryId: selectedCategory.rawValue
-            )
-            Task {
-                do {
-                    try await ReminderStore.shared.addReminder(newReminder)
-                } catch {
-                    ToastManager.shared.show("Failed to save reminder. Check your connection.", duration: 4.0)
-                }
-            }
+            dismiss()
+        } catch {
+            ToastManager.shared.show("Failed to save reminder. Check your connection.", duration: 4.0)
         }
-        
-        dismiss()
     }
 }
