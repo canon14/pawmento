@@ -6,7 +6,6 @@ struct HomeScreen: View {
     @State private var showCoachChat = false
     @State private var showQuickLog = false
     @State private var showAddPetSheet = false
-    @State private var showInsights = false
     
     @EnvironmentObject var petStore: PetStore
     @EnvironmentObject var logStore: LogStore
@@ -52,9 +51,6 @@ struct HomeScreen: View {
                 .presentationDetents([.fraction(0.75), .large])
                 .presentationCornerRadius(28)
                 .presentationDragIndicator(.visible)
-        }
-        .fullScreenCover(isPresented: $showInsights) {
-            InsightsScreen()
         }
         .sheet(isPresented: $showAddPetSheet) {
             AddPetSheet()
@@ -124,7 +120,7 @@ struct HomeScreen: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 14) {
                     PatternAlertCard(action: {
-                        showInsights = true
+                        selectedTab = .insights
                     })
                     .frame(width: 260)
                     

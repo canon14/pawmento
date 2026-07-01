@@ -67,7 +67,7 @@ struct RecentActivityTimeline: View {
         .accessibilityAction {
             showFullTimeline = true
         }
-        .sheet(isPresented: $showFullTimeline) {
+        .fullScreenCover(isPresented: $showFullTimeline) {
             FullTimelineView()
                 .presentationDragIndicator(.visible)
         }
