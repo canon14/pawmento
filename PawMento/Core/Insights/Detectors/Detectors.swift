@@ -13,11 +13,11 @@ struct InsightCandidate {
     var precomputedVisualization: VisualizationData?
 }
 
-// Fix I8: Capture timezone at app start for consistent bucketing.
-// Using UTC ensures historical analysis is stable regardless of device travel.
+// Fix I8 + INS-M2: Use UTC for deterministic bucketing — historical analysis
+// stays stable regardless of device travel or timezone changes.
 private let insightCalendar: Calendar = {
     var cal = Calendar(identifier: .gregorian)
-    cal.timeZone = TimeZone.current // Use the user's home timezone
+    cal.timeZone = TimeZone(identifier: "UTC")!
     return cal
 }()
 
