@@ -76,7 +76,11 @@ CREATE TABLE IF NOT EXISTS public.logs (
     created_by UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE
 );
 
--- 5. Symptoms Table (dedicated symptom tracking for pattern analysis)
+-- 5. Symptoms Table — ⚠️  RESERVED / CURRENTLY UNUSED
+-- Symptoms are stored in the `logs` table with log_type = 'Symptom' (see LogCategory.symptom).
+-- The InsightEngine reads from `logs`, NOT from this table.
+-- Kept for potential future migration to a dedicated symptom model.
+-- Do NOT write to this table — it has no write path and the engine will not see the data.
 CREATE TABLE IF NOT EXISTS public.symptoms (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     pet_id UUID NOT NULL REFERENCES public.pets(id) ON DELETE CASCADE,
@@ -180,6 +184,7 @@ DO $$ BEGIN
 END $$;
 
 -- Symptoms policies: mirrors logs policy (Fix 1)
+-- ⚠️  This table is UNUSED — see note on the symptoms CREATE TABLE above.
 DO $$ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can manage symptoms for their pets' AND tablename = 'symptoms') THEN
         CREATE POLICY "Users can manage symptoms for their pets" ON public.symptoms
@@ -253,6 +258,7 @@ CREATE INDEX IF NOT EXISTS idx_medications_pet ON public.medications(pet_id);
 CREATE INDEX IF NOT EXISTS idx_chat_messages_owner_pet_created ON public.chat_messages(owner_id, pet_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_subscriptions_user ON public.subscriptions(user_id);
 CREATE INDEX IF NOT EXISTS idx_pets_owner ON public.pets(owner_id);
+-- ⚠️  symptoms table is UNUSED — see note on the symptoms CREATE TABLE above.
 CREATE INDEX IF NOT EXISTS idx_symptoms_pet_timestamp ON public.symptoms(pet_id, timestamp);
 
 -- ==========================================
