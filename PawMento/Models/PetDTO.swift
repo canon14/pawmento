@@ -70,7 +70,7 @@ extension Pet {
             breed: breed,
             birthday: bdayStr,
             weight_kg: weightKg,
-            photo_url: photoLocalURL?.absoluteString,
+            photo_url: StorageManager.shared.relativeStoragePath(from: photoLocalURL),
             is_active: isActive,
             created_at: createdAt
         )

@@ -44,7 +44,7 @@ extension LogEntry {
             timestamp: recordedAt,     // user-facing event time
             created_at: createdAt,     // row-insertion time (server will also default)
             created_by: userId,
-            photo_url: photoLocalURL?.absoluteString,
+            photo_url: StorageManager.shared.relativeStoragePath(from: photoLocalURL),
             severity: severity
         )
     }
@@ -56,7 +56,7 @@ extension LogEntry {
             title: "\(category.rawValue) Log",
             description: note,
             timestamp: recordedAt,     // preserve the user-facing event time
-            photo_url: photoLocalURL?.absoluteString,
+            photo_url: StorageManager.shared.relativeStoragePath(from: photoLocalURL),
             severity: severity
         )
     }

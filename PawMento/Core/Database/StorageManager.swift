@@ -6,6 +6,52 @@ class StorageManager {
     static let shared = StorageManager()
     private let bucketName = "pawmento-media"
     
+    /// Supabase public-object URL segment: `.../object/public/<bucket>/`
+    private var publicObjectMarker: String {
+        "/object/public/\(bucketName)/"
+    }
+    
+    // MARK: - Path ↔ URL conversion
+    
+    /// Normalizes a stored DB value or display URL into a bucket-relative object path.
+    /// Use this before writing `photo_url` to the database.
+    func relativeStoragePath(from storedValue: String?) -> String? {
+        guard var value = storedValue?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !value.isEmpty else {
+            return nil
+        }
+        
+        if value.hasPrefix("http://") || value.hasPrefix("https://") {
+            if let range = value.range(of: publicObjectMarker) {
+                value = String(value[range.upperBound...])
+            }
+            if let queryIndex = value.firstIndex(of: "?") {
+                value = String(value[..<queryIndex])
+            }
+            if let fragmentIndex = value.firstIndex(of: "#") {
+                value = String(value[..<fragmentIndex])
+            }
+        }
+        
+        value = value.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        return value.isEmpty ? nil : value
+    }
+    
+    /// Convenience for models that keep a display `URL` in memory.
+    func relativeStoragePath(from displayURL: URL?) -> String? {
+        guard let displayURL else { return nil }
+        return relativeStoragePath(from: displayURL.absoluteString)
+    }
+    
+    /// Resolves a bucket-relative path (or legacy full URL) to a public display URL.
+    /// Always normalizes through `relativeStoragePath` so host/bucket changes don't break reads.
+    func publicURL(forPath path: String) -> URL? {
+        guard let relativePath = relativeStoragePath(from: path) else { return nil }
+        return try? SupabaseManager.shared.client.storage
+            .from(bucketName)
+            .getPublicURL(path: relativePath)
+    }
+    
     // MARK: - Remote Storage (Supabase)
     
     /// Uploads an image to Supabase Storage and returns the **bucket-relative path**
@@ -28,31 +74,10 @@ class StorageManager {
         return path
     }
     
-    /// Derives the full public URL for a bucket-relative path.
-    /// Handles backwards-compat: if the string is already a full URL, returns it as-is.
-    func publicURL(forPath path: String) -> URL? {
-        // Backwards-compat: if the stored value is already a full URL, pass through
-        if path.hasPrefix("http://") || path.hasPrefix("https://") {
-            return URL(string: path)
-        }
-        return try? SupabaseManager.shared.client.storage
-            .from(bucketName)
-            .getPublicURL(path: path)
-    }
-    
     /// Deletes an image from Supabase Storage.
-    /// Accepts a bucket-relative path. Also handles full URLs by stripping the bucket prefix.
+    /// Accepts a bucket-relative path or legacy full public URL.
     func deleteImage(path: String) async throws {
-        var relativePath = path
-        
-        // If a full URL was passed, extract the bucket-relative portion
-        if path.hasPrefix("http://") || path.hasPrefix("https://") {
-            // Pattern: .../object/public/<bucketName>/<relativePath>
-            let marker = "/object/public/\(bucketName)/"
-            if let range = path.range(of: marker) {
-                relativePath = String(path[range.upperBound...])
-            }
-        }
+        guard let relativePath = relativeStoragePath(from: path) else { return }
         
         try await SupabaseManager.shared.client.storage
             .from(bucketName)
