@@ -4,7 +4,8 @@ import Combine
 
 @MainActor
 final class InsightsViewModel: ObservableObject {
-    static let useMockBenchmarks = false
+    /// Population breed benchmarks require cohort data — disabled until backend support lands.
+    static let breedBenchmarksEnabled = false
     
     var petId: UUID?
     
@@ -76,27 +77,18 @@ final class InsightsViewModel: ObservableObject {
             self.patternCount = patternCards.count + (heroInsight != nil ? 1 : 0)
             self.lastUpdated = Date()
             
-            if InsightsViewModel.useMockBenchmarks {
-                // Mock Benchmark since we don't have enough global users yet
-                self.breedBenchmark = BreedBenchmark(
-                    breed: pet.breed ?? "Dog",
-                    age: 6,
-                    activityPercentile: 62,
-                    symptomsPercentile: 78,
-                    sleepPercentile: 51
-                )
-            } else {
-                self.breedBenchmark = nil
-            }
+            self.breedBenchmark = nil
             
-            // MOCK: Coach Suggestions are hardcoded for now
-            self.coachSuggestions = [
-                "Is \(pet.name)'s weight healthy?",
-                "What should I ask the vet about \(pet.name)?",
-                "How much daily activity does \(pet.name) need?"
-            ]
+            let displayedInsights = [heroInsight].compactMap { $0 } + patternCards
+            self.coachSuggestions = Self.deriveCoachSuggestions(
+                from: displayedInsights,
+                petName: pet.name,
+                signalCount: result.signalCount
+            )
         } catch {
             print("Failed to load insights: \(error)")
+            self.breedBenchmark = nil
+            self.coachSuggestions = []
             if let urlError = error as? URLError, urlError.code == .notConnectedToInternet {
                 self.viewState = .offline
             } else {
@@ -157,6 +149,29 @@ final class InsightsViewModel: ObservableObject {
             }
             return $0.tier.priority < $1.tier.priority
         })
+    }
+    
+    /// Builds coach prompt chips from surfaced insights, with honest fallbacks when none exist.
+    static func deriveCoachSuggestions(
+        from insights: [Insight],
+        petName: String,
+        signalCount: Int
+    ) -> [String] {
+        var suggestions: [String] = []
+        
+        for insight in insights.prefix(3) {
+            suggestions.append("Can you explain this for \(petName)? \"\(insight.headline)\"")
+        }
+        
+        if suggestions.isEmpty {
+            if signalCount > 0 {
+                suggestions.append("What do my recent logs suggest about \(petName)?")
+            } else {
+                suggestions.append("What should I log to build better insights for \(petName)?")
+            }
+        }
+        
+        return Array(suggestions.prefix(3))
     }
     
     // MARK: - Dismissed Insights Persistence (UserDefaults per pet)

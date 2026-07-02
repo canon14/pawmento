@@ -154,11 +154,9 @@ struct InsightsScreen: View {
                     benchmarkSection
                     askCoachSection
                 default:
-                    // All other states (noData, offline, error)
                     InsightEmptyStateView(state: viewModel.viewState, petName: petStore.activePet?.name ?? PetStore.fallbackPetName) {
                         handleEmptyStateAction(viewModel.viewState)
                     }
-                    benchmarkSection
                     askCoachSection
                 }
             }
@@ -293,7 +291,7 @@ struct InsightsScreen: View {
     
     @ViewBuilder
     private var benchmarkSection: some View {
-        if let benchmark = viewModel.breedBenchmark {
+        if InsightsViewModel.breedBenchmarksEnabled, let benchmark = viewModel.breedBenchmark {
             VStack(alignment: .leading, spacing: 12) {
                 SectionHeader("Health Benchmarks", style: .withRule)
                 
@@ -309,19 +307,22 @@ struct InsightsScreen: View {
         }
     }
     
+    @ViewBuilder
     private var askCoachSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            SectionHeader("Ask \(petStore.activePet?.name ?? PetStore.fallbackPetName)'s AI Coach", style: .withRule)
-            
-            AskCoachInsightCard(suggestions: viewModel.coachSuggestions, petName: petStore.activePet?.name ?? PetStore.fallbackPetName, onChatTapped: {
-                showCoachChat = true
-            }, onSuggestionTapped: { suggestion in
-                showCoachChat = true
-                Task {
-                    let ownerId = await authManager.getCurrentUserId()
-                    await coachViewModel.sendMessage(suggestion, pet: petStore.activePet, ownerId: ownerId)
-                }
-            })
+        if !viewModel.coachSuggestions.isEmpty {
+            VStack(alignment: .leading, spacing: 12) {
+                SectionHeader("Ask \(petStore.activePet?.name ?? PetStore.fallbackPetName)'s AI Coach", style: .withRule)
+                
+                AskCoachInsightCard(suggestions: viewModel.coachSuggestions, petName: petStore.activePet?.name ?? PetStore.fallbackPetName, onChatTapped: {
+                    showCoachChat = true
+                }, onSuggestionTapped: { suggestion in
+                    showCoachChat = true
+                    Task {
+                        let ownerId = await authManager.getCurrentUserId()
+                        await coachViewModel.sendMessage(suggestion, pet: petStore.activePet, ownerId: ownerId)
+                    }
+                })
+            }
         }
     }
     
