@@ -302,6 +302,17 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 REVOKE EXECUTE ON FUNCTION public.delete_user() FROM public;
 GRANT EXECUTE ON FUNCTION public.delete_user() TO authenticated;
 
+-- ==========================================
+-- Subscription entitlements
+-- Keep paid plan list in sync with PawMento/Core/Subscriptions/SubscriptionEntitlement.swift
+-- ==========================================
+CREATE OR REPLACE FUNCTION public.is_premium_subscription(plan TEXT, sub_status TEXT)
+RETURNS BOOLEAN
+LANGUAGE sql IMMUTABLE AS $$
+  SELECT lower(trim(sub_status)) = 'active'
+      OR lower(trim(plan)) IN ('premium', 'pro');
+$$;
+
 -- (Fix S9 + DB-M2) Atomically increment question usage and return remaining count.
 -- Derives quota from plan_type/status: paid plans return -1 (unlimited).
 CREATE OR REPLACE FUNCTION public.increment_question_usage()
@@ -320,7 +331,7 @@ BEGIN
     INTO new_used, plan, sub_status;
 
   -- Paid / active plans are unlimited
-  IF sub_status = 'active' OR plan IN ('premium', 'pro') THEN
+  IF public.is_premium_subscription(plan, sub_status) THEN
     RETURN -1;
   END IF;
 
@@ -348,7 +359,7 @@ BEGIN
   RETURNING questions_used, plan_type, status
     INTO new_used, plan, sub_status;
 
-  IF sub_status = 'active' OR plan IN ('premium', 'pro') THEN
+  IF public.is_premium_subscription(plan, sub_status) THEN
     RETURN -1;
   END IF;
 
@@ -375,7 +386,7 @@ BEGIN
   RETURNING plan_type, status
     INTO plan, sub_status;
 
-  IF sub_status = 'active' OR plan IN ('premium', 'pro') THEN
+  IF public.is_premium_subscription(plan, sub_status) THEN
     RETURN -1;
   END IF;
 

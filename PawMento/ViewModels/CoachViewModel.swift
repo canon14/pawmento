@@ -38,9 +38,17 @@ class CoachViewModel: ObservableObject {
                 .execute()
                 .value
             
-            self.isPremium = (sub.status == "active" || sub.plan_type == "premium")
+            self.isPremium = SubscriptionEntitlement.isPremium(
+                planType: sub.plan_type,
+                status: sub.status
+            )
             
-            // 2. Initialize Quota from server
+            if isPremium {
+                self.freeQuestionsRemaining = SubscriptionEntitlement.unlimitedCoachQuota
+                return
+            }
+            
+            // 2. Initialize Quota from server (free tier)
             let now = Date()
             let thirtyDays: TimeInterval = 30 * 24 * 60 * 60
             
