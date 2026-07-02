@@ -19,7 +19,7 @@ struct CreateReminderSheet: View {
                     TextField("Title (e.g. Heartworm Pill)", text: $title)
                     
                     Picker("Category", selection: $selectedCategory) {
-                        ForEach(LogCategory.allCases, id: \.self) { category in
+                        ForEach(LogCategory.selectableCategories, id: \.self) { category in
                             HStack {
                                 Text(category.emoji)
                                 Text(category.rawValue.capitalized)

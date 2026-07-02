@@ -18,8 +18,15 @@ enum LogCategory: String, CaseIterable, Identifiable, Codable {
     case energy = "Energy Level"
     case appetite = "Appetite Change"
     case other = "Other"
+    /// Unrecognized `log_type` from storage — not user-selectable; indicates schema drift.
+    case unknown = "Unknown"
     
     var id: String { self.rawValue }
+    
+    /// Categories the user can pick when logging or creating reminders.
+    static var selectableCategories: [LogCategory] {
+        allCases.filter { $0 != .unknown }
+    }
     
     var emoji: String {
         switch self {
@@ -38,6 +45,7 @@ enum LogCategory: String, CaseIterable, Identifiable, Codable {
         case .energy: return "⚡️"
         case .appetite: return "🥣"
         case .other: return "🐾"
+        case .unknown: return "❓"
         }
     }
     
@@ -75,6 +83,22 @@ enum LogCategory: String, CaseIterable, Identifiable, Codable {
     /// Canonical `rawValue` for persistence, when the stored string is recognized.
     static func canonicalStoredValue(from value: String) -> String? {
         fromStoredValue(value)?.rawValue
+    }
+    
+    /// Resolves a stored `log_type` for decode paths. Known values normalize via `fromStoredValue`;
+    /// unrecognized values map to `.unknown` and emit a debug-visible report (decode never fails).
+    static func resolvingStoredLogType(_ value: String, context: String) -> LogCategory {
+        if let resolved = fromStoredValue(value) {
+            return resolved
+        }
+        reportUnrecognizedLogType(value, context: context)
+        return .unknown
+    }
+    
+    private static func reportUnrecognizedLogType(_ value: String, context: String) {
+        #if DEBUG
+        print("⚠️ LogCategory: Unrecognized log_type '\(value)' in \(context) — mapped to .unknown")
+        #endif
     }
 }
 

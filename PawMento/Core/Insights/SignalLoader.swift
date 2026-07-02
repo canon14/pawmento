@@ -49,13 +49,7 @@ class SignalLoader {
         
         // Reverse to restore chronological order for detectors
         return dtos.reversed().map { dto in
-            let category = LogCategory(rawValue: dto.log_type) ?? {
-                // Fix I10: Log unknown category values in debug to catch typos or new categories
-                #if DEBUG
-                print("⚠️ SignalLoader: Unknown LogCategory raw value '\(dto.log_type)' — falling back to .other")
-                #endif
-                return LogCategory.other
-            }()
+            let category = LogCategory.resolvingStoredLogType(dto.log_type, context: "SignalLoader.load")
             return Signal(id: dto.id, category: category, note: dto.description, severity: dto.severity, timestamp: dto.timestamp)
         }
     }

@@ -109,7 +109,7 @@ struct FullCategoryGridView: View {
         NavigationView {
             ScrollView {
                 LazyVGrid(columns: columns, spacing: 14) {
-                    ForEach(LogCategory.allCases) { category in
+                    ForEach(LogCategory.selectableCategories) { category in
                         let isSelected = selectedCategory == category
                         
                         Button(action: {

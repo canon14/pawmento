@@ -30,4 +30,40 @@ final class LogCategoryStoredValueTests: XCTestCase {
         XCTAssertEqual(logCategory, .other)
         XCTAssertEqual(logCategory?.rawValue, "Other")
     }
+    
+    func testResolvingStoredLogType_knownValue_normalizes() {
+        XCTAssertEqual(
+            LogCategory.resolvingStoredLogType("meal", context: "test"),
+            .meal
+        )
+    }
+    
+    func testResolvingStoredLogType_unrecognized_mapsToUnknown() {
+        XCTAssertEqual(
+            LogCategory.resolvingStoredLogType("LegacyCorruptType", context: "test"),
+            .unknown
+        )
+    }
+    
+    func testSelectableCategories_excludesUnknown() {
+        XCTAssertFalse(LogCategory.selectableCategories.contains(.unknown))
+    }
+    
+    func testLogDTO_unknownLogType_mapsToUnknownCategory() {
+        let dto = LogDTO(
+            id: UUID(),
+            pet_id: UUID(),
+            log_type: "LegacyCorruptType",
+            title: "Legacy Log",
+            description: nil,
+            timestamp: Date(),
+            created_at: Date(),
+            created_by: UUID(),
+            photo_url: nil,
+            severity: nil,
+            source_key: nil
+        )
+        
+        XCTAssertEqual(dto.toLogEntry().category, .unknown)
+    }
 }

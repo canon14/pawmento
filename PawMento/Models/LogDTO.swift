@@ -16,7 +16,7 @@ struct LogDTO: Codable, Identifiable {
     let source_key: String?
     
     func toLogEntry() -> LogEntry {
-        let category = LogCategory(rawValue: log_type) ?? .other
+        let category = LogCategory.resolvingStoredLogType(log_type, context: "LogDTO.toLogEntry")
         
         return LogEntry(
             id: id,
