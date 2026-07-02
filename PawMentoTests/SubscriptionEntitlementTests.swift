@@ -33,4 +33,11 @@ final class SubscriptionEntitlementTests: XCTestCase {
         XCTAssertTrue(SubscriptionEntitlement.hasUnlimitedCoachQuestions(planType: "pro", status: "free"))
         XCTAssertFalse(SubscriptionEntitlement.hasUnlimitedCoachQuestions(planType: "free", status: "free"))
     }
+    
+    func testFreeQuestionsRemaining_derivesFromQuotaAndUsage() {
+        XCTAssertEqual(SubscriptionEntitlement.freeQuestionsRemaining(questionsUsed: 0), 5)
+        XCTAssertEqual(SubscriptionEntitlement.freeQuestionsRemaining(questionsUsed: 3), 2)
+        XCTAssertEqual(SubscriptionEntitlement.freeQuestionsRemaining(questionsUsed: 5), 0)
+        XCTAssertEqual(SubscriptionEntitlement.freeQuestionsRemaining(questionsUsed: 99), 0)
+    }
 }

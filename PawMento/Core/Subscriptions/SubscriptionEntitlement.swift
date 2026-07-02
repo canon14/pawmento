@@ -12,6 +12,14 @@ enum SubscriptionEntitlement {
     /// Sentinel returned by server RPCs for unlimited coach quota.
     static let unlimitedCoachQuota = -1
     
+    /// Free-tier coach questions allowed per billing period.
+    /// Keep in sync with `public.free_coach_question_quota()` in schema.sql.
+    static let freeCoachQuestionQuotaPerPeriod = 5
+    
+    static func freeQuestionsRemaining(questionsUsed: Int) -> Int {
+        max(0, freeCoachQuestionQuotaPerPeriod - questionsUsed)
+    }
+    
     /// Whether the user has premium entitlements (unlimited coach, gated insights, etc.).
     /// Mirrors `public.is_premium_subscription(plan, sub_status)` in schema.sql.
     static func isPremium(planType: String, status: String) -> Bool {

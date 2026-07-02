@@ -7,7 +7,7 @@ import Supabase
 class CoachViewModel: ObservableObject {
     @Published var messages: [ChatMessage] = []
     @Published var isTyping: Bool = false
-    @Published var freeQuestionsRemaining: Int = 5
+    @Published var freeQuestionsRemaining: Int = SubscriptionEntitlement.freeCoachQuestionQuotaPerPeriod
     private var hasShownLowQuotaWarning = false
     @Published var isPremium: Bool = false
     @Published var showPremiumWall: Bool = false
@@ -54,7 +54,7 @@ class CoachViewModel: ObservableObject {
             
             if now.timeIntervalSince(sub.period_start) >= thirtyDays {
                 // Period expired, reset locally and remotely
-                self.freeQuestionsRemaining = 5
+                self.freeQuestionsRemaining = SubscriptionEntitlement.freeCoachQuestionQuotaPerPeriod
                 // Fix S18: Reset warning flag on actual period reset, not via didSet
                 self.hasShownLowQuotaWarning = false
                 
@@ -70,14 +70,14 @@ class CoachViewModel: ObservableObject {
                 }
             } else {
                 // Still in period
-                self.freeQuestionsRemaining = max(0, 5 - sub.questions_used)
+                self.freeQuestionsRemaining = SubscriptionEntitlement.freeQuestionsRemaining(questionsUsed: sub.questions_used)
             }
             
         } catch {
             print("Failed to fetch subscription: \(error)")
             self.isPremium = false
             // Fallback for new users / errors
-            self.freeQuestionsRemaining = 5
+            self.freeQuestionsRemaining = SubscriptionEntitlement.freeCoachQuestionQuotaPerPeriod
         }
     }
     
@@ -263,7 +263,7 @@ class CoachViewModel: ObservableObject {
             self.freeQuestionsRemaining = remaining
         } catch {
             print("Failed to refund usage on server: \(error)")
-            freeQuestionsRemaining = min(5, freeQuestionsRemaining + 1)
+            freeQuestionsRemaining = min(SubscriptionEntitlement.freeCoachQuestionQuotaPerPeriod, freeQuestionsRemaining + 1)
         }
     }
     

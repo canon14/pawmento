@@ -312,7 +312,14 @@ GRANT EXECUTE ON FUNCTION public.delete_user() TO authenticated;
 -- ==========================================
 -- Subscription entitlements
 -- Keep paid plan list in sync with PawMento/Core/Subscriptions/SubscriptionEntitlement.swift
+-- Keep free_coach_question_quota() in sync with SubscriptionEntitlement.freeCoachQuestionQuotaPerPeriod
 -- ==========================================
+CREATE OR REPLACE FUNCTION public.free_coach_question_quota()
+RETURNS INTEGER
+LANGUAGE sql IMMUTABLE AS $$
+  SELECT 5;
+$$;
+
 CREATE OR REPLACE FUNCTION public.is_premium_subscription(plan TEXT, sub_status TEXT)
 RETURNS BOOLEAN
 LANGUAGE sql IMMUTABLE AS $$
@@ -342,7 +349,7 @@ BEGIN
     RETURN -1;
   END IF;
 
-  quota := 5; -- free-tier default
+  quota := public.free_coach_question_quota();
   RETURN GREATEST(0, quota - COALESCE(new_used, 0));
 END;
 $$;
@@ -370,7 +377,7 @@ BEGIN
     RETURN -1;
   END IF;
 
-  quota := 5;
+  quota := public.free_coach_question_quota();
   RETURN GREATEST(0, quota - COALESCE(new_used, 0));
 END;
 $$;
@@ -397,7 +404,7 @@ BEGIN
     RETURN -1;
   END IF;
 
-  RETURN 5; -- free-tier full quota
+  RETURN public.free_coach_question_quota();
 END;
 $$;
 
