@@ -86,12 +86,10 @@ final class WellnessCalculatorTests: XCTestCase {
         logs.append(makeLog(category: .symptom, severity: 1, daysAgo: 0))
         
         let result = WellnessCalculator.calculateScore(logs: logs, medications: [])
-        // Symptom: 40 - (1/5)*8 = 40 - 1.6 = 38.4 → 38 (Int)
+        // Symptom: 40 - (1/5)*8 = 38.4 → 38 (Int)
         // Routine: 5 distinct days * 2 = 10
-        // Activity: 0
-        // Meds: 0 (no meds)
-        // Total: 38 + 10 + 0 + 0 = 48
-        XCTAssertEqual(result.score, 48)
+        // Activity: 0, Meds: n/a — renormalized from 48 → 56
+        XCTAssertEqual(result.score, 56)
     }
     
     func testManySevereSymptoms_floorAtZero() {
@@ -127,9 +125,8 @@ final class WellnessCalculatorTests: XCTestCase {
         // 14 distinct days of meal logs → should max routine at 25
         let logs = makeDistinctDayLogs(category: .meal, count: 14)
         let result = WellnessCalculator.calculateScore(logs: logs, medications: [])
-        // Symptom: 40, Routine: min(25, 14*2) = 25, Activity: 0, Meds: 0
-        // Total: 40 + 25 = 65
-        XCTAssertEqual(result.score, 65)
+        // Symptom: 40, Routine: min(25, 14*2) = 25, Activity: 0 — renormalized from 65 → 76
+        XCTAssertEqual(result.score, 76)
     }
     
     func testRoutineSpam_sameDay_onlyCountsOnce() {
@@ -139,18 +136,16 @@ final class WellnessCalculatorTests: XCTestCase {
         let logs = (0..<20).map { _ in makeLog(category: .meal, daysAgo: 0, from: now) }
         
         let result = WellnessCalculator.calculateScore(logs: logs, medications: [])
-        // Symptom: 40, Routine: min(25, 1*2) = 2, Activity: 0, Meds: 0
-        // Total: 42
-        XCTAssertEqual(result.score, 42)
+        // Symptom: 40, Routine: min(25, 1*2) = 2, Activity: 0 — renormalized from 42 → 49
+        XCTAssertEqual(result.score, 49)
     }
     
     func testActivitySaturation() {
         // 10 distinct days of walks → should max activity at 20
         let logs = makeDistinctDayLogs(category: .walk, count: 10)
         let result = WellnessCalculator.calculateScore(logs: logs, medications: [])
-        // Symptom: 40, Routine: 0, Activity: min(20, 10*2) = 20, Meds: 0
-        // Total: 60
-        XCTAssertEqual(result.score, 60)
+        // Symptom: 40, Routine: 0, Activity: min(20, 10*2) = 20 — renormalized from 60 → 71
+        XCTAssertEqual(result.score, 71)
     }
     
     // MARK: - W3: Medication Compliance
@@ -220,6 +215,20 @@ final class WellnessCalculatorTests: XCTestCase {
     }
     
     // MARK: - Full Score
+    
+    func testPerfectScore_noMedications_renormalizedTo100() {
+        var logs: [LogEntry] = []
+        for i in 0..<14 {
+            logs.append(makeLog(category: .meal, daysAgo: Double(i)))
+        }
+        for i in 0..<10 {
+            logs.append(makeLog(category: .walk, daysAgo: Double(i)))
+        }
+        
+        let result = WellnessCalculator.calculateScore(logs: logs, medications: [])
+        XCTAssertEqual(result.score, 100)
+        XCTAssertEqual(result.confidence, .sufficient)
+    }
     
     func testPerfectScore() {
         // 14 distinct routine days + 10 distinct activity days + 3 meds with max streak + no symptoms

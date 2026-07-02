@@ -32,6 +32,7 @@ struct WellnessCalculator {
         static let routineCap = 25
         static let activityCap = 20
         static let medCap = 15
+        static let maxScoreWithoutMedications = symptomCap + routineCap + activityCap // 85
         
         // Fix W4: Severity is 1–5 (confirmed via SeveritySliderView).
         // Max deduction per symptom log = 8 points. Normalized: (severity/5) * 8.
@@ -105,25 +106,37 @@ struct WellnessCalculator {
         let distinctActivityDays = Self.distinctDayCount(for: activityLogs, upTo: date)
         let activityScore = min(Constants.activityCap, distinctActivityDays * Constants.activityPointsPerDay)
         
-        // 4. Medication Compliance (Max 15)
-        // Fix W3: Earn points via streakCount; penalize only recently-overdue meds.
-        var medCredit = 0
-        var overduePenalty = 0
-        for med in medications {
-            // Earn credit from adherence streaks
-            medCredit += min(Constants.maxStreakCreditPerMed, med.streakCount)
-            
-            // Penalize only if overdue within the recent window (not permanently stale)
-            if let due = med.nextDueDate, due < date {
-                let overdueAge = date.timeIntervalSince(due)
-                if overdueAge <= Constants.overdueWindowHours {
-                    overduePenalty += Constants.overduePenaltyPerMed
+        // 4. Medication Compliance (Max 15) — only applies when the pet has medications
+        let hasMedications = !medications.isEmpty
+        var medScore = 0
+        if hasMedications {
+            var medCredit = 0
+            var overduePenalty = 0
+            for med in medications {
+                medCredit += min(Constants.maxStreakCreditPerMed, med.streakCount)
+                
+                if let due = med.nextDueDate, due < date {
+                    let overdueAge = date.timeIntervalSince(due)
+                    if overdueAge <= Constants.overdueWindowHours {
+                        overduePenalty += Constants.overduePenaltyPerMed
+                    }
                 }
             }
+            medScore = max(0, min(Constants.medCap, medCredit) - overduePenalty)
         }
-        let medScore = max(0, min(Constants.medCap, medCredit) - overduePenalty)
         
-        let totalScore = Int(symptomScore) + routineScore + activityScore + medScore
+        let componentTotal = Int(symptomScore) + routineScore + activityScore + medScore
+        
+        // W1: Pets with no medications should still reach 100 — renormalize the 85-point base.
+        let totalScore: Int
+        if hasMedications {
+            totalScore = componentTotal
+        } else {
+            totalScore = Int(
+                (Double(componentTotal) * 100.0 / Double(Constants.maxScoreWithoutMedications)).rounded()
+            )
+        }
+        
         return WellnessResult(score: max(0, min(100, totalScore)), confidence: confidence)
     }
     
