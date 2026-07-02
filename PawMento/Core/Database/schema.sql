@@ -111,7 +111,7 @@ CREATE TABLE IF NOT EXISTS public.reminders (
     title TEXT NOT NULL,
     reminder_time TIMESTAMPTZ NOT NULL,
     frequency TEXT NOT NULL DEFAULT 'Once',
-    category_id TEXT NOT NULL DEFAULT 'other',
+    category_id TEXT NOT NULL DEFAULT 'Other',
     is_enabled BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

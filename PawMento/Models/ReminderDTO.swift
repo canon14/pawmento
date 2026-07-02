@@ -16,7 +16,7 @@ struct ReminderDTO: Codable {
             title: title,
             time: reminder_time,
             frequency: ReminderFrequency(rawValue: frequency) ?? .once,
-            categoryId: category_id,
+            categoryId: LogCategory.fromStoredValue(category_id)?.rawValue ?? LogCategory.other.rawValue,
             isEnabled: is_enabled
         )
     }
@@ -30,7 +30,7 @@ extension Reminder {
             title: title,
             reminder_time: time,
             frequency: frequency.rawValue,
-            category_id: categoryId,
+            category_id: LogCategory.canonicalStoredValue(from: categoryId) ?? categoryId,
             is_enabled: isEnabled
         )
     }

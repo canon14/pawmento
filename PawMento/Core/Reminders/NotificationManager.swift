@@ -93,7 +93,7 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
     /// Priority ordering for the 64-notification limit (Fix R4).
     /// Medication and health reminders are scheduled first.
     private func notificationPriority(for reminder: Reminder) -> Int {
-        switch LogCategory(rawValue: reminder.categoryId) {
+        switch LogCategory.fromStoredValue(reminder.categoryId) {
         case .med: return 0      // Highest — medication
         case .symptom: return 1  // Health monitoring
         case .vetVisit: return 2      // Vet appointments
@@ -140,10 +140,11 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
         content.sound = .default
         content.categoryIdentifier = "REMINDER_CATEGORY"
         
-        // Pass context data so we know what to log when tapped
+        // Pass context data so we know what to log when tapped (canonical category for LogCategory lookup)
+        let canonicalCategoryId = LogCategory.canonicalStoredValue(from: reminder.categoryId) ?? reminder.categoryId
         content.userInfo = [
             "petId": reminder.petId.uuidString,
-            "categoryId": reminder.categoryId,
+            "categoryId": canonicalCategoryId,
             "reminderId": reminder.id.uuidString,
             "reminderTitle": reminder.title
         ]
@@ -246,7 +247,7 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
             }
             
             // Fix R5: If category mapping fails, do NOT silently log as .other
-            guard let logCategory = LogCategory(rawValue: categoryId) else {
+            guard let logCategory = LogCategory.fromStoredValue(categoryId) else {
                 print("Error: Unknown category '\(categoryId)' from notification — skipping log creation")
                 let errorContent = UNMutableNotificationContent()
                 errorContent.title = "Reminder Category Error"

@@ -45,6 +45,37 @@ enum LogCategory: String, CaseIterable, Identifiable, Codable {
     static var quickCategories: [LogCategory] {
         [.meal, .water, .potty, .sleep, .walk, .symptom, .med, .mood]
     }
+    
+    /// Parses a category string from storage (DB defaults, notifications, legacy slugs).
+    /// Accepts canonical `rawValue`, case-insensitive display names, and enum-case slugs (e.g. `"other"`).
+    static func fromStoredValue(_ value: String) -> LogCategory? {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        
+        if let exact = LogCategory(rawValue: trimmed) {
+            return exact
+        }
+        
+        if let match = LogCategory.allCases.first(where: {
+            $0.rawValue.caseInsensitiveCompare(trimmed) == .orderedSame
+        }) {
+            return match
+        }
+        
+        let slug = trimmed.lowercased().replacingOccurrences(of: " ", with: "_")
+        if let match = LogCategory.allCases.first(where: {
+            String(describing: $0).lowercased() == slug
+        }) {
+            return match
+        }
+        
+        return nil
+    }
+    
+    /// Canonical `rawValue` for persistence, when the stored string is recognized.
+    static func canonicalStoredValue(from value: String) -> String? {
+        fromStoredValue(value)?.rawValue
+    }
 }
 
 extension LogCategory {

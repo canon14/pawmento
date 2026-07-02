@@ -222,7 +222,7 @@ struct HomeScreen: View {
                         ForEach(petReminders) { reminder in
                             ReminderPillView(reminder: reminder, onLogTapped: {
                                 Task { @MainActor in
-                                    if let category = LogCategory(rawValue: reminder.categoryId) {
+                                    if let category = LogCategory.fromStoredValue(reminder.categoryId) {
                                         let newLog = LogEntry(
                                             id: UUID(),
                                             petId: reminder.petId,

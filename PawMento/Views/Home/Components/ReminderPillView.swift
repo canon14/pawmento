@@ -59,7 +59,7 @@ struct ReminderPillView: View {
     }
     
     private func emoji(for categoryId: String) -> String {
-        guard let category = LogCategory(rawValue: categoryId) else { return "🔔" }
+        guard let category = LogCategory.fromStoredValue(categoryId) else { return "🔔" }
         return category.emoji
     }
     

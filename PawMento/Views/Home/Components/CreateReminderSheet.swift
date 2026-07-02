@@ -56,7 +56,7 @@ struct CreateReminderSheet: View {
         .onAppear {
             if let reminder = existingReminder {
                 title = reminder.title
-                if let cat = LogCategory(rawValue: reminder.categoryId) {
+                if let cat = LogCategory.fromStoredValue(reminder.categoryId) {
                     selectedCategory = cat
                 }
                 time = reminder.time
