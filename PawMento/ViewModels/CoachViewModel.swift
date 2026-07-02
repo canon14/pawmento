@@ -144,25 +144,17 @@ class CoachViewModel: ObservableObject {
             return
         }
         
-        // 2. Fix S9: Decrement Counter via atomic RPC (serialized, not fire-and-forget)
+        // 2. Reserve quota before streaming; refund if stream errors or returns empty content
+        var didChargeQuestion = false
         if !isPremium {
-            do {
-                let remaining: Int = try await SupabaseManager.shared.client
-                    .rpc("increment_question_usage")
-                    .execute()
-                    .value
-                self.freeQuestionsRemaining = remaining
-            } catch {
-                print("Failed to increment question usage: \(error)")
-                // Optimistic fallback: decrement locally
-                freeQuestionsRemaining = max(0, freeQuestionsRemaining - 1)
-            }
+            await chargeQuestionQuota()
+            didChargeQuestion = true
         }
         
         // 3. Prepare Context Window (Last 8 messages)
         let recentMessages = Array(messages.suffix(8)).map { $0.toAPIFormat() }
         
-        // 4. Stream LLM Response
+        // 3. Stream LLM Response (quota charged only after non-empty assistant content)
         isTyping = true
         defer { isTyping = false }
         
@@ -180,10 +172,16 @@ class CoachViewModel: ObservableObject {
                 }
             }
             
-            // Fix S15: On empty stream, still persist the user message so it's not lost from history
-            if let index = messages.firstIndex(where: { $0.id == assistantMessageId }), messages[index].content.isEmpty {
+            guard let index = messages.firstIndex(where: { $0.id == assistantMessageId }) else { return }
+            let assistantContent = messages[index].content.trimmingCharacters(in: .whitespacesAndNewlines)
+            
+            // Empty stream (no error thrown) — refund reserved quota
+            if assistantContent.isEmpty {
+                if didChargeQuestion {
+                    await refundQuestionQuota()
+                    didChargeQuestion = false
+                }
                 messages.remove(at: index)
-                // Persist the user message even though the stream was empty
                 if let ownerId = ownerId {
                     let userDTO = userMessage.toDTO(ownerId: ownerId)
                     _ = try? await SupabaseManager.shared.client
@@ -194,16 +192,12 @@ class CoachViewModel: ObservableObject {
                 return
             }
             
-            // Generate contextual follow-up quick replies
-            if let index = messages.firstIndex(where: { $0.id == assistantMessageId }) {
-                let responseContent = messages[index].content.lowercased()
-                quickReplies = generateFollowUpReplies(from: responseContent, petName: pet?.name ?? "them")
-            }
+            let responseContent = assistantContent.lowercased()
+            quickReplies = generateFollowUpReplies(from: responseContent, petName: pet?.name ?? "them")
             
             // Post-Stream Premium Gating (Gate 2: Coach Warning)
             if !isPremium && freeQuestionsRemaining <= 2 && freeQuestionsRemaining > 0 && !hasShownLowQuotaWarning {
                 hasShownLowQuotaWarning = true
-                // Fix S15: Give warning message the active pet's id
                 let warningMessage = ChatMessage(
                     role: .assistant,
                     content: "Just so you know — you've got \(freeQuestionsRemaining) free questions left this month.\nIf you want unlimited, I'd love to keep helping.",
@@ -216,7 +210,6 @@ class CoachViewModel: ObservableObject {
             // Supabase saving
             if let ownerId = ownerId {
                 let userDTO = userMessage.toDTO(ownerId: ownerId)
-                guard let index = messages.firstIndex(where: { $0.id == assistantMessageId }) else { return }
                 let assistantDTO = messages[index].toDTO(ownerId: ownerId)
                 let dtos: [ChatMessageDTO] = [userDTO, assistantDTO]
                 
@@ -227,21 +220,10 @@ class CoachViewModel: ObservableObject {
             }
             
         } catch {
-            print("Coach stream failed: \(error)") // Log raw technical error for devs
+            print("Coach stream failed: \(error)")
             
-            // Fix S9: Refund the question quota via atomic RPC (serialized)
-            if !isPremium {
-                do {
-                    let remaining: Int = try await SupabaseManager.shared.client
-                        .rpc("decrement_question_usage")
-                        .execute()
-                        .value
-                    self.freeQuestionsRemaining = remaining
-                } catch {
-                    print("Failed to refund usage on server: \(error)")
-                    // Optimistic fallback: refund locally
-                    freeQuestionsRemaining = min(5, freeQuestionsRemaining + 1)
-                }
+            if didChargeQuestion {
+                await refundQuestionQuota()
             }
             
             if let index = messages.firstIndex(where: { $0.id == assistantMessageId }) {
@@ -254,6 +236,34 @@ class CoachViewModel: ObservableObject {
                     messages[index].content = "Something went wrong on my end. Please try again in a moment."
                 }
             }
+        }
+    }
+    
+    // MARK: - Quota accounting
+    
+    private func chargeQuestionQuota() async {
+        do {
+            let remaining: Int = try await SupabaseManager.shared.client
+                .rpc("increment_question_usage")
+                .execute()
+                .value
+            self.freeQuestionsRemaining = remaining
+        } catch {
+            print("Failed to increment question usage: \(error)")
+            freeQuestionsRemaining = max(0, freeQuestionsRemaining - 1)
+        }
+    }
+    
+    private func refundQuestionQuota() async {
+        do {
+            let remaining: Int = try await SupabaseManager.shared.client
+                .rpc("decrement_question_usage")
+                .execute()
+                .value
+            self.freeQuestionsRemaining = remaining
+        } catch {
+            print("Failed to refund usage on server: \(error)")
+            freeQuestionsRemaining = min(5, freeQuestionsRemaining + 1)
         }
     }
     
