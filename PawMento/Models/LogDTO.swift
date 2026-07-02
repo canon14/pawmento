@@ -13,6 +13,7 @@ struct LogDTO: Codable, Identifiable {
     
     let photo_url: String?
     let severity: Int?
+    let source_key: String?
     
     func toLogEntry() -> LogEntry {
         let category = LogCategory(rawValue: log_type) ?? .other
@@ -23,11 +24,11 @@ struct LogDTO: Codable, Identifiable {
             category: category,
             severity: severity,
             note: description,
-            // Fix 2: photo_url stores a bucket-relative path; resolve to full URL for display.
+            sourceKey: source_key,
             photoLocalURL: photo_url.flatMap { StorageManager.shared.publicURL(forPath: $0) },
             photoImage: nil,
-            createdAt: created_at ?? timestamp,  // DB-L3: fall back to timestamp for legacy rows
-            recordedAt: timestamp,               // user-facing event time
+            createdAt: created_at ?? timestamp,
+            recordedAt: timestamp,
             syncedAt: created_at ?? timestamp
         )
     }
@@ -41,11 +42,12 @@ extension LogEntry {
             log_type: category.rawValue,
             title: "\(category.rawValue) Log",
             description: note,
-            timestamp: recordedAt,     // user-facing event time
-            created_at: createdAt,     // row-insertion time (server will also default)
+            timestamp: recordedAt,
+            created_at: createdAt,
             created_by: userId,
             photo_url: StorageManager.shared.relativeStoragePath(from: photoLocalURL),
-            severity: severity
+            severity: severity,
+            source_key: sourceKey
         )
     }
     
@@ -55,7 +57,7 @@ extension LogEntry {
             log_type: category.rawValue,
             title: "\(category.rawValue) Log",
             description: note,
-            timestamp: recordedAt,     // preserve the user-facing event time
+            timestamp: recordedAt,
             photo_url: StorageManager.shared.relativeStoragePath(from: photoLocalURL),
             severity: severity
         )

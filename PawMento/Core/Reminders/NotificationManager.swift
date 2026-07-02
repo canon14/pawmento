@@ -144,7 +144,8 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
         content.userInfo = [
             "petId": reminder.petId.uuidString,
             "categoryId": reminder.categoryId,
-            "reminderId": reminder.id.uuidString
+            "reminderId": reminder.id.uuidString,
+            "reminderTitle": reminder.title
         ]
         
         let calendar = Calendar.current
@@ -259,27 +260,25 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
             // This preserves temporal accuracy if the user taps hours later.
             let fireDate = response.notification.date
             
-            // Fix R5: Idempotency key — reminderId + occurrence date (truncated to minute)
-            let calendar = Calendar.current
-            let occurrenceComponents = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: fireDate)
-            let occurrenceKey = "\(reminderIdStr)_\(occurrenceComponents.year ?? 0)_\(occurrenceComponents.month ?? 0)_\(occurrenceComponents.day ?? 0)_\(occurrenceComponents.hour ?? 0)_\(occurrenceComponents.minute ?? 0)"
+            // Idempotency key — reminderId + occurrence date (truncated to minute)
+            let sourceKey = Self.reminderLogSourceKey(reminderId: reminderIdStr, fireDate: fireDate)
+            let reminderTitle = userInfo["reminderTitle"] as? String ?? logCategory.rawValue
+            let displayNote = "Logged from reminder: \(reminderTitle)"
             
             Task { @MainActor in
                 guard let userId = try? await SupabaseManager.shared.client.auth.session.user.id else {
                     return
                 }
                 
-                // Fix R5: Check for duplicate log before inserting
                 let existingLogs: [LogDTO] = (try? await SupabaseManager.shared.client
                     .from("logs")
                     .select()
-                    .eq("pet_id", value: petId.uuidString)
-                    .eq("description", value: "Logged from Reminder [\(occurrenceKey)]")
+                    .eq("source_key", value: sourceKey)
                     .execute()
                     .value) ?? []
                 
                 if !existingLogs.isEmpty {
-                    print("Duplicate notification tap detected for \(occurrenceKey) — skipping")
+                    print("Duplicate notification tap detected for \(sourceKey) — skipping")
                     return
                 }
                 
@@ -287,9 +286,10 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
                     id: UUID(),
                     petId: petId,
                     category: logCategory,
-                    note: "Logged from Reminder [\(occurrenceKey)]",
+                    note: displayNote,
+                    sourceKey: sourceKey,
                     createdAt: Date(),
-                    recordedAt: fireDate // Fix R5: Use fire time, not insert time
+                    recordedAt: fireDate
                 )
                 
                 do {
@@ -308,5 +308,12 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
                 }
             }
         }
+    }
+    
+    /// Stable idempotency key for a single reminder occurrence (minute precision).
+    nonisolated static func reminderLogSourceKey(reminderId: String, fireDate: Date) -> String {
+        let calendar = Calendar.current
+        let components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: fireDate)
+        return "reminder:\(reminderId)_\(components.year ?? 0)_\(components.month ?? 0)_\(components.day ?? 0)_\(components.hour ?? 0)_\(components.minute ?? 0)"
     }
 }

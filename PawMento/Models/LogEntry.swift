@@ -8,6 +8,7 @@ struct LogEntry: Identifiable, Codable {
     var category: LogCategory
     var severity: Int? // 1-5, conditionally populated for .symptom
     var note: String? // max 280 chars
+    var sourceKey: String? // server idempotency key (not shown in UI)
     var photoLocalURL: URL?
     var photoImage: UIImage? // Transient in-memory image
     let createdAt: Date // server time
@@ -19,6 +20,7 @@ struct LogEntry: Identifiable, Codable {
          category: LogCategory, 
          severity: Int? = nil, 
          note: String? = nil, 
+         sourceKey: String? = nil,
          photoLocalURL: URL? = nil, 
          photoImage: UIImage? = nil,
          createdAt: Date = Date(), 
@@ -29,6 +31,7 @@ struct LogEntry: Identifiable, Codable {
         self.category = category
         self.severity = severity
         self.note = note
+        self.sourceKey = sourceKey
         self.photoLocalURL = photoLocalURL
         self.photoImage = photoImage
         self.createdAt = createdAt
@@ -37,7 +40,7 @@ struct LogEntry: Identifiable, Codable {
     }
     
     enum CodingKeys: String, CodingKey {
-        case id, petId, category, severity, note, photoLocalURL, createdAt, recordedAt, syncedAt
+        case id, petId, category, severity, note, sourceKey, photoLocalURL, createdAt, recordedAt, syncedAt
     }
 }
 
