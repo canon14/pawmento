@@ -278,6 +278,20 @@ class CoachViewModel: ObservableObject {
         // we deliberately keep freeQuestionsRemaining so we don't reset until initializeQuotaAndSubscription runs.
     }
     
+    /// Server-first wipe: deletes chat history for the current user and pet, then clears local state.
+    func wipeConversationHistory(for petId: UUID, ownerId: UUID) async throws {
+        try await SupabaseManager.shared.client
+            .from("chat_messages")
+            .delete()
+            .eq("owner_id", value: ownerId.uuidString)
+            .eq("pet_id", value: petId.uuidString)
+            .execute()
+        
+        messages = []
+        quickReplies = []
+        loadedPetId = petId
+    }
+    
     // MARK: - Follow-Up Quick Replies
     
     /// Generates 2 contextual follow-up prompts based on the AI response content.

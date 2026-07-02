@@ -233,6 +233,7 @@ struct CoachChatView: View {
     // MARK: - Top Bar
     
     @State private var showWipeConfirmation = false
+    @State private var isWipingHistory = false
     
     private var topBar: some View {
         HStack {
@@ -292,14 +293,12 @@ struct CoachChatView: View {
             }
             .confirmationDialog("Start New Conversation?", isPresented: $showWipeConfirmation, titleVisibility: .visible) {
                 Button("Wipe History", role: .destructive) {
-                    withAnimation {
-                        viewModel.messages.removeAll()
-                        setInitialQuickReplies()
-                    }
+                    Task { await wipeHistory() }
                 }
+                .disabled(isWipingHistory)
                 Button("Cancel", role: .cancel) {}
             } message: {
-                Text("This will permanently clear your conversation history.")
+                Text("This will permanently delete this pet's coach conversation from your account.")
             }
         }
         .padding(.horizontal, 20)
@@ -340,6 +339,28 @@ struct CoachChatView: View {
             "What should I feed \(petName)?",
             "How often should I walk them?"
         ]
+    }
+    
+    private func wipeHistory() async {
+        guard let petId = petStore.activePet?.id else { return }
+        guard !isWipingHistory else { return }
+        isWipingHistory = true
+        defer { isWipingHistory = false }
+        
+        guard let ownerId = await authManager.getCurrentUserId() else {
+            ToastManager.shared.show("Sign in again to clear history.", duration: 4.0)
+            return
+        }
+        
+        do {
+            try await viewModel.wipeConversationHistory(for: petId, ownerId: ownerId)
+            withAnimation {
+                setInitialQuickReplies()
+            }
+            ToastManager.shared.show("Conversation history cleared")
+        } catch {
+            ToastManager.shared.show("Failed to clear history. Check your connection.", duration: 4.0)
+        }
     }
     
     private func shouldShowTimestamp(for index: Int) -> Bool {
