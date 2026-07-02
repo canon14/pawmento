@@ -3,6 +3,7 @@ import SwiftUI
 struct SettingsView: View {
     @Environment(\.dismiss) var dismiss
     @EnvironmentObject var authManager: AuthManager
+    @EnvironmentObject var coachViewModel: CoachViewModel
     
     @EnvironmentObject var toastManager: ToastManager
     
@@ -55,7 +56,7 @@ struct SettingsView: View {
                         SettingsSection(title: "ACCOUNT") {
                             SettingsRow(icon: "star.fill", iconColor: .primary, title: "Manage Subscription") {
                                 HStack {
-                                    Text("Free")
+                                    Text(coachViewModel.isPremium ? "Pro" : "Free")
                                         .font(.caption.weight(.bold))
                                         .foregroundColor(.white)
                                         .padding(.horizontal, 10)

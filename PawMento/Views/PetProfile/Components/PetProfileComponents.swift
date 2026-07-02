@@ -253,11 +253,8 @@ struct AICoachCardView: View {
                 .cornerRadius(AppRadius.input)
                 .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.primary, lineWidth: 1))
             }
-            .alert("PawMento Premium", isPresented: $showPaywall) {
-                Button("Maybe Later", role: .cancel) {}
-                Button("Upgrade") {}
-            } message: {
-                Text("Deep pattern analysis and predictive alerts are available with a Premium subscription.")
+            .sheet(isPresented: $showPaywall) {
+                PaywallSheet(featureContext: "Pattern Analysis")
             }
             
             Button(action: { showCoach = true }) {
@@ -422,11 +419,8 @@ struct VetPDFCTACard: View {
         )
             .cornerRadius(AppRadius.card)
         }
-        .alert("PawMento Premium", isPresented: $showPaywall) {
-            Button("Maybe Later", role: .cancel) {}
-            Button("Upgrade") {}
-        } message: {
-            Text("Generate professional PDF reports to share with your vet, available with a Premium subscription.")
+        .sheet(isPresented: $showPaywall) {
+            PaywallSheet(featureContext: "Vet PDF Reports")
         }
     }
 }

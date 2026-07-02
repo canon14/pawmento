@@ -6,6 +6,7 @@ struct RootView: View {
     @EnvironmentObject var coachViewModel: CoachViewModel
     @EnvironmentObject var logStore: LogStore
     @EnvironmentObject var medicationStore: MedicationStore
+    @EnvironmentObject var subscriptionManager: SubscriptionManager
     
     var body: some View {
         ZStack {
@@ -29,6 +30,7 @@ struct RootView: View {
                 if newValue {
                     Task {
                         await authManager.checkOnboardingState()
+                        await subscriptionManager.loadProducts()
                         if let ownerId = await authManager.getCurrentUserId() {
                             await coachViewModel.initializeQuotaAndSubscription(ownerId: ownerId)
                         }
@@ -44,6 +46,13 @@ struct RootView: View {
                     logStore.reset()
                     medicationStore.reset()
                     ReminderStore.shared.reset()
+                }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .subscriptionEntitlementsDidChange)) { _ in
+                Task {
+                    if let ownerId = await authManager.getCurrentUserId() {
+                        await coachViewModel.initializeQuotaAndSubscription(ownerId: ownerId)
+                    }
                 }
             }
             

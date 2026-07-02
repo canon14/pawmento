@@ -28,9 +28,13 @@ struct InsightsScreen: View {
             .background(Color.background)
             .navigationBarTitleDisplayMode(.inline)
             .onAppear {
+                viewModel.isPremium = coachViewModel.isPremium
                 Task {
                     await viewModel.loadInsights(for: petStore.activePet)
                 }
+            }
+            .onChange(of: coachViewModel.isPremium) { _, isPremium in
+                viewModel.isPremium = isPremium
             }
             .onChange(of: petStore.activePet?.id) { _, _ in
                 Task {

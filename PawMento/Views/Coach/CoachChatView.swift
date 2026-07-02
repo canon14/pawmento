@@ -117,9 +117,9 @@ struct CoachChatView: View {
                 }
             }
         )
-        // Premium Wall — fully redesigned
+        // Premium Wall
         .sheet(isPresented: $viewModel.showPremiumWall) {
-            premiumPaywallSheet
+            PaywallSheet(featureContext: "Unlimited Coaching")
         }
         .onAppear {
             Task {
@@ -230,120 +230,6 @@ struct CoachChatView: View {
         .padding(.horizontal, 24)
     }
     
-    // MARK: - Premium Paywall Sheet
-    
-    private var premiumPaywallSheet: some View {
-        VStack(spacing: 0) {
-            // Decorative header glow
-            ZStack {
-                Circle()
-                    .fill(
-                        RadialGradient(
-                            colors: [Color.primary.opacity(0.2), Color.primary.opacity(0.0)],
-                            center: .center,
-                            startRadius: 0,
-                            endRadius: 100
-                        )
-                    )
-                    .frame(width: 200, height: 200)
-                    .blur(radius: 20)
-                
-                VStack(spacing: 8) {
-                    Image(systemName: "sparkles")
-                        .font(.system(size: 44, weight: .medium))
-                        .foregroundColor(.primary)
-                    
-                    Text("Coach Pro")
-                        .font(.headlineLG)
-                        .foregroundColor(.primaryText)
-                }
-            }
-            .padding(.top, 32)
-            
-            VStack(spacing: 8) {
-                Text("\(petName) and I have so much more to talk about")
-                    .font(.headlineSM)
-                    .multilineTextAlignment(.center)
-                    .foregroundColor(.primaryText)
-                
-                Text("Unlock unlimited coaching, photo analysis, and personalized health insights")
-                    .font(.bodyMD)
-                    .foregroundColor(.secondaryText)
-                    .multilineTextAlignment(.center)
-            }
-            .padding(.horizontal, 28)
-            .padding(.top, 16)
-            
-            // Feature list
-            VStack(alignment: .leading, spacing: 14) {
-                premiumFeatureRow(icon: "infinity", text: "Unlimited questions every month")
-                premiumFeatureRow(icon: "camera.fill", text: "Photo-based health checks")
-                premiumFeatureRow(icon: "chart.line.uptrend.xyaxis", text: "Personalized trend insights")
-                premiumFeatureRow(icon: "bell.badge", text: "Proactive health alerts")
-            }
-            .padding(.horizontal, 32)
-            .padding(.top, 28)
-            
-            Spacer()
-            
-            // CTA
-            VStack(spacing: 12) {
-                Button(action: {
-                    viewModel.showPremiumWall = false
-                }) {
-                    VStack(spacing: 2) {
-                        Text("Start 7-day free trial")
-                            .font(.headlineSM)
-                        Text("then $9.99/month")
-                            .font(.labelSM)
-                            .opacity(0.7)
-                    }
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 56)
-                    .background(
-                        LinearGradient(
-                            colors: [Color.primary, Color.primary.opacity(0.85)],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .clipShape(RoundedRectangle(cornerRadius: AppRadius.input))
-                    .shadow(color: Color.primary.opacity(0.3), radius: 8, x: 0, y: 4)
-                }
-                
-                Button(action: {
-                    viewModel.showPremiumWall = false
-                }) {
-                    Text("Maybe later")
-                        .font(.labelMD)
-                        .foregroundColor(.tertiaryText)
-                }
-                .padding(.bottom, 8)
-            }
-            .padding(.horizontal, 24)
-            .padding(.bottom, 16)
-        }
-        .presentationDetents([.medium, .large])
-        .presentationCornerRadius(28)
-        .presentationDragIndicator(.visible)
-    }
-    
-    private func premiumFeatureRow(icon: String, text: String) -> some View {
-        HStack(spacing: 14) {
-            Image(systemName: icon)
-                .font(.system(size: 16, weight: .medium))
-                .foregroundColor(.primary)
-                .frame(width: 36, height: 36)
-                .background(Color.primary.opacity(0.1))
-                .clipShape(Circle())
-            
-            Text(text)
-                .font(.bodyMD)
-                .foregroundColor(.primaryText)
-        }
-    }
-    
     // MARK: - Top Bar
     
     @State private var showWipeConfirmation = false
@@ -434,6 +320,11 @@ struct CoachChatView: View {
     // MARK: - Helpers
     
     private func send(_ text: String) {
+        if text == "See Premium" {
+            viewModel.showPremiumWall = true
+            return
+        }
+        
         let textToSend = text
         inputText = ""
         let activePet = petStore.activePet

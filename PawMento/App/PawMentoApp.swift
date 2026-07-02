@@ -14,6 +14,7 @@ struct PawMentoApp: App {
     @StateObject private var coachViewModel = CoachViewModel()
     @StateObject private var logStore = LogStore()
     @StateObject private var medicationStore = MedicationStore()
+    @StateObject private var subscriptionManager = SubscriptionManager()
     @StateObject private var toastManager = ToastManager.shared
     
     init() {
@@ -29,6 +30,7 @@ struct PawMentoApp: App {
                 .environmentObject(coachViewModel)
                 .environmentObject(logStore)
                 .environmentObject(medicationStore)
+                .environmentObject(subscriptionManager)
                 .environmentObject(toastManager)
         }
 

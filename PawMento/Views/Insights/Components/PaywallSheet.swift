@@ -1,9 +1,15 @@
 import SwiftUI
 
 struct PaywallSheet: View {
-    @Environment(\.dismiss) var dismiss
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var subscriptionManager: SubscriptionManager
+    @EnvironmentObject private var coachViewModel: CoachViewModel
+    @EnvironmentObject private var authManager: AuthManager
+    
     var insight: Insight? = nil
     var featureContext: String? = nil
+    
+    @State private var purchaseError: String?
     
     private var heroTitle: String {
         if insight != nil {
@@ -17,7 +23,6 @@ struct PaywallSheet: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            // Decorative header glow
             ZStack {
                 Circle()
                     .fill(
@@ -32,7 +37,6 @@ struct PaywallSheet: View {
                     .blur(radius: 20)
                 
                 if insight != nil {
-                    // Show a mini preview of the locked insight
                     VStack(spacing: 8) {
                         Image(systemName: "lock.open.fill")
                             .font(.system(size: 36, weight: .medium))
@@ -54,7 +58,6 @@ struct PaywallSheet: View {
             }
             .padding(.top, 32)
             
-            // Subtitle
             Text("Get deep-dive AI analysis, historical benchmarks, and unlimited coaching.")
                 .font(.bodyMD)
                 .foregroundColor(.secondaryText)
@@ -62,7 +65,6 @@ struct PaywallSheet: View {
                 .padding(.horizontal, 28)
                 .padding(.top, 12)
             
-            // Feature list
             VStack(alignment: .leading, spacing: 14) {
                 premiumFeatureRow(icon: "chart.line.uptrend.xyaxis", text: "Deep-dive pattern analysis")
                 premiumFeatureRow(icon: "dog.fill", text: "Breed health benchmarks")
@@ -72,7 +74,6 @@ struct PaywallSheet: View {
             .padding(.horizontal, 32)
             .padding(.top, 28)
             
-            // Contextual preview
             if let insight = insight {
                 PatternCard(insight: insight, isPremium: true, onCardTapped: {})
                     .disabled(true)
@@ -81,19 +82,30 @@ struct PaywallSheet: View {
                     .shadow(color: Color.primary.opacity(0.08), radius: 12, x: 0, y: 4)
             }
             
+            if let purchaseError {
+                Text(purchaseError)
+                    .font(.labelSM)
+                    .foregroundColor(.error)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 24)
+                    .padding(.top, 12)
+            }
+            
             Spacer()
             
-            // CTA
             VStack(spacing: 12) {
-                Button(action: {
-                    dismiss()
-                }) {
+                Button(action: { Task { await startPurchase() } }) {
                     VStack(spacing: 2) {
-                        Text("Start 7-day free trial")
-                            .font(.headlineSM)
-                        Text("then $9.99/month")
-                            .font(.labelSM)
-                            .opacity(0.7)
+                        if subscriptionManager.isPurchasing {
+                            ProgressView()
+                                .tint(.white)
+                        } else {
+                            Text(subscriptionManager.trialCTA)
+                                .font(.headlineSM)
+                            Text(subscriptionManager.priceSubtitle)
+                                .font(.labelSM)
+                                .opacity(0.7)
+                        }
                     }
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
@@ -108,6 +120,14 @@ struct PaywallSheet: View {
                     .clipShape(RoundedRectangle(cornerRadius: AppRadius.input))
                     .shadow(color: Color.primary.opacity(0.3), radius: 8, x: 0, y: 4)
                 }
+                .disabled(subscriptionManager.isPurchasing)
+                
+                Button("Restore Purchases") {
+                    Task { await restorePurchases() }
+                }
+                .font(.labelMD)
+                .foregroundColor(.primary)
+                .disabled(subscriptionManager.isPurchasing)
                 
                 Button("Not right now") {
                     dismiss()
@@ -123,6 +143,43 @@ struct PaywallSheet: View {
         .presentationDetents([.medium, .large])
         .presentationCornerRadius(28)
         .presentationDragIndicator(.visible)
+        .task {
+            await subscriptionManager.loadProducts()
+        }
+    }
+    
+    private func startPurchase() async {
+        purchaseError = nil
+        let outcome = await subscriptionManager.purchasePro {
+            await refreshEntitlements()
+        }
+        handleOutcome(outcome, successMessage: "Welcome to PawMento Pro!")
+    }
+    
+    private func restorePurchases() async {
+        purchaseError = nil
+        let outcome = await subscriptionManager.restorePurchases {
+            await refreshEntitlements()
+        }
+        handleOutcome(outcome, successMessage: "Subscription restored!")
+    }
+    
+    private func refreshEntitlements() async {
+        guard let ownerId = await authManager.getCurrentUserId() else { return }
+        await coachViewModel.initializeQuotaAndSubscription(ownerId: ownerId)
+    }
+    
+    private func handleOutcome(_ outcome: PurchaseOutcome, successMessage: String) {
+        switch outcome {
+        case .success:
+            ToastManager.shared.show(successMessage)
+            dismiss()
+        case .cancelled:
+            break
+        case .failed(let message):
+            purchaseError = message
+            ToastManager.shared.show(message, duration: 4.0)
+        }
     }
     
     private func premiumFeatureRow(icon: String, text: String) -> some View {

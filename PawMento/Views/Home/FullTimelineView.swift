@@ -16,6 +16,7 @@ struct FullTimelineView: View {
     
     @State private var expandedImage: UIImage? = nil
     @State private var selectedLog: LogEntry? = nil
+    @State private var showPaywall = false
     
     let filterOptions = ["All", "Symptoms", "Meals", "Meds", "Walks", "Sleep", "Notes", "Vet visits"]
     
@@ -101,10 +102,8 @@ struct FullTimelineView: View {
         .sheet(item: $selectedLog) { log in
             LogDetailSheet(existingLog: log)
         }
-        .alert("Premium Feature Coming Soon", isPresented: $viewModel.showPremiumAlert) {
-            Button("OK", role: .cancel) { }
-        } message: {
-            Text("We're actively building this feature. Stay tuned!")
+        .sheet(isPresented: $showPaywall) {
+            PaywallSheet(featureContext: "Timeline Export")
         }
         .onAppear {
             viewModel.ingest(logs: logStore.logs)
@@ -224,7 +223,7 @@ struct FullTimelineView: View {
                     .foregroundColor(.ink900)
                     .fixedSize(horizontal: false, vertical: true)
                 
-                Button(action: { viewModel.showPremiumAlert = true }) {
+                Button(action: { showPaywall = true }) {
                     Text("See deep dive ›")
                         .font(.labelSM)
                         .foregroundColor(.sage700)
@@ -340,7 +339,7 @@ struct FullTimelineView: View {
     }
     
     private var footerCTA: some View {
-        Button(action: { viewModel.showPremiumAlert = true }) {
+        Button(action: { showPaywall = true }) {
             HStack {
                 Text(viewModel.selectedFilter == "All" ? "Export this month as Vet PDF" : "Export filtered view as PDF")
                     .font(.labelSM)
