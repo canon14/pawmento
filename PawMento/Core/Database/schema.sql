@@ -125,9 +125,12 @@ CREATE TABLE IF NOT EXISTS public.medications (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     pet_id UUID NOT NULL REFERENCES public.pets(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
+    dose TEXT,
+    form TEXT,
     frequency TEXT NOT NULL,
     next_due_date TIMESTAMP WITH TIME ZONE,
     streak_count INTEGER DEFAULT 0,
+    logged_today BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 

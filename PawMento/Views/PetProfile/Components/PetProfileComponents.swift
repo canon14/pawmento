@@ -439,59 +439,49 @@ let shortDateAndTimeFormatter: DateFormatter = {
 
 struct MedicationsCard: View {
     let medications: [Medication]
+    var onMedicationsChanged: (() -> Void)? = nil
+    
+    @EnvironmentObject private var medicationStore: MedicationStore
+    
+    @State private var showAddSheet = false
+    @State private var editingMedication: Medication?
+    @State private var loggingMedicationId: UUID?
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            SectionHeader("Medications & Routines")
+            HStack {
+                SectionHeader("Medications & Routines")
+                Spacer()
+                Button(action: { showAddSheet = true }) {
+                    Text("Add Medication")
+                        .font(.bodySM)
+                        .foregroundColor(.primary)
+                }
+            }
             
             if medications.isEmpty {
-                Text("No medications or routines added yet.")
-                    .font(.labelMD)
-                    .foregroundColor(.secondaryText)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(16)
-                    .background(Color.surfaceContainerLowest)
-                    .cornerRadius(AppRadius.md)
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("No medications or routines added yet.")
+                        .font(.labelMD)
+                        .foregroundColor(.secondaryText)
+                    
+                    Button(action: { showAddSheet = true }) {
+                        HStack {
+                            Image(systemName: "plus.circle.fill")
+                            Text("Add your first medication")
+                        }
+                        .font(.labelMD)
+                        .foregroundColor(.primary)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(16)
+                .background(Color.surfaceContainerLowest)
+                .cornerRadius(AppRadius.md)
             } else {
                 VStack(spacing: 0) {
                     ForEach(medications) { med in
-                        HStack {
-                            Text(med.form?.lowercased() == "injectable" ? "💉" : "💊")
-                                .font(.headlineMD)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("\(med.name)\(med.dose.map { " · \($0)" } ?? "")")
-                                    .font(.labelMD)
-                                
-                                if med.loggedToday {
-                                    Text("Logged today · \(med.streakCount) day streak ✓")
-                                        .font(.caption.weight(.bold))
-                                        .foregroundColor(.primary)
-                                        .padding(.horizontal, 8)
-                                        .padding(.vertical, 4)
-                                        .background(Color.primary.opacity(0.1))
-                                        .clipShape(Capsule())
-                                } else if let nextDue = med.nextDueDate {
-                                    if nextDue < Date() {
-                                        Text("Overdue: \(nextDue, formatter: shortDateAndTimeFormatter)")
-                                            .font(.captionTabular)
-                                            .foregroundColor(.error)
-                                    } else {
-                                        Text("Next: \(nextDue, formatter: shortDateAndTimeFormatter)")
-                                            .font(.captionTabular)
-                                            .foregroundColor(.secondaryText)
-                                    }
-                                } else {
-                                    Text("No streak")
-                                        .font(.captionTabular)
-                                        .foregroundColor(.secondaryText)
-                                }
-                            }
-                            Spacer()
-                            Text(med.frequency)
-                                .font(.bodySM)
-                                .foregroundColor(.secondaryText)
-                        }
-                        .padding(16)
+                        medicationRow(med)
                         
                         if med.id != medications.last?.id {
                             Divider().background(Color.warmSand.opacity(0.2))
@@ -501,6 +491,101 @@ struct MedicationsCard: View {
                 .background(Color.surfaceContainerLowest)
                 .cornerRadius(AppRadius.md)
             }
+        }
+        .sheet(isPresented: $showAddSheet) {
+            MedicationSheet()
+                .onDisappear { onMedicationsChanged?() }
+        }
+        .sheet(item: $editingMedication) { medication in
+            MedicationSheet(existingMedication: medication)
+                .onDisappear { onMedicationsChanged?() }
+        }
+    }
+    
+    @ViewBuilder
+    private func medicationRow(_ med: Medication) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Text(med.form?.lowercased() == "injectable" ? "💉" : "💊")
+                .font(.headlineMD)
+            
+            VStack(alignment: .leading, spacing: 6) {
+                Text("\(med.name)\(med.dose.map { " · \($0)" } ?? "")")
+                    .font(.labelMD)
+                
+                if med.loggedToday {
+                    Text("Logged today · \(med.streakCount) day streak ✓")
+                        .font(.caption.weight(.bold))
+                        .foregroundColor(.primary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.primary.opacity(0.1))
+                        .clipShape(Capsule())
+                } else if let nextDue = med.nextDueDate {
+                    if nextDue < Date() {
+                        Text("Overdue: \(nextDue, formatter: shortDateAndTimeFormatter)")
+                            .font(.captionTabular)
+                            .foregroundColor(.error)
+                    } else {
+                        Text("Next: \(nextDue, formatter: shortDateAndTimeFormatter)")
+                            .font(.captionTabular)
+                            .foregroundColor(.secondaryText)
+                    }
+                } else {
+                    Text(med.streakCount > 0 ? "\(med.streakCount) day streak" : "No streak")
+                        .font(.captionTabular)
+                        .foregroundColor(.secondaryText)
+                }
+                
+                HStack(spacing: 8) {
+                    if med.medicationFrequency != .asNeeded {
+                        Button(action: { Task { await logDose(for: med) } }) {
+                            HStack(spacing: 4) {
+                                if loggingMedicationId == med.id {
+                                    ProgressView()
+                                        .controlSize(.small)
+                                }
+                                Text(med.loggedToday ? "Logged" : "Log Dose")
+                            }
+                            .font(.caption.weight(.semibold))
+                            .foregroundColor(med.loggedToday ? .secondaryText : .white)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(med.loggedToday ? Color.warmSand.opacity(0.3) : Color.primary)
+                            .clipShape(Capsule())
+                        }
+                        .disabled(med.loggedToday || loggingMedicationId == med.id)
+                    }
+                    
+                    Button("Edit") {
+                        editingMedication = med
+                    }
+                    .font(.caption.weight(.semibold))
+                    .foregroundColor(.primary)
+                }
+            }
+            
+            Spacer(minLength: 0)
+            
+            Text(med.frequency)
+                .font(.bodySM)
+                .foregroundColor(.secondaryText)
+                .multilineTextAlignment(.trailing)
+        }
+        .padding(16)
+    }
+    
+    private func logDose(for medication: Medication) async {
+        loggingMedicationId = medication.id
+        defer { loggingMedicationId = nil }
+        
+        do {
+            try await medicationStore.logDoseTaken(medication)
+            ToastManager.shared.show("Dose logged for \(medication.name)")
+            onMedicationsChanged?()
+        } catch let error as MedicationStoreError {
+            ToastManager.shared.show(error.localizedDescription, duration: 4.0)
+        } catch {
+            ToastManager.shared.show("Failed to log dose. Check your connection.", duration: 4.0)
         }
     }
 }

@@ -28,7 +28,17 @@ struct PetProfileScreen: View {
                         // Vet PDF CTA
                         VetPDFCTACard(logCount: logStore.logs.count)
                         
-                        MedicationsCard(medications: viewModel.medications)
+                        MedicationsCard(medications: viewModel.medications) {
+                            if let pet = petStore.activePet {
+                                Task {
+                                    await viewModel.refreshProfile(
+                                        for: pet,
+                                        logs: logStore.logs,
+                                        fetchedMedications: medicationStore.medications
+                                    )
+                                }
+                            }
+                        }
                         
                         VitalRecordsList()
                         
