@@ -95,15 +95,15 @@ struct WellnessCalculator {
         symptomScore = max(0, symptomScore)
         
         // 2. Routine Adherence (Max 25)
-        // Fix W2: Score based on distinct calendar days with ≥1 routine log, not raw count.
+        // Fix W2: Score based on distinct UTC calendar days with ≥1 routine log, not raw count.
         let routineLogs = last14DaysLogs.filter { LogCategory.routineCategories.contains($0.category) }
-        let distinctRoutineDays = Self.distinctDayCount(for: routineLogs, upTo: date)
+        let distinctRoutineDays = Self.distinctDayCount(for: routineLogs)
         let routineScore = min(Constants.routineCap, distinctRoutineDays * Constants.routinePointsPerDay)
         
         // 3. Activity Level (Max 20)
         // Fix W2: Same distinct-day approach for activity.
         let activityLogs = last14DaysLogs.filter { LogCategory.activityCategories.contains($0.category) }
-        let distinctActivityDays = Self.distinctDayCount(for: activityLogs, upTo: date)
+        let distinctActivityDays = Self.distinctDayCount(for: activityLogs)
         let activityScore = min(Constants.activityCap, distinctActivityDays * Constants.activityPointsPerDay)
         
         // 4. Medication Compliance (Max 15) — only applies when the pet has medications
@@ -142,14 +142,8 @@ struct WellnessCalculator {
     
     // MARK: - Helpers
     
-    /// Count distinct calendar days that have ≥1 log entry.
-    private static func distinctDayCount(for logs: [LogEntry], upTo date: Date) -> Int {
-        let calendar = Calendar.current
-        var uniqueDays = Set<DateComponents>()
-        for log in logs {
-            let components = calendar.dateComponents([.year, .month, .day], from: log.recordedAt)
-            uniqueDays.insert(components)
-        }
-        return uniqueDays.count
+    /// Count distinct UTC calendar days that have ≥1 log entry (aligned with InsightEngine detectors).
+    private static func distinctDayCount(for logs: [LogEntry]) -> Int {
+        InsightCalendar.distinctDayCount(for: logs.map(\.recordedAt))
     }
 }

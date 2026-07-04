@@ -13,14 +13,6 @@ struct InsightCandidate {
     var precomputedVisualization: VisualizationData?
 }
 
-// Fix I8 + INS-M2: Use UTC for deterministic bucketing — historical analysis
-// stays stable regardless of device travel or timezone changes.
-private let insightCalendar: Calendar = {
-    var cal = Calendar(identifier: .gregorian)
-    cal.timeZone = TimeZone(identifier: "UTC")!
-    return cal
-}()
-
 class CorrelationDetector {
     static func detect(_ signals: [Signal]) async -> [InsightCandidate] {
         // 48 hours in seconds
@@ -123,7 +115,7 @@ class TemporalPatternDetector {
         var byHour = [Int](repeating: 0, count: 24)
         for s in symptoms {
             // Fix I8: Use fixed calendar for consistent timezone bucketing
-            let hour = insightCalendar.component(.hour, from: s.timestamp)
+            let hour = InsightCalendar.utc.component(.hour, from: s.timestamp)
             if hour >= 0 && hour < 24 {
                 byHour[hour] += 1
             }
