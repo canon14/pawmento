@@ -104,7 +104,12 @@ class InsightNarrator {
                 continue
             }
             
-            matchedCandidateIds.insert(candidate.id.uuidString.lowercased())
+            let candidateKey = candidate.id.uuidString.lowercased()
+            guard !matchedCandidateIds.contains(candidateKey) else {
+                print("Warning: InsightNarrator duplicate DTO for candidate \(dto.id) — skipping.")
+                continue
+            }
+            matchedCandidateIds.insert(candidateKey)
             
             // Validate decoded confidence is finite and within 0...1
             if !dto.confidence.isFinite { dto.confidence = 0.5 }
