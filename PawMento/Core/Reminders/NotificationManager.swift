@@ -90,6 +90,11 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
     
     // MARK: - Notification Scheduling (Fix R3, R4, R7)
     
+    enum ScheduleContext {
+        case userInitiated
+        case sync
+    }
+    
     /// Priority ordering for the 64-notification limit (Fix R4).
     /// Medication and health reminders are scheduled first.
     private func notificationPriority(for reminder: Reminder) -> Int {
@@ -102,7 +107,7 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
         }
     }
     
-    func scheduleReminder(_ reminder: Reminder) async {
+    func scheduleReminder(_ reminder: Reminder, context: ScheduleContext = .userInitiated) async {
         // Fix R6: Always re-check settings freshly (not stale isAuthorized)
         await refreshAuthorizationStatus()
         
@@ -112,13 +117,11 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
         }
         
         // Fix R7: Reject .once reminders in the past
-        if reminder.frequency == .once {
-            let calendar = Calendar.current
-            let components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: reminder.time)
-            if let fireDate = calendar.date(from: components), fireDate <= Date() {
+        if reminder.isPastOnceFireTime {
+            if context == .userInitiated {
                 ToastManager.shared.show("This reminder's time has already passed. Choose a future time.", duration: 4.0)
-                return
             }
+            return
         }
         
         // Fix R4: Check the 64-notification cap with priority policy
@@ -127,7 +130,9 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
             let myPriority = notificationPriority(for: reminder)
             // Only drop if this reminder is lower priority than what's already scheduled
             if myPriority >= 3 {
-                ToastManager.shared.show("Notification limit reached. Lower-priority reminders won't schedule.", duration: 4.0)
+                if context == .userInitiated {
+                    ToastManager.shared.show("Notification limit reached. Lower-priority reminders won't schedule.", duration: 4.0)
+                }
                 return
             }
             // High-priority: log a warning but still try to schedule
@@ -205,7 +210,7 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
         let sorted = enabledReminders.sorted { notificationPriority(for: $0) < notificationPriority(for: $1) }
         
         for reminder in sorted {
-            await scheduleReminder(reminder)
+            await scheduleReminder(reminder, context: .sync)
         }
     }
     

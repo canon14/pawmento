@@ -28,6 +28,7 @@ class ReminderStore: ObservableObject {
         
         // Fix R3: Reconcile OS notifications with loaded reminders
         Task {
+            await disableLapsedOnceReminders()
             await NotificationManager.shared.syncNotifications(
                 enabledReminders: reminders.filter { $0.isEnabled }
             )
@@ -47,7 +48,8 @@ class ReminderStore: ObservableObject {
             self.reminders = dtos.map { $0.toReminder() }
             saveToCache()
             
-            // Fix R3: Reconcile OS notifications after fetch
+            // Fix R3: Disable lapsed one-time reminders, then reconcile OS notifications
+            await disableLapsedOnceReminders()
             await NotificationManager.shared.syncNotifications(
                 enabledReminders: reminders.filter { $0.isEnabled }
             )
@@ -63,6 +65,32 @@ class ReminderStore: ObservableObject {
         } catch {
             print("Failed to encode reminders: \(error)")
         }
+    }
+    
+    /// Auto-disable enabled one-time reminders whose fire time has passed (R3).
+    func disableLapsedOnceReminders() async {
+        let lapsedIndices = reminders.indices.filter {
+            reminders[$0].isEnabled && reminders[$0].isPastOnceFireTime
+        }
+        guard !lapsedIndices.isEmpty else { return }
+        
+        for index in lapsedIndices {
+            var reminder = reminders[index]
+            reminder.isEnabled = false
+            reminders[index] = reminder
+            NotificationManager.shared.removeReminder(reminder)
+            
+            do {
+                try await SupabaseManager.shared.client
+                    .from("reminders")
+                    .update(reminder.toDTO())
+                    .eq("id", value: reminder.id.uuidString)
+                    .execute()
+            } catch {
+                print("Failed to persist disabled lapsed once reminder \(reminder.id): \(error)")
+            }
+        }
+        saveToCache()
     }
     
     // MARK: - Server-First Writes (Fix R1)

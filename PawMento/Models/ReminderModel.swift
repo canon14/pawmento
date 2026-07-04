@@ -43,4 +43,13 @@ struct Reminder: Identifiable, Codable, Equatable {
             return time
         }
     }
+    
+    /// Whether a one-time reminder's scheduled fire time has already passed (R7 guard).
+    var isPastOnceFireTime: Bool {
+        guard frequency == .once else { return false }
+        let calendar = Calendar.current
+        let components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: time)
+        guard let fireDate = calendar.date(from: components) else { return false }
+        return fireDate <= Date()
+    }
 }
