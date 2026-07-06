@@ -109,8 +109,15 @@ class CoachViewModel: ObservableObject {
         }
     }
     
-    // Send a message and stream the response
+    /// Sends a user message and streams the coach reply.
+    ///
+    /// Quota ordering (authoritative enforcement is server-side in `ai-proxy`):
+    /// 1. Client pre-check — `freeQuestionsRemaining` is a UI hint only.
+    /// 2. `ai-proxy` rejects the request if quota is exhausted (before Anthropic).
+    /// 3. `ai-proxy` consumes one question only after a successful non-empty stream.
+    /// 4. On success, this view model refreshes `freeQuestionsRemaining` from the server.
     func sendMessage(_ text: String, pet: Pet?, ownerId: UUID?) async {
+        // Client-side pre-check (optimistic UI gate; ai-proxy enforces authoritatively).
         if !isPremium {
             guard freeQuestionsRemaining > 0 else {
                 showPremiumWall = true
@@ -127,7 +134,7 @@ class CoachViewModel: ObservableObject {
             let emergencyResponse = ChatMessage(role: .assistant, content: "This sounds urgent.\nGet to an emergency vet now.", isEmergency: true, petId: pet?.id)
             messages.append(emergencyResponse)
             
-            // Do NOT charge quota for emergencies. Safety should never be gated.
+            // Emergencies skip the LLM entirely — no ai-proxy call, no quota consumed.
             
             if let ownerId = ownerId {
                 let userDTO = userMessage.toDTO(ownerId: ownerId)
@@ -149,7 +156,7 @@ class CoachViewModel: ObservableObject {
         // 2. Prepare context window (last 8 messages)
         let recentMessages = Array(messages.suffix(8)).map { $0.toAPIFormat() }
         
-        // 3. Stream LLM response (quota enforced and charged by ai-proxy)
+        // Stream via ai-proxy (quota checked before Anthropic; consumed after success).
         isTyping = true
         defer { isTyping = false }
         
@@ -183,6 +190,7 @@ class CoachViewModel: ObservableObject {
             }
             
             if let ownerId = ownerId, !isPremium {
+                // Sync local quota display with server after ai-proxy consumed usage.
                 await initializeQuotaAndSubscription(ownerId: ownerId)
             }
             
