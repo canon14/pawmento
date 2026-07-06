@@ -34,10 +34,10 @@ struct SettingsView: View {
                             ZStack {
                                 Circle()
                                     .fill(
-                                        LinearGradient(colors: [Color.primary, Color.primary.opacity(0.7)], startPoint: .topLeading, endPoint: .bottomTrailing)
+                                        LinearGradient(colors: [Color.brandAccent, Color.brandAccent.opacity(0.7)], startPoint: .topLeading, endPoint: .bottomTrailing)
                                     )
                                     .frame(width: 80, height: 80)
-                                    .shadow(color: Color.primary.opacity(0.25), radius: 12, x: 0, y: 6)
+                                    .shadow(color: Color.brandAccent.opacity(0.25), radius: 12, x: 0, y: 6)
                                 
                                 Text(displayName.prefix(1).uppercased())
                                     .font(.system(size: 32, weight: .bold))
@@ -57,7 +57,7 @@ struct SettingsView: View {
                         
                         // Account & Household Section
                         SettingsSection(title: "ACCOUNT") {
-                            SettingsRow(icon: "star.fill", iconColor: .primary, title: "Manage Subscription") {
+                            SettingsRow(icon: "star.fill", iconColor: .brandAccent, title: "Manage Subscription") {
                                 HStack {
                                     SubscriptionPlanBadge(isPremium: coachViewModel.isPremium)
                                     Image(systemName: "chevron.right")
@@ -320,7 +320,7 @@ private struct SubscriptionPlanBadge: View {
             .background {
                 if isPremium {
                     LinearGradient(
-                        colors: [Color.primary, Color.primary.opacity(0.8)],
+                        colors: [Color.brandAccent, Color.brandAccent.opacity(0.8)],
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
@@ -332,10 +332,10 @@ private struct SubscriptionPlanBadge: View {
             .overlay {
                 if !isPremium {
                     Capsule()
-                        .stroke(Color.primary.opacity(0.12), lineWidth: 1)
+                        .stroke(Color.outlineVariant.opacity(0.6), lineWidth: 1)
                 }
             }
-            .shadow(color: isPremium ? Color.primary.opacity(0.3) : .clear, radius: 4, x: 0, y: 2)
+            .shadow(color: isPremium ? Color.brandAccent.opacity(0.3) : .clear, radius: 4, x: 0, y: 2)
             .animation(.easeInOut(duration: 0.2), value: isPremium)
     }
 }
@@ -417,7 +417,7 @@ struct SettingsToggleRow: View {
             Toggle(title, isOn: $isOn)
                 .font(.bodyMD)
                 .foregroundColor(.primaryText)
-                .tint(.primary)
+                .tint(.brandAccent)
         }
         .padding(.horizontal, 20)
         .padding(.vertical, 12)
@@ -428,7 +428,7 @@ struct SettingsToggleRow: View {
 struct SettingsDivider: View {
     var body: some View {
         Divider()
-            .background(Color.primary.opacity(0.05))
+            .background(Color.outlineVariant.opacity(0.35))
             .padding(.leading, 72)
             .padding(.trailing, 20)
     }
@@ -437,7 +437,7 @@ struct SettingsDivider: View {
 struct SettingsRowStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .background(configuration.isPressed ? Color.primary.opacity(0.05) : Color.surfaceContainerLowest)
+            .background(configuration.isPressed ? Color.brandAccent.opacity(0.08) : Color.surfaceContainerLowest)
             .animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
     }
 }

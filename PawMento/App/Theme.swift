@@ -50,6 +50,8 @@ extension Color {
     static let outlineVariant = Color(hex: "#c5c7bf")
     
     static let primary = Color(hex: "#576152")
+    /// Explicit brand sage accent — prefer in views over bare `Color.primary` (shadows SwiftUI's label color).
+    static let brandAccent = Color(hex: "#576152")
     static let onPrimary = Color(hex: "#ffffff")
     static let primaryContainer = Color(hex: "#d9e4d1")
     static let onPrimaryContainer = Color(hex: "#5c6657")
