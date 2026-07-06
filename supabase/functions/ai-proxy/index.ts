@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { buildSystemPrompt } from "./prompts.ts";
 
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY")!;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -193,6 +194,7 @@ Deno.serve(async (req: Request) => {
 
   const model = resolveModel(body.model);
   const resolvedMaxTokens = resolveMaxTokens(max_tokens);
+  const resolvedSystem = buildSystemPrompt(system, Boolean(stream));
 
   const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
@@ -230,7 +232,7 @@ Deno.serve(async (req: Request) => {
       body: JSON.stringify({
         model,
         max_tokens: resolvedMaxTokens,
-        system: system || "",
+        system: resolvedSystem,
         messages,
         stream: stream || false,
       }),
