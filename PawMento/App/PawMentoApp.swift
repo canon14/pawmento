@@ -12,7 +12,7 @@ struct PawMentoApp: App {
     @StateObject private var petStore = PetStore()
     @StateObject private var authManager = AuthManager()
     @StateObject private var coachViewModel = CoachViewModel()
-    @StateObject private var logStore = LogStore()
+    @StateObject private var logStore = LogStore.shared
     @StateObject private var medicationStore = MedicationStore()
     @StateObject private var subscriptionManager = SubscriptionManager()
     @StateObject private var toastManager = ToastManager.shared

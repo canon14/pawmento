@@ -299,11 +299,7 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
                 )
                 
                 do {
-                    let dto = newLog.toDTO(userId: userId)
-                    try await SupabaseManager.shared.client
-                        .from("logs")
-                        .insert(dto)
-                        .execute()
+                    try await LogStore.shared.saveLog(newLog, userId: userId)
                 } catch {
                     print("Error saving log from notification: \(error)")
                     let errorContent = UNMutableNotificationContent()

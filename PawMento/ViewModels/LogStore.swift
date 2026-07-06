@@ -5,6 +5,8 @@ import Supabase
 
 @MainActor
 class LogStore: ObservableObject {
+    static let shared = LogStore()
+    
     @Published var logs: [LogEntry] = []
     @Published var isFetching = false
     @Published var fetchError: String? = nil
@@ -45,13 +47,8 @@ class LogStore: ObservableObject {
             
         finalLog.syncedAt = Date()
         
-        // 3. Fix S1: Only mutate the local array if this log belongs to the
-        // currently-loaded pet. Otherwise it'll show up on next fetchLogs.
-        if finalLog.petId == loadedPetId {
-            logs.append(finalLog)
-            // Fix S7: Sort by recordedAt (maps to DB "timestamp" column)
-            logs.sort(by: { $0.recordedAt > $1.recordedAt })
-        }
+        // 3. Update in-memory cache when this log belongs to the visible pet.
+        mutateLocalCacheAfterSync(finalLog)
         
         // 4. Remember last used category for this pet
         let key = "lastUsedCategory_\(log.petId.uuidString)"
@@ -160,6 +157,22 @@ class LogStore: ObservableObject {
     }
     
     // MARK: - Helpers
+    
+    func shouldShowLogInLocalCache(_ log: LogEntry) -> Bool {
+        if let loadedPetId {
+            return log.petId == loadedPetId
+        }
+        // Before the first fetch, accept logs for a single pet so notification taps
+        // and early writes still appear in the UI.
+        return logs.isEmpty || logs.allSatisfy { $0.petId == log.petId }
+    }
+    
+    func mutateLocalCacheAfterSync(_ log: LogEntry) {
+        guard shouldShowLogInLocalCache(log) else { return }
+        guard !logs.contains(where: { $0.id == log.id }) else { return }
+        logs.append(log)
+        logs.sort(by: { $0.recordedAt > $1.recordedAt })
+    }
     
     func getLastUsedCategory(for petId: UUID) -> LogCategory? {
         let key = "lastUsedCategory_\(petId.uuidString)"
