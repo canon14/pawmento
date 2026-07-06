@@ -94,23 +94,46 @@ final class SubscriptionManager: ObservableObject {
     
     // MARK: - Server sync
     
-    private struct ActivateSubscriptionParams: Encodable {
-        let p_plan_type: String
-        let p_transaction_id: String
+    private struct VerifyPremiumRequest: Encodable {
+        let signed_transaction: String
     }
     
     private func syncTransactionToServer(_ transaction: Transaction) async throws {
-        let planType = SubscriptionProductIDs.serverPlanType(for: transaction.productID)
-        let params = ActivateSubscriptionParams(
-            p_plan_type: planType,
-            p_transaction_id: String(transaction.id)
+        guard let session = try? await SupabaseManager.shared.client.auth.session else {
+            throw PurchaseError.unverifiedTransaction
+        }
+        
+        guard let signedTransaction = String(data: transaction.jsonRepresentation, encoding: .utf8),
+              !signedTransaction.isEmpty else {
+            throw PurchaseError.unverifiedTransaction
+        }
+        
+        let verifyURL = URL(string: "\(Secrets.supabaseURL)/functions/v1/verify-premium")!
+        var request = URLRequest(url: verifyURL)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
+        request.httpBody = try JSONEncoder().encode(
+            VerifyPremiumRequest(signed_transaction: signedTransaction)
         )
         
-        // TODO(production): Validate transaction JWS server-side (App Store Server API)
-        // before trusting this RPC. Current RPC is a client-triggered activation stub.
-        try await SupabaseManager.shared.client
-            .rpc("activate_premium_subscription", params: params)
-            .execute()
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw PurchaseError.unverifiedTransaction
+        }
+        
+        guard (200...299).contains(httpResponse.statusCode) else {
+            if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let errorObj = json["error"] as? [String: Any],
+               let message = errorObj["message"] as? String {
+                throw NSError(
+                    domain: "VerifyPremium",
+                    code: httpResponse.statusCode,
+                    userInfo: [NSLocalizedDescriptionKey: message]
+                )
+            }
+            throw PurchaseError.unverifiedTransaction
+        }
     }
 }
 
