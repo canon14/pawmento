@@ -132,10 +132,7 @@ struct SettingsView: View {
                         // Danger Zone
                         VStack(spacing: 16) {
                             Button(action: {
-                                Task {
-                                    await authManager.signOut()
-                                    dismiss()
-                                }
+                                Task { await handleSignOut() }
                             }) {
                                 HStack {
                                     Image(systemName: "rectangle.portrait.and.arrow.right")
@@ -212,24 +209,19 @@ struct SettingsView: View {
                 Task {
                     await notificationManager.refreshAuthorization()
                     await refreshSubscriptionEntitlement()
-                    if let email = await authManager.getCurrentUserEmail() {
-                        userEmail = email
-                        // Derive display name from email (text before @)
-                        let nameFromEmail = email.components(separatedBy: "@").first ?? "User"
-                        displayName = nameFromEmail
-                            .replacingOccurrences(of: ".", with: " ")
-                            .replacingOccurrences(of: "_", with: " ")
-                            .capitalized
-                    } else {
-                        userEmail = "user@example.com"
-                    }
+                    await loadUserProfile()
                 }
             }
             .onReceive(NotificationCenter.default.publisher(for: .subscriptionEntitlementsDidChange)) { _ in
                 Task { await refreshSubscriptionEntitlement() }
             }
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
-                Task { await notificationManager.refreshAuthorization() }
+                Task {
+                    await notificationManager.refreshAuthorization()
+                    if userEmail == "Loading..." {
+                        await loadUserProfile()
+                    }
+                }
             }
             .alert("Delete Account", isPresented: $showDeleteConfirmation) {
                 TextField("Type 'delete me'", text: $deleteConfirmationText)
@@ -241,10 +233,7 @@ struct SettingsView: View {
                 Button("Delete", role: .destructive) {
                     isDeleting = true
                     deleteConfirmationText = ""
-                    Task {
-                        await authManager.deleteAccount()
-                        dismiss()
-                    }
+                    Task { await handleDeleteAccount() }
                 }
                 .disabled(!isDeleteConfirmationValid)
             } message: {
@@ -266,6 +255,41 @@ struct SettingsView: View {
     private func refreshSubscriptionEntitlement() async {
         guard let ownerId = await authManager.getCurrentUserId() else { return }
         await coachViewModel.initializeQuotaAndSubscription(ownerId: ownerId)
+    }
+    
+    private func loadUserProfile() async {
+        if let profile = await authManager.fetchSettingsProfile() {
+            userEmail = profile.email
+            displayName = profile.displayName
+        } else {
+            userEmail = AuthManager.profileUnavailableEmail
+            displayName = AuthManager.profileUnavailableName
+        }
+    }
+    
+    private func handleSignOut() async {
+        let success = await authManager.signOut()
+        if success {
+            dismiss()
+        } else {
+            toastManager.show(
+                "Couldn't sign out. Please try again.",
+                duration: 4.0
+            )
+        }
+    }
+    
+    private func handleDeleteAccount() async {
+        let success = await authManager.deleteAccount()
+        if success {
+            dismiss()
+        } else {
+            isDeleting = false
+            toastManager.show(
+                authManager.authError ?? "Account deletion failed. Please try again or contact support.",
+                duration: 4.0
+            )
+        }
     }
     
     private var notificationsToggleBinding: Binding<Bool> {

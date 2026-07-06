@@ -23,6 +23,66 @@ class AuthManager: ObservableObject {
         try? await SupabaseManager.shared.client.auth.session.user.email
     }
     
+    static let profileUnavailableEmail = "Email unavailable"
+    static let profileUnavailableName = "PawMento User"
+    
+    struct SettingsProfile {
+        let email: String
+        let displayName: String
+    }
+    
+    /// Loads email and display name for settings. Prefers `users.full_name` over email local-part.
+    /// Retries once on transient session/profile fetch failure.
+    func fetchSettingsProfile() async -> SettingsProfile? {
+        for attempt in 0..<2 {
+            guard let userId = await getCurrentUserId(),
+                  let email = await getCurrentUserEmail() else {
+                if attempt == 0 {
+                    try? await Task.sleep(nanoseconds: 350_000_000)
+                    continue
+                }
+                return nil
+            }
+            
+            let storedName = await fetchStoredFullName(userId: userId)
+            return SettingsProfile(
+                email: email,
+                displayName: Self.resolveDisplayName(storedName: storedName, email: email)
+            )
+        }
+        return nil
+    }
+    
+    static func resolveDisplayName(storedName: String?, email: String) -> String {
+        let trimmedStored = storedName?.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let trimmedStored, !trimmedStored.isEmpty {
+            return trimmedStored
+        }
+        let localPart = email.components(separatedBy: "@").first ?? "User"
+        return localPart
+            .replacingOccurrences(of: ".", with: " ")
+            .replacingOccurrences(of: "_", with: " ")
+            .capitalized
+    }
+    
+    private func fetchStoredFullName(userId: UUID) async -> String? {
+        struct UserProfileRow: Codable { let full_name: String? }
+        do {
+            let row: UserProfileRow = try await SupabaseManager.shared.client
+                .from("users")
+                .select("full_name")
+                .eq("id", value: userId.uuidString)
+                .single()
+                .execute()
+                .value
+            let trimmed = row.full_name?.trimmingCharacters(in: .whitespacesAndNewlines)
+            return trimmed?.isEmpty == true ? nil : trimmed
+        } catch {
+            print("Failed to fetch user profile name: \(error)")
+            return nil
+        }
+    }
+    
     // MARK: - Onboarding
     
     // Fix A6: Check UserDefaults first, then fall back to pet-presence query
@@ -211,30 +271,38 @@ class AuthManager: ObservableObject {
     }
     
     // Sign Out
-    func signOut() async {
+    @discardableResult
+    func signOut() async -> Bool {
         do {
             try await SupabaseManager.shared.client.auth.signOut()
+            isAuthenticated = false
+            needsEmailConfirmation = false
+            hasCompletedOnboarding = false
+            return true
         } catch {
             print("Error signing out: \(error)")
+            return false
         }
-        isAuthenticated = false
-        needsEmailConfirmation = false
-        hasCompletedOnboarding = false
     }
     
     // Delete Account
-    func deleteAccount() async {
+    @discardableResult
+    func deleteAccount() async -> Bool {
         isLoading = true
         authError = nil
+        defer { isLoading = false }
         do {
             _ = try await SupabaseManager.shared.client.rpc("delete_user").execute()
-            await signOut()
+            try await SupabaseManager.shared.client.auth.signOut()
+            isAuthenticated = false
+            needsEmailConfirmation = false
+            hasCompletedOnboarding = false
+            return true
         } catch {
             print("Failed to delete user via RPC: \(error)")
-            // Keep the user signed in, just surface a polite UX failure state.
             authError = "Account deletion failed. Please try again or contact support."
+            return false
         }
-        isLoading = false
     }
     
     // Apple Sign In
