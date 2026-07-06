@@ -61,28 +61,27 @@ final class AICoachClient: Sendable {
     private func streamViaProxy(messages: [[String: String]], systemPrompt: String) -> AsyncThrowingStream<String, Error> {
         return AsyncThrowingStream<String, Error> { continuation in
             Task {
-                // Fix C2: Retry loop with backoff for retryable failures.
-                // Only retries BEFORE any tokens have been yielded to avoid replaying
-                // a half-streamed answer.
                 var lastError: Error?
+                var hasYieldedContent = false
                 
                 for attempt in 0..<AIConfig.maxRetries {
                     do {
                         try await self.executeStream(
                             messages: messages,
                             systemPrompt: systemPrompt,
-                            continuation: continuation
+                            continuation: continuation,
+                            hasYieldedContent: &hasYieldedContent
                         )
-                        // If we get here, the stream completed successfully
-                        lastError = nil
                         return
                     } catch {
                         lastError = error
                         
-                        // Only retry on retryable errors (timeout, 429, 5xx)
-                        // and only if we haven't yielded any tokens yet
-                        let isRetryable = Self.isRetryableError(error)
-                        guard isRetryable && attempt < AIConfig.maxRetries - 1 else {
+                        guard Self.shouldRetryStream(
+                            after: error,
+                            hasYieldedContent: hasYieldedContent,
+                            attempt: attempt,
+                            maxAttempts: AIConfig.maxRetries
+                        ) else {
                             continuation.finish(throwing: error)
                             return
                         }
@@ -92,16 +91,28 @@ final class AICoachClient: Sendable {
                     }
                 }
                 
-                // All retries exhausted
                 continuation.finish(throwing: lastError ?? URLError(.timedOut))
             }
         }
     }
     
+    /// Retry is only safe before any content has been delivered to the consumer.
+    static func shouldRetryStream(
+        after error: Error,
+        hasYieldedContent: Bool,
+        attempt: Int,
+        maxAttempts: Int
+    ) -> Bool {
+        guard !hasYieldedContent else { return false }
+        guard attempt < maxAttempts - 1 else { return false }
+        return isRetryableError(error)
+    }
+    
     private func executeStream(
         messages: [[String: String]],
         systemPrompt: String,
-        continuation: AsyncThrowingStream<String, Error>.Continuation
+        continuation: AsyncThrowingStream<String, Error>.Continuation,
+        hasYieldedContent: inout Bool
     ) async throws {
         let proxyURL = URL(string: "\(Secrets.supabaseURL)/functions/v1/ai-proxy")!
         var request = URLRequest(url: proxyURL)
@@ -169,6 +180,7 @@ final class AICoachClient: Sendable {
                     if let delta = json["delta"] as? [String: Any],
                        let text = delta["text"] as? String {
                         continuation.yield(text)
+                        hasYieldedContent = true
                         tokensYielded += 1
                     }
                     
@@ -179,6 +191,7 @@ final class AICoachClient: Sendable {
                        stopReason == "max_tokens" {
                         // Signal truncation to the user
                         continuation.yield("\n\n_(Response was truncated due to length. Ask a follow-up to continue.)_")
+                        hasYieldedContent = true
                     }
                     
                 case "error":
@@ -206,6 +219,7 @@ final class AICoachClient: Sendable {
                     let delta = firstChoice["delta"] as? [String: Any],
                     let content = delta["content"] as? String {
                 continuation.yield(content)
+                hasYieldedContent = true
                 tokensYielded += 1
             }
             // Fix C4: Detect top-level error object in a data line
