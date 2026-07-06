@@ -56,16 +56,7 @@ struct SettingsView: View {
                         SettingsSection(title: "ACCOUNT") {
                             SettingsRow(icon: "star.fill", iconColor: .primary, title: "Manage Subscription") {
                                 HStack {
-                                    Text(coachViewModel.isPremium ? "Pro" : "Free")
-                                        .font(.caption.weight(.bold))
-                                        .foregroundColor(.white)
-                                        .padding(.horizontal, 10)
-                                        .padding(.vertical, 4)
-                                        .background(
-                                            LinearGradient(colors: [Color.primary, Color.primary.opacity(0.8)], startPoint: .topLeading, endPoint: .bottomTrailing)
-                                        )
-                                        .clipShape(Capsule())
-                                        .shadow(color: Color.primary.opacity(0.3), radius: 4, x: 0, y: 2)
+                                    SubscriptionPlanBadge(isPremium: coachViewModel.isPremium)
                                     Image(systemName: "chevron.right")
                                         .font(.caption.weight(.bold))
                                         .foregroundColor(.tertiaryText)
@@ -209,6 +200,7 @@ struct SettingsView: View {
             }
             .onAppear {
                 Task {
+                    await refreshSubscriptionEntitlement()
                     if let email = await authManager.getCurrentUserEmail() {
                         userEmail = email
                         // Derive display name from email (text before @)
@@ -221,6 +213,9 @@ struct SettingsView: View {
                         userEmail = "user@example.com"
                     }
                 }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .subscriptionEntitlementsDidChange)) { _ in
+                Task { await refreshSubscriptionEntitlement() }
             }
             .alert("Delete Account", isPresented: $showDeleteConfirmation) {
                 TextField("Type 'delete me'", text: $deleteConfirmationText)
@@ -245,14 +240,53 @@ struct SettingsView: View {
             } message: {
                 Text("This action cannot be undone. All your pets, logs, and data will be permanently deleted. Type 'delete me' to confirm.")
             }
-            .sheet(isPresented: $showPaywall) {
+            .sheet(isPresented: $showPaywall, onDismiss: {
+                Task { await refreshSubscriptionEntitlement() }
+            }) {
                 PaywallSheet()
             }
         }
     }
+    
+    private func refreshSubscriptionEntitlement() async {
+        guard let ownerId = await authManager.getCurrentUserId() else { return }
+        await coachViewModel.initializeQuotaAndSubscription(ownerId: ownerId)
+    }
 }
 
 // MARK: - Components
+
+private struct SubscriptionPlanBadge: View {
+    let isPremium: Bool
+    
+    var body: some View {
+        Text(isPremium ? "Pro" : "Free")
+            .font(.caption.weight(.bold))
+            .foregroundColor(isPremium ? .white : .secondaryText)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 4)
+            .background {
+                if isPremium {
+                    LinearGradient(
+                        colors: [Color.primary, Color.primary.opacity(0.8)],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                } else {
+                    Color.surfaceContainer
+                }
+            }
+            .clipShape(Capsule())
+            .overlay {
+                if !isPremium {
+                    Capsule()
+                        .stroke(Color.primary.opacity(0.12), lineWidth: 1)
+                }
+            }
+            .shadow(color: isPremium ? Color.primary.opacity(0.3) : .clear, radius: 4, x: 0, y: 2)
+            .animation(.easeInOut(duration: 0.2), value: isPremium)
+    }
+}
 
 struct SettingsSection<Content: View>: View {
     let title: String
@@ -359,4 +393,6 @@ struct SettingsRowStyle: ButtonStyle {
 #Preview {
     SettingsView()
         .environmentObject(AuthManager())
+        .environmentObject(CoachViewModel())
+        .environmentObject(ToastManager.shared)
 }
