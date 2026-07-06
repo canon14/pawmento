@@ -21,6 +21,10 @@ struct SettingsView: View {
     @State private var showPaywall = false
     @State private var showSubscriptionManagement = false
     
+    private var isDeleteConfirmationValid: Bool {
+        deleteConfirmationText.lowercased() == "delete me"
+    }
+    
     var body: some View {
         NavigationStack {
             ZStack {
@@ -235,18 +239,14 @@ struct SettingsView: View {
                 }
                 
                 Button("Delete", role: .destructive) {
-                    if deleteConfirmationText.lowercased() == "delete me" {
-                        isDeleting = true
-                        Task {
-                            await authManager.deleteAccount()
-                            dismiss()
-                        }
-                    } else {
-                        toastManager.show("Account deletion cancelled. Text did not match.", actionLabel: nil, action: nil)
-                    }
+                    isDeleting = true
                     deleteConfirmationText = ""
+                    Task {
+                        await authManager.deleteAccount()
+                        dismiss()
+                    }
                 }
-                .disabled(deleteConfirmationText.lowercased() != "delete me")
+                .disabled(!isDeleteConfirmationValid)
             } message: {
                 Text("This action cannot be undone. All your pets, logs, and data will be permanently deleted. Type 'delete me' to confirm.")
             }
