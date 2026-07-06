@@ -50,7 +50,11 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
     }
     
     func checkAuthorization() {
-        Task { await refreshAuthorizationStatus() }
+        Task { await refreshAuthorization() }
+    }
+    
+    func refreshAuthorization() async {
+        await refreshAuthorizationStatus()
     }
     
     /// Requests notification authorization. Re-reads actual settings afterward

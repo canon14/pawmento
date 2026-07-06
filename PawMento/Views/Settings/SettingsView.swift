@@ -2,10 +2,12 @@ import SwiftUI
 
 struct SettingsView: View {
     @Environment(\.dismiss) var dismiss
+    @Environment(\.openURL) private var openURL
     @EnvironmentObject var authManager: AuthManager
     @EnvironmentObject var coachViewModel: CoachViewModel
     
     @EnvironmentObject var toastManager: ToastManager
+    @ObservedObject private var notificationManager = NotificationManager.shared
     
     @State private var userEmail: String = "Loading..."
     @State private var displayName: String = "PawMento User"
@@ -84,13 +86,12 @@ struct SettingsView: View {
                         
                         // Preferences Section
                         SettingsSection(title: "PREFERENCES") {
-                            SettingsRow(icon: "bell.badge.fill", iconColor: .orange, title: "Push Notifications") {
-                                Text("Coming Soon")
-                                    .font(.labelSM)
-                                    .foregroundColor(.tertiaryText)
-                            } action: {
-                                toastManager.show("Push Notifications coming soon", actionLabel: nil, action: nil)
-                            }
+                            SettingsToggleRow(
+                                icon: "bell.badge.fill",
+                                iconColor: .orange,
+                                title: "Push Notifications",
+                                isOn: notificationsToggleBinding
+                            )
                         }
                         
                         // Support Section
@@ -205,6 +206,7 @@ struct SettingsView: View {
             }
             .onAppear {
                 Task {
+                    await notificationManager.refreshAuthorization()
                     await refreshSubscriptionEntitlement()
                     if let email = await authManager.getCurrentUserEmail() {
                         userEmail = email
@@ -221,6 +223,9 @@ struct SettingsView: View {
             }
             .onReceive(NotificationCenter.default.publisher(for: .subscriptionEntitlementsDidChange)) { _ in
                 Task { await refreshSubscriptionEntitlement() }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+                Task { await notificationManager.refreshAuthorization() }
             }
             .alert("Delete Account", isPresented: $showDeleteConfirmation) {
                 TextField("Type 'delete me'", text: $deleteConfirmationText)
@@ -261,6 +266,43 @@ struct SettingsView: View {
     private func refreshSubscriptionEntitlement() async {
         guard let ownerId = await authManager.getCurrentUserId() else { return }
         await coachViewModel.initializeQuotaAndSubscription(ownerId: ownerId)
+    }
+    
+    private var notificationsToggleBinding: Binding<Bool> {
+        Binding(
+            get: { notificationManager.isAuthorized },
+            set: { enabled in
+                Task { await handleNotificationToggle(enabled) }
+            }
+        )
+    }
+    
+    private func handleNotificationToggle(_ enabled: Bool) async {
+        if enabled {
+            let granted = await notificationManager.requestAuthorization()
+            if granted {
+                let enabledReminders = ReminderStore.shared.reminders.filter { $0.isEnabled }
+                await notificationManager.syncNotifications(enabledReminders: enabledReminders)
+            } else {
+                toastManager.show(
+                    "Notifications are off. Enable them in Settings to receive reminders.",
+                    duration: 4.0
+                )
+                openSystemSettings()
+            }
+        } else {
+            toastManager.show(
+                "To turn off notifications, use iOS Settings.",
+                duration: 3.0
+            )
+            openSystemSettings()
+            await notificationManager.refreshAuthorization()
+        }
+    }
+    
+    private func openSystemSettings() {
+        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+        openURL(url)
     }
 }
 
