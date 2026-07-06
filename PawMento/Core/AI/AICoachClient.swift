@@ -167,16 +167,12 @@ final class AICoachClient: Sendable {
             guard line.hasPrefix("data: ") else { continue }
             let jsonString = line.dropFirst(6)
             
-            // Handle OpenAI-style [DONE]
-            if jsonString == "[DONE]" { break }
-            
             guard let data = jsonString.data(using: .utf8),
                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { continue }
             
             if let type = json["type"] as? String {
                 switch type {
                 case "content_block_delta":
-                    // Fix C3: Normal content delta
                     if let delta = json["delta"] as? [String: Any],
                        let text = delta["text"] as? String {
                         continuation.yield(text)
@@ -185,17 +181,14 @@ final class AICoachClient: Sendable {
                     }
                     
                 case "message_delta":
-                    // Fix C3: Check for stop_reason == "max_tokens" (truncation)
                     if let delta = json["delta"] as? [String: Any],
                        let stopReason = delta["stop_reason"] as? String,
                        stopReason == "max_tokens" {
-                        // Signal truncation to the user
                         continuation.yield("\n\n_(Response was truncated due to length. Ask a follow-up to continue.)_")
                         hasYieldedContent = true
                     }
                     
                 case "error":
-                    // Fix C3: Handle mid-stream error events (e.g. overloaded_error)
                     let errorMessage: String
                     if let errorObj = json["error"] as? [String: Any],
                        let msg = errorObj["message"] as? String {
@@ -209,21 +202,9 @@ final class AICoachClient: Sendable {
                     break
                     
                 default:
-                    // Ignore other event types (message_start, content_block_start, ping, etc.)
                     break
                 }
-            }
-            // OpenAI format (fallback if proxy ever changes)
-            else if let choices = json["choices"] as? [[String: Any]],
-                    let firstChoice = choices.first,
-                    let delta = firstChoice["delta"] as? [String: Any],
-                    let content = delta["content"] as? String {
-                continuation.yield(content)
-                hasYieldedContent = true
-                tokensYielded += 1
-            }
-            // Fix C4: Detect top-level error object in a data line
-            else if let errorObj = json["error"] as? [String: Any] {
+            } else if let errorObj = json["error"] as? [String: Any] {
                 let message = errorObj["message"] as? String ?? "Unknown stream error"
                 throw NSError(domain: "AIProxy", code: -1, userInfo: [NSLocalizedDescriptionKey: message])
             }
