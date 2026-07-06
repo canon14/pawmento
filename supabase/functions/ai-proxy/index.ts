@@ -6,6 +6,33 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
+// Keep in sync with PawMento/Core/AI/AIConfig.swift
+const DEFAULT_MODEL = Deno.env.get("ANTHROPIC_MODEL") ??
+  "claude-haiku-4-5-20251001";
+const ALLOWED_MODELS = new Set(
+  (Deno.env.get("ALLOWED_ANTHROPIC_MODELS") ?? DEFAULT_MODEL)
+    .split(",")
+    .map((id) => id.trim())
+    .filter(Boolean),
+);
+const DEFAULT_MAX_TOKENS = 1024;
+const MAX_MAX_TOKENS = 4096;
+
+function resolveModel(_clientModel: unknown): string {
+  // Pin to server default — never forward client-chosen models to Anthropic.
+  if (ALLOWED_MODELS.has(DEFAULT_MODEL)) {
+    return DEFAULT_MODEL;
+  }
+  return [...ALLOWED_MODELS][0];
+}
+
+function resolveMaxTokens(clientMax: unknown): number {
+  const requested = typeof clientMax === "number" && Number.isFinite(clientMax)
+    ? Math.floor(clientMax)
+    : DEFAULT_MAX_TOKENS;
+  return Math.min(Math.max(requested, 1), MAX_MAX_TOKENS);
+}
+
 function jsonResponse(
   body: Record<string, unknown>,
   status: number,
@@ -155,14 +182,17 @@ Deno.serve(async (req: Request) => {
     return jsonResponse({ error: { message: "Invalid JSON body" } }, 400);
   }
 
-  const { model, system, messages, max_tokens, stream } = body;
+  const { system, messages, max_tokens, stream } = body;
 
-  if (!model || !messages) {
+  if (!messages) {
     return jsonResponse(
-      { error: { message: "Missing required fields: model, messages" } },
+      { error: { message: "Missing required field: messages" } },
       400,
     );
   }
+
+  const model = resolveModel(body.model);
+  const resolvedMaxTokens = resolveMaxTokens(max_tokens);
 
   const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
@@ -199,7 +229,7 @@ Deno.serve(async (req: Request) => {
       },
       body: JSON.stringify({
         model,
-        max_tokens: max_tokens || 1024,
+        max_tokens: resolvedMaxTokens,
         system: system || "",
         messages,
         stream: stream || false,
