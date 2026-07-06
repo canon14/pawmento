@@ -8,6 +8,7 @@ import Supabase
 /// Typed errors surfaced to the UI layer for actionable handling.
 enum AICoachError: LocalizedError, Equatable {
     case authenticationRequired
+    case quotaExhausted
     case serverError(statusCode: Int, message: String)
     case noContent
     
@@ -15,6 +16,8 @@ enum AICoachError: LocalizedError, Equatable {
         switch self {
         case .authenticationRequired:
             return "Your session has expired. Please sign in again."
+        case .quotaExhausted:
+            return "You've used all your free coach questions for this period."
         case .serverError(let code, let message):
             return "Server error (\(code)): \(message)"
         case .noContent:
@@ -132,6 +135,10 @@ final class AICoachClient: Sendable {
             }
             let statusCode = (response as? HTTPURLResponse)?.statusCode ?? 500
             
+            if statusCode == 429 {
+                throw AICoachError.quotaExhausted
+            }
+            
             if let data = errorBody.data(using: .utf8),
                let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                let errorObj = json["error"] as? [String: Any],
@@ -224,6 +231,9 @@ final class AICoachClient: Sendable {
             return urlError.code == .timedOut || urlError.code == .networkConnectionLost
         }
         // 429 (rate limit) or 5xx (server error) from proxy
+        if let coachError = error as? AICoachError, coachError == .quotaExhausted {
+            return false
+        }
         if let nsError = error as? NSError, nsError.domain == "AIProxy" {
             let code = nsError.code
             return code == 429 || (code >= 500 && code < 600)

@@ -4,58 +4,191 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY")!;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+function jsonResponse(
+  body: Record<string, unknown>,
+  status: number,
+  extraHeaders: Record<string, string> = {},
+): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: {
+      "Content-Type": "application/json",
+      ...extraHeaders,
+    },
+  });
+}
+
+async function getQuotaRemaining(
+  adminClient: ReturnType<typeof createClient>,
+  userId: string,
+): Promise<number> {
+  const { data, error } = await adminClient.rpc(
+    "coach_question_quota_remaining",
+    { p_user_id: userId },
+  );
+
+  if (error) {
+    throw new Error(`Quota lookup failed: ${error.message}`);
+  }
+
+  return data as number;
+}
+
+async function consumeQuota(
+  adminClient: ReturnType<typeof createClient>,
+  userId: string,
+): Promise<number> {
+  const { data, error } = await adminClient.rpc(
+    "consume_coach_question_usage",
+    { p_user_id: userId },
+  );
+
+  if (error) {
+    throw new Error(`Quota consume failed: ${error.message}`);
+  }
+
+  return data as number;
+}
+
+function sseChunkHasContent(chunkText: string): boolean {
+  for (const line of chunkText.split("\n")) {
+    if (!line.startsWith("data: ")) continue;
+    const payload = line.slice(6).trim();
+    if (!payload || payload === "[DONE]") continue;
+
+    try {
+      const event = JSON.parse(payload);
+      if (event.type === "content_block_delta") {
+        const text = event.delta?.text;
+        if (typeof text === "string" && text.length > 0) {
+          return true;
+        }
+      }
+    } catch {
+      // Ignore malformed SSE lines.
+    }
+  }
+
+  return false;
+}
+
+function wrapStreamingResponse(
+  upstream: Response,
+  onSuccess: () => Promise<number | null>,
+): Response {
+  const reader = upstream.body!.getReader();
+  const decoder = new TextDecoder();
+  let sawContent = false;
+  let consumed = false;
+
+  const stream = new ReadableStream({
+    async pull(controller) {
+      try {
+        const { done, value } = await reader.read();
+
+        if (done) {
+          if (sawContent && !consumed) {
+            consumed = true;
+            const remaining = await onSuccess();
+            if (remaining !== null && remaining >= 0) {
+              controller.enqueue(
+                new TextEncoder().encode(
+                  `event: quota\ndata: ${JSON.stringify({ remaining })}\n\n`,
+                ),
+              );
+            }
+          }
+          controller.close();
+          return;
+        }
+
+        const chunkText = decoder.decode(value, { stream: true });
+        if (!sawContent && sseChunkHasContent(chunkText)) {
+          sawContent = true;
+        }
+
+        controller.enqueue(value);
+      } catch (err) {
+        controller.error(err);
+      }
+    },
+  });
+
+  const headers = new Headers(upstream.headers);
+  headers.set("Content-Type", upstream.headers.get("Content-Type") ||
+    "text/event-stream");
+
+  return new Response(stream, {
+    status: upstream.status,
+    headers,
+  });
+}
 
 Deno.serve(async (req: Request) => {
-  // Health check — GET requests return 200 (useful for Dashboard testing)
   if (req.method === "GET") {
-    return new Response(JSON.stringify({ status: "ok", provider: "anthropic" }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    });
+    return jsonResponse({ status: "ok", provider: "anthropic" }, 200);
   }
 
-  // 1. Verify auth
   const authHeader = req.headers.get("Authorization");
   if (!authHeader) {
-    return new Response(JSON.stringify({ error: { message: "Missing auth token" } }), {
-      status: 401,
-      headers: { "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: { message: "Missing auth token" } }, 401);
   }
 
-  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     global: { headers: { Authorization: authHeader } },
   });
 
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  const { data: { user }, error: authError } = await userClient.auth.getUser();
   if (authError || !user) {
-    return new Response(JSON.stringify({ error: { message: "Unauthorized — valid user JWT required" } }), {
-      status: 401,
-      headers: { "Content-Type": "application/json" },
-    });
+    return jsonResponse(
+      { error: { message: "Unauthorized — valid user JWT required" } },
+      401,
+    );
   }
 
-  // 2. Parse request body
   let body;
   try {
     body = await req.json();
   } catch {
-    return new Response(JSON.stringify({ error: { message: "Invalid JSON body" } }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
-    });
+    return jsonResponse({ error: { message: "Invalid JSON body" } }, 400);
   }
 
   const { model, system, messages, max_tokens, stream } = body;
 
   if (!model || !messages) {
-    return new Response(JSON.stringify({ error: { message: "Missing required fields: model, messages" } }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
-    });
+    return jsonResponse(
+      { error: { message: "Missing required fields: model, messages" } },
+      400,
+    );
   }
 
-  // 3. Proxy to Anthropic
+  const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+  let quotaRemaining: number;
+  try {
+    quotaRemaining = await getQuotaRemaining(adminClient, user.id);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Quota check failed";
+    return jsonResponse({ error: { message } }, 500);
+  }
+
+  if (quotaRemaining === 0) {
+    return jsonResponse(
+      {
+        error: {
+          code: "coach_quota_exhausted",
+          message: "Free coach question quota exhausted for this period",
+        },
+      },
+      429,
+      { "X-Coach-Questions-Remaining": "0" },
+    );
+  }
+
+  const isPremium = quotaRemaining < 0;
+
   try {
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -65,24 +198,56 @@ Deno.serve(async (req: Request) => {
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: model,
+        model,
         max_tokens: max_tokens || 1024,
         system: system || "",
-        messages: messages,
+        messages,
         stream: stream || false,
       }),
     });
 
+    if (!response.ok) {
+      return new Response(response.body, {
+        status: response.status,
+        headers: {
+          "Content-Type": response.headers.get("Content-Type") ||
+            "application/json",
+        },
+      });
+    }
+
+    if (stream) {
+      if (isPremium) {
+        return new Response(response.body, {
+          status: response.status,
+          headers: {
+            "Content-Type": response.headers.get("Content-Type") ||
+              "text/event-stream",
+            "X-Coach-Questions-Remaining": "-1",
+          },
+        });
+      }
+
+      return wrapStreamingResponse(response, async () => {
+        return await consumeQuota(adminClient, user.id);
+      });
+    }
+
+    if (!isPremium) {
+      quotaRemaining = await consumeQuota(adminClient, user.id);
+    }
+
+    const headers: Record<string, string> = {
+      "Content-Type": response.headers.get("Content-Type") || "application/json",
+      "X-Coach-Questions-Remaining": String(quotaRemaining),
+    };
+
     return new Response(response.body, {
       status: response.status,
-      headers: {
-        "Content-Type": response.headers.get("Content-Type") || "application/json",
-      },
+      headers,
     });
   } catch (err) {
-    return new Response(JSON.stringify({ error: { message: `Proxy error: ${err.message}` } }), {
-      status: 502,
-      headers: { "Content-Type": "application/json" },
-    });
+    const message = err instanceof Error ? err.message : String(err);
+    return jsonResponse({ error: { message: `Proxy error: ${message}` } }, 502);
   }
 });

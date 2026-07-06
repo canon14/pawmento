@@ -144,17 +144,10 @@ class CoachViewModel: ObservableObject {
             return
         }
         
-        // 2. Reserve quota before streaming; refund if stream errors or returns empty content
-        var didChargeQuestion = false
-        if !isPremium {
-            await chargeQuestionQuota()
-            didChargeQuestion = true
-        }
-        
-        // 3. Prepare Context Window (Last 8 messages)
+        // 2. Prepare context window (last 8 messages)
         let recentMessages = Array(messages.suffix(8)).map { $0.toAPIFormat() }
         
-        // 3. Stream LLM Response (quota charged only after non-empty assistant content)
+        // 3. Stream LLM response (quota enforced and charged by ai-proxy)
         isTyping = true
         defer { isTyping = false }
         
@@ -175,12 +168,7 @@ class CoachViewModel: ObservableObject {
             guard let index = messages.firstIndex(where: { $0.id == assistantMessageId }) else { return }
             let assistantContent = messages[index].content.trimmingCharacters(in: .whitespacesAndNewlines)
             
-            // Empty stream (no error thrown) — refund reserved quota
             if assistantContent.isEmpty {
-                if didChargeQuestion {
-                    await refundQuestionQuota()
-                    didChargeQuestion = false
-                }
                 messages.remove(at: index)
                 if let ownerId = ownerId {
                     let userDTO = userMessage.toDTO(ownerId: ownerId)
@@ -190,6 +178,10 @@ class CoachViewModel: ObservableObject {
                         .execute()
                 }
                 return
+            }
+            
+            if let ownerId = ownerId, !isPremium {
+                await initializeQuotaAndSubscription(ownerId: ownerId)
             }
             
             let responseContent = assistantContent.lowercased()
@@ -222,48 +214,20 @@ class CoachViewModel: ObservableObject {
         } catch {
             print("Coach stream failed: \(error)")
             
-            if didChargeQuestion {
-                await refundQuestionQuota()
-            }
-            
             if let index = messages.firstIndex(where: { $0.id == assistantMessageId }) {
-            if let authError = error as? AICoachError, authError == .authenticationRequired {
+                if let authError = error as? AICoachError, authError == .authenticationRequired {
                     messages[index].content = "Your session has expired. Please sign in again to continue."
                     showAuthError = true
+                } else if let coachError = error as? AICoachError, coachError == .quotaExhausted {
+                    messages.remove(at: index)
+                    messages.removeAll { $0.id == userMessage.id }
+                    showPremiumWall = true
                 } else if let urlError = error as? URLError, urlError.code == .notConnectedToInternet {
                     messages[index].content = "I lost connection — tap to retry."
                 } else {
                     messages[index].content = "Something went wrong on my end. Please try again in a moment."
                 }
             }
-        }
-    }
-    
-    // MARK: - Quota accounting
-    
-    private func chargeQuestionQuota() async {
-        do {
-            let remaining: Int = try await SupabaseManager.shared.client
-                .rpc("increment_question_usage")
-                .execute()
-                .value
-            self.freeQuestionsRemaining = remaining
-        } catch {
-            print("Failed to increment question usage: \(error)")
-            freeQuestionsRemaining = max(0, freeQuestionsRemaining - 1)
-        }
-    }
-    
-    private func refundQuestionQuota() async {
-        do {
-            let remaining: Int = try await SupabaseManager.shared.client
-                .rpc("decrement_question_usage")
-                .execute()
-                .value
-            self.freeQuestionsRemaining = remaining
-        } catch {
-            print("Failed to refund usage on server: \(error)")
-            freeQuestionsRemaining = min(SubscriptionEntitlement.freeCoachQuestionQuotaPerPeriod, freeQuestionsRemaining + 1)
         }
     }
     
