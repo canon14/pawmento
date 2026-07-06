@@ -15,8 +15,9 @@ struct SettingsView: View {
     @State private var deleteConfirmationText = ""
     @State private var isDeleting = false
     
-    // Paywall State
+    // Subscription sheets
     @State private var showPaywall = false
+    @State private var showSubscriptionManagement = false
     
     var body: some View {
         NavigationStack {
@@ -63,7 +64,11 @@ struct SettingsView: View {
                                         .padding(.leading, 4)
                                 }
                             } action: {
-                                showPaywall = true
+                                if coachViewModel.isPremium {
+                                    showSubscriptionManagement = true
+                                } else {
+                                    showPaywall = true
+                                }
                             }
                             
                             SettingsDivider()
@@ -244,6 +249,11 @@ struct SettingsView: View {
                 Task { await refreshSubscriptionEntitlement() }
             }) {
                 PaywallSheet()
+            }
+            .sheet(isPresented: $showSubscriptionManagement, onDismiss: {
+                Task { await refreshSubscriptionEntitlement() }
+            }) {
+                SubscriptionManagementSheet()
             }
         }
     }
