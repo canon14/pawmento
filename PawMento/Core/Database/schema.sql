@@ -325,11 +325,19 @@ LANGUAGE sql IMMUTABLE AS $$
   SELECT 5;
 $$;
 
-CREATE OR REPLACE FUNCTION public.is_premium_subscription(plan TEXT, sub_status TEXT)
+CREATE OR REPLACE FUNCTION public.is_premium_subscription(
+  plan TEXT,
+  sub_status TEXT,
+  period_end TIMESTAMP WITH TIME ZONE DEFAULT NULL
+)
 RETURNS BOOLEAN
-LANGUAGE sql IMMUTABLE AS $$
+LANGUAGE sql
+STABLE
+SET search_path = public
+AS $$
   SELECT lower(trim(sub_status)) = 'active'
-      OR lower(trim(plan)) IN ('premium', 'pro');
+    AND lower(trim(plan)) IN ('premium', 'pro')
+    AND (period_end IS NULL OR period_end > NOW());
 $$;
 
 -- (Fix S9 + DB-M2) Atomically increment question usage and return remaining count.
@@ -338,19 +346,20 @@ CREATE OR REPLACE FUNCTION public.increment_question_usage()
 RETURNS INTEGER
 LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
-  new_used   INTEGER;
-  plan       TEXT;
-  sub_status TEXT;
-  quota      INTEGER;
+  new_used    INTEGER;
+  plan        TEXT;
+  sub_status  TEXT;
+  period_end  TIMESTAMPTZ;
+  quota       INTEGER;
 BEGIN
   UPDATE public.subscriptions
     SET questions_used = questions_used + 1
     WHERE user_id = auth.uid()
-  RETURNING questions_used, plan_type, status
-    INTO new_used, plan, sub_status;
+  RETURNING questions_used, plan_type, status, current_period_end
+    INTO new_used, plan, sub_status, period_end;
 
   -- Paid / active plans are unlimited
-  IF public.is_premium_subscription(plan, sub_status) THEN
+  IF public.is_premium_subscription(plan, sub_status, period_end) THEN
     RETURN -1;
   END IF;
 
@@ -367,18 +376,19 @@ CREATE OR REPLACE FUNCTION public.decrement_question_usage()
 RETURNS INTEGER
 LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
-  new_used   INTEGER;
-  plan       TEXT;
-  sub_status TEXT;
-  quota      INTEGER;
+  new_used    INTEGER;
+  plan        TEXT;
+  sub_status  TEXT;
+  period_end  TIMESTAMPTZ;
+  quota       INTEGER;
 BEGIN
   UPDATE public.subscriptions
     SET questions_used = GREATEST(0, questions_used - 1)
     WHERE user_id = auth.uid()
-  RETURNING questions_used, plan_type, status
-    INTO new_used, plan, sub_status;
+  RETURNING questions_used, plan_type, status, current_period_end
+    INTO new_used, plan, sub_status, period_end;
 
-  IF public.is_premium_subscription(plan, sub_status) THEN
+  IF public.is_premium_subscription(plan, sub_status, period_end) THEN
     RETURN -1;
   END IF;
 
@@ -396,16 +406,17 @@ CREATE OR REPLACE FUNCTION public.reset_question_period()
 RETURNS INTEGER
 LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
-  plan       TEXT;
-  sub_status TEXT;
+  plan        TEXT;
+  sub_status  TEXT;
+  period_end  TIMESTAMPTZ;
 BEGIN
   UPDATE public.subscriptions
     SET questions_used = 0, period_start = NOW()
     WHERE user_id = auth.uid()
-  RETURNING plan_type, status
-    INTO plan, sub_status;
+  RETURNING plan_type, status, current_period_end
+    INTO plan, sub_status, period_end;
 
-  IF public.is_premium_subscription(plan, sub_status) THEN
+  IF public.is_premium_subscription(plan, sub_status, period_end) THEN
     RETURN -1;
   END IF;
 
@@ -432,7 +443,7 @@ BEGIN
     SET questions_used = 0,
         period_start = NOW()
     WHERE user_id = p_user_id
-      AND NOT public.is_premium_subscription(plan_type, status)
+      AND NOT public.is_premium_subscription(plan_type, status, current_period_end)
       AND period_start < NOW() - INTERVAL '30 days';
 END;
 $$;
@@ -444,10 +455,11 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  used       INTEGER;
-  plan       TEXT;
-  sub_status TEXT;
-  quota      INTEGER;
+  used        INTEGER;
+  plan        TEXT;
+  sub_status  TEXT;
+  period_end  TIMESTAMPTZ;
+  quota       INTEGER;
 BEGIN
   IF p_user_id IS NULL THEN
     RAISE EXCEPTION 'user_id is required';
@@ -455,8 +467,8 @@ BEGIN
 
   PERFORM public.ensure_coach_question_period_for_user(p_user_id);
 
-  SELECT questions_used, plan_type, status
-    INTO used, plan, sub_status
+  SELECT questions_used, plan_type, status, current_period_end
+    INTO used, plan, sub_status, period_end
   FROM public.subscriptions
   WHERE user_id = p_user_id;
 
@@ -465,7 +477,7 @@ BEGIN
     RETURN quota;
   END IF;
 
-  IF public.is_premium_subscription(plan, sub_status) THEN
+  IF public.is_premium_subscription(plan, sub_status, period_end) THEN
     RETURN -1;
   END IF;
 
@@ -481,10 +493,11 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  new_used   INTEGER;
-  plan       TEXT;
-  sub_status TEXT;
-  quota      INTEGER;
+  new_used    INTEGER;
+  plan        TEXT;
+  sub_status  TEXT;
+  period_end  TIMESTAMPTZ;
+  quota       INTEGER;
 BEGIN
   IF p_user_id IS NULL THEN
     RAISE EXCEPTION 'user_id is required';
@@ -495,17 +508,17 @@ BEGIN
   UPDATE public.subscriptions
     SET questions_used = questions_used + 1
     WHERE user_id = p_user_id
-  RETURNING questions_used, plan_type, status
-    INTO new_used, plan, sub_status;
+  RETURNING questions_used, plan_type, status, current_period_end
+    INTO new_used, plan, sub_status, period_end;
 
   IF NOT FOUND THEN
     INSERT INTO public.subscriptions (user_id, status, plan_type, questions_used, period_start)
     VALUES (p_user_id, 'free', 'free', 1, NOW())
-    RETURNING questions_used, plan_type, status
-      INTO new_used, plan, sub_status;
+    RETURNING questions_used, plan_type, status, current_period_end
+      INTO new_used, plan, sub_status, period_end;
   END IF;
 
-  IF public.is_premium_subscription(plan, sub_status) THEN
+  IF public.is_premium_subscription(plan, sub_status, period_end) THEN
     RETURN -1;
   END IF;
 

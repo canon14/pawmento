@@ -14,7 +14,7 @@ final class SubscriptionProductIDsTests: XCTestCase {
         XCTAssertTrue(
             SubscriptionEntitlement.isPremium(
                 planType: SubscriptionProductIDs.serverPlanType,
-                status: "free"
+                status: "active"
             )
         )
     }

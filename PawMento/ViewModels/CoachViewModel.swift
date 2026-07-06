@@ -29,6 +29,7 @@ class CoachViewModel: ObservableObject {
                 let plan_type: String
                 let questions_used: Int
                 let period_start: Date
+                let current_period_end: Date?
             }
             let sub: SubscriptionDTO = try await SupabaseManager.shared.client
                 .from("subscriptions")
@@ -40,7 +41,8 @@ class CoachViewModel: ObservableObject {
             
             self.isPremium = SubscriptionEntitlement.isPremium(
                 planType: sub.plan_type,
-                status: sub.status
+                status: sub.status,
+                periodEnd: sub.current_period_end
             )
             
             if isPremium {

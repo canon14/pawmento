@@ -3,24 +3,54 @@ import XCTest
 
 final class SubscriptionEntitlementTests: XCTestCase {
     
-    func testProPlan_isPremium() {
-        XCTAssertTrue(SubscriptionEntitlement.isPremium(planType: "pro", status: "free"))
+    func testActiveProPlan_isPremium() {
+        XCTAssertTrue(SubscriptionEntitlement.isPremium(planType: "pro", status: "active"))
     }
     
-    func testPremiumPlan_isPremium() {
-        XCTAssertTrue(SubscriptionEntitlement.isPremium(planType: "premium", status: "free"))
+    func testActivePremiumPlan_isPremium() {
+        XCTAssertTrue(SubscriptionEntitlement.isPremium(planType: "premium", status: "active"))
     }
     
-    func testActiveStatus_isPremium() {
-        XCTAssertTrue(SubscriptionEntitlement.isPremium(planType: "free", status: "active"))
+    func testExpiredProPlan_isNotPremium() {
+        XCTAssertFalse(SubscriptionEntitlement.isPremium(planType: "pro", status: "expired"))
+    }
+    
+    func testProPlanWithInactiveStatus_isNotPremium() {
+        XCTAssertFalse(SubscriptionEntitlement.isPremium(planType: "pro", status: "free"))
+    }
+    
+    func testActiveFreePlan_isNotPremium() {
+        XCTAssertFalse(SubscriptionEntitlement.isPremium(planType: "free", status: "active"))
     }
     
     func testFreePlan_isNotPremium() {
         XCTAssertFalse(SubscriptionEntitlement.isPremium(planType: "free", status: "free"))
     }
     
-    func testProPlan_caseInsensitive() {
-        XCTAssertTrue(SubscriptionEntitlement.isPremium(planType: "PRO", status: "free"))
+    func testActiveProPlan_caseInsensitive() {
+        XCTAssertTrue(SubscriptionEntitlement.isPremium(planType: "PRO", status: "ACTIVE"))
+    }
+    
+    func testActiveProPlan_withPastPeriodEnd_isNotPremium() {
+        let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: Date())!
+        XCTAssertFalse(
+            SubscriptionEntitlement.isPremium(
+                planType: "pro",
+                status: "active",
+                periodEnd: yesterday
+            )
+        )
+    }
+    
+    func testActiveProPlan_withFuturePeriodEnd_isPremium() {
+        let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: Date())!
+        XCTAssertTrue(
+            SubscriptionEntitlement.isPremium(
+                planType: "pro",
+                status: "active",
+                periodEnd: tomorrow
+            )
+        )
     }
     
     func testPaidPlanTypes_containsProAndPremium() {
@@ -30,8 +60,12 @@ final class SubscriptionEntitlementTests: XCTestCase {
     }
     
     func testHasUnlimitedCoachQuestions_matchesIsPremium() {
-        XCTAssertTrue(SubscriptionEntitlement.hasUnlimitedCoachQuestions(planType: "pro", status: "free"))
-        XCTAssertFalse(SubscriptionEntitlement.hasUnlimitedCoachQuestions(planType: "free", status: "free"))
+        XCTAssertTrue(
+            SubscriptionEntitlement.hasUnlimitedCoachQuestions(planType: "pro", status: "active")
+        )
+        XCTAssertFalse(
+            SubscriptionEntitlement.hasUnlimitedCoachQuestions(planType: "pro", status: "expired")
+        )
     }
     
     func testFreeQuestionsRemaining_derivesFromQuotaAndUsage() {

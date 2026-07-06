@@ -21,14 +21,20 @@ enum SubscriptionEntitlement {
     }
     
     /// Whether the user has premium entitlements (unlimited coach, gated insights, etc.).
-    /// Mirrors `public.is_premium_subscription(plan, sub_status)` in schema.sql.
-    static func isPremium(planType: String, status: String) -> Bool {
+    /// Mirrors `public.is_premium_subscription(plan, sub_status, period_end)` in schema.sql.
+    static func isPremium(planType: String, status: String, periodEnd: Date? = nil) -> Bool {
         let plan = planType.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         let subStatus = status.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        return subStatus == "active" || paidPlanTypes.contains(plan)
+        guard subStatus == "active", paidPlanTypes.contains(plan) else {
+            return false
+        }
+        if let periodEnd, periodEnd <= Date() {
+            return false
+        }
+        return true
     }
     
-    static func hasUnlimitedCoachQuestions(planType: String, status: String) -> Bool {
-        isPremium(planType: planType, status: status)
+    static func hasUnlimitedCoachQuestions(planType: String, status: String, periodEnd: Date? = nil) -> Bool {
+        isPremium(planType: planType, status: status, periodEnd: periodEnd)
     }
 }
