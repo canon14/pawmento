@@ -71,16 +71,7 @@ struct CoachChatView: View {
                     topBar
                 }
                 .safeAreaInset(edge: .bottom) {
-                    ComposerView(
-                        text: $inputText,
-                        freeQuestionsRemaining: $viewModel.freeQuestionsRemaining,
-                        petName: petName,
-                        onCameraTap: {
-                            viewModel.showPremiumWall = true
-                        }
-                    ) {
-                        send(inputText)
-                    }
+                    composerBar
                 }
                 .onChange(of: viewModel.messages) { _, _ in
                     if let last = viewModel.messages.last {
@@ -140,6 +131,21 @@ struct CoachChatView: View {
     }
     
     // MARK: - Welcome Hero (empty state)
+    
+    private var composerBar: some View {
+        ComposerView(
+            text: $inputText,
+            freeQuestionsRemaining: $viewModel.freeQuestionsRemaining,
+            petName: petName,
+            onCameraTap: {
+                viewModel.showPremiumWall = true
+            },
+            onSend: {
+                send(inputText)
+            },
+            isSending: viewModel.isSending
+        )
+    }
     
     private var welcomeHero: some View {
         VStack(spacing: 20) {
@@ -225,6 +231,7 @@ struct CoachChatView: View {
                     )
                 }
                 .buttonStyle(SquishyCardStyle())
+                .disabled(viewModel.isSending)
             }
         }
         .padding(.horizontal, 24)
@@ -323,6 +330,8 @@ struct CoachChatView: View {
             viewModel.showPremiumWall = true
             return
         }
+        
+        guard !viewModel.isSending else { return }
         
         let textToSend = text
         inputText = ""

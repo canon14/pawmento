@@ -6,6 +6,7 @@ struct ComposerView: View {
     let petName: String
     let onCameraTap: () -> Void
     let onSend: () -> Void
+    var isSending: Bool = false
     
     @FocusState private var isFocused: Bool
     
@@ -58,24 +59,24 @@ struct ComposerView: View {
                         .frame(width: 42, height: 42)
                         .background(
                             LinearGradient(
-                                colors: text.isEmpty
-                                    ? [Color.primary.opacity(0.3), Color.primary.opacity(0.2)]
-                                    : [Color.primary, Color.primary.opacity(0.85)],
+                                colors: canSend
+                                    ? [Color.primary, Color.primary.opacity(0.85)]
+                                    : [Color.primary.opacity(0.3), Color.primary.opacity(0.2)],
                                 startPoint: .topLeading,
                                 endPoint: .bottomTrailing
                             )
                         )
                         .clipShape(Circle())
                         .shadow(
-                            color: text.isEmpty ? Color.clear : Color.primary.opacity(0.3),
-                            radius: text.isEmpty ? 0 : 6,
+                            color: canSend ? Color.primary.opacity(0.3) : Color.clear,
+                            radius: canSend ? 6 : 0,
                             x: 0,
-                            y: text.isEmpty ? 0 : 3
+                            y: canSend ? 3 : 0
                         )
-                        .scaleEffect(text.isEmpty ? 0.95 : 1.0)
-                        .animation(.spring(response: 0.3, dampingFraction: 0.6), value: text.isEmpty)
+                        .scaleEffect(canSend ? 1.0 : 0.95)
+                        .animation(.spring(response: 0.3, dampingFraction: 0.6), value: canSend)
                 }
-                .disabled(text.isEmpty)
+                .disabled(!canSend)
             }
             
             // Counter with icon
@@ -104,6 +105,10 @@ struct ComposerView: View {
                 .foregroundColor(Color.primary.opacity(0.05)),
             alignment: .top
         )
+    }
+    
+    private var canSend: Bool {
+        !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isSending
     }
     
     private func placeholderText() -> String {

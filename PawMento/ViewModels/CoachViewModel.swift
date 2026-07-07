@@ -7,6 +7,7 @@ import Supabase
 class CoachViewModel: ObservableObject {
     @Published var messages: [ChatMessage] = []
     @Published var isTyping: Bool = false
+    @Published var isSending: Bool = false
     @Published var freeQuestionsRemaining: Int = SubscriptionEntitlement.freeCoachQuestionQuotaPerPeriod
     private var hasShownLowQuotaWarning = false
     @Published var isPremium: Bool = false
@@ -117,6 +118,14 @@ class CoachViewModel: ObservableObject {
     /// 3. `ai-proxy` consumes one question only after a successful non-empty stream.
     /// 4. On success, this view model refreshes `freeQuestionsRemaining` from the server.
     func sendMessage(_ text: String, pet: Pet?, ownerId: UUID?) async {
+        guard !isSending else { return }
+        
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        
+        isSending = true
+        defer { isSending = false }
+        
         // Client-side pre-check (optimistic UI gate; ai-proxy enforces authoritatively).
         if !isPremium {
             guard freeQuestionsRemaining > 0 else {
@@ -125,12 +134,12 @@ class CoachViewModel: ObservableObject {
             }
         }
         
-        let userMessage = ChatMessage(role: .user, content: text, petId: pet?.id)
+        let userMessage = ChatMessage(role: .user, content: trimmed, petId: pet?.id)
         messages.append(userMessage)
         quickReplies.removeAll()
         
         // 1. Safety Check (Regex before LLM runs in <50ms)
-        if SafetyClassifier.isEmergency(message: text) {
+        if SafetyClassifier.isEmergency(message: trimmed) {
             let emergencyResponse = ChatMessage(role: .assistant, content: "This sounds urgent.\nGet to an emergency vet now.", isEmergency: true, petId: pet?.id)
             messages.append(emergencyResponse)
             
@@ -245,6 +254,7 @@ class CoachViewModel: ObservableObject {
     func reset() {
         messages = []
         isTyping = false
+        isSending = false
         showPremiumWall = false
         showAuthError = false
         quickReplies = []
