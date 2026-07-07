@@ -1,0 +1,24 @@
+---
+description: Auto commit and push after tests pass on completed fixes
+alwaysApply: true
+---
+
+# Auto commit and push on test pass
+
+After completing a debug fix or feature task in this repo:
+
+1. Run `./Scripts/run-tests.sh smoke` (or `full` before a larger push).
+2. If tests pass and there are uncommitted changes for the completed work, **commit and push to GitHub without waiting for a separate ask**.
+3. Do not commit unrelated WIP, secrets (`.env`, credentials), or changes from a failed/partial fix.
+
+## Commit workflow
+
+- Use a concise message focused on **why** (1–2 sentences).
+- Push to `origin` on the current branch after a successful commit.
+- If push fails, report the error; do not force-push to `main`/`master`.
+
+## When to skip auto-commit
+
+- Tests failed or were not run for the change.
+- User explicitly said not to commit yet.
+- Only exploratory or question-only work (no code changes).
