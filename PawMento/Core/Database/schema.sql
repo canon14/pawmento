@@ -88,9 +88,11 @@ CREATE TABLE IF NOT EXISTS public.logs (
 ALTER TABLE public.logs ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
 
 -- R1: Idempotency key for programmatic log sources (reminder notification taps, etc.)
+-- Uniqueness is per pet — see migration 010 / idx_logs_pet_source_key_unique.
 ALTER TABLE public.logs ADD COLUMN IF NOT EXISTS source_key TEXT;
-CREATE UNIQUE INDEX IF NOT EXISTS idx_logs_source_key_unique
-    ON public.logs(source_key)
+DROP INDEX IF EXISTS idx_logs_source_key_unique;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_logs_pet_source_key_unique
+    ON public.logs(pet_id, source_key)
     WHERE source_key IS NOT NULL;
 
 -- 5. Symptoms Table — ⚠️  RESERVED / CURRENTLY UNUSED

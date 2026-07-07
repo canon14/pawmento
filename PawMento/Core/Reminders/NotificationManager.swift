@@ -283,6 +283,7 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
                 let existingLogs: [LogDTO] = (try? await SupabaseManager.shared.client
                     .from("logs")
                     .select()
+                    .eq("pet_id", value: petId.uuidString)
                     .eq("source_key", value: sourceKey)
                     .execute()
                     .value) ?? []
