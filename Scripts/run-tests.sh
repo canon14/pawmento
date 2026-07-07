@@ -30,6 +30,7 @@ SMOKE_TESTS=(
   PawMentoTests/SubscriptionProductIDsTests
   PawMentoTests/AICoachClientStreamRetryTests
   PawMentoTests/CoachViewModelSendGuardTests
+  PawMentoTests/CoachViewModelMessagePersistenceTests
   PawMentoTests/LogCategoryStoredValueTests
   PawMentoTests/StorageManagerPathTests
   PawMentoTests/AuthManagerProfileTests

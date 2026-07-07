@@ -117,6 +117,7 @@ class CoachViewModel: ObservableObject {
     /// 2. `ai-proxy` rejects the request if quota is exhausted (before Anthropic).
     /// 3. `ai-proxy` consumes one question only after a successful non-empty stream.
     /// 4. On success, this view model refreshes `freeQuestionsRemaining` from the server.
+    /// User messages are persisted to Supabase before streaming; assistant messages are saved only after a successful reply.
     func sendMessage(_ text: String, pet: Pet?, ownerId: UUID?) async {
         guard !isSending else { return }
         
@@ -162,6 +163,11 @@ class CoachViewModel: ObservableObject {
             return
         }
         
+        // Persist user message before streaming so it survives assistant failures.
+        if let ownerId = ownerId {
+            await CoachMessagePersistence.insert(userMessage, ownerId: ownerId)
+        }
+        
         // 2. Prepare context window (last 8 messages)
         let recentMessages = Array(messages.suffix(8)).map { $0.toAPIFormat() }
         
@@ -188,13 +194,6 @@ class CoachViewModel: ObservableObject {
             
             if assistantContent.isEmpty {
                 messages.remove(at: index)
-                if let ownerId = ownerId {
-                    let userDTO = userMessage.toDTO(ownerId: ownerId)
-                    _ = try? await SupabaseManager.shared.client
-                        .from("chat_messages")
-                        .insert(userDTO)
-                        .execute()
-                }
                 return
             }
             
@@ -218,16 +217,9 @@ class CoachViewModel: ObservableObject {
                 quickReplies = ["See Premium", "Got it"]
             }
             
-            // Supabase saving
+            // Assistant-only save — user message was persisted before the stream.
             if let ownerId = ownerId {
-                let userDTO = userMessage.toDTO(ownerId: ownerId)
-                let assistantDTO = messages[index].toDTO(ownerId: ownerId)
-                let dtos: [ChatMessageDTO] = [userDTO, assistantDTO]
-                
-                try await SupabaseManager.shared.client
-                    .from("chat_messages")
-                    .insert(dtos)
-                    .execute()
+                await CoachMessagePersistence.insert(messages[index], ownerId: ownerId)
             }
             
         } catch {
@@ -239,7 +231,6 @@ class CoachViewModel: ObservableObject {
                     showAuthError = true
                 } else if let coachError = error as? AICoachError, coachError == .quotaExhausted {
                     messages.remove(at: index)
-                    messages.removeAll { $0.id == userMessage.id }
                     showPremiumWall = true
                 } else if let urlError = error as? URLError, urlError.code == .notConnectedToInternet {
                     messages[index].content = "I lost connection — tap to retry."
