@@ -59,6 +59,25 @@ struct SettingsView: View {
                         }
                         .padding(.top, 24)
                         
+                        if coachViewModel.showSubscriptionLoadError {
+                            HStack(spacing: 8) {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .foregroundColor(.warning)
+                                Text("Couldn't refresh your subscription. Your plan is unchanged.")
+                                    .font(.bodySM)
+                                    .foregroundColor(.secondaryText)
+                                Spacer(minLength: 0)
+                                Button("Retry") {
+                                    Task { await refreshSubscriptionEntitlement() }
+                                }
+                                .font(.bodySM.weight(.semibold))
+                            }
+                            .padding(12)
+                            .background(Color.warning.opacity(0.1))
+                            .cornerRadius(12)
+                            .padding(.horizontal, 20)
+                        }
+                        
                         // Account & Household Section
                         SettingsSection(title: "ACCOUNT") {
                             SettingsRow(icon: "star.fill", iconColor: .brandAccent, title: "Manage Subscription") {

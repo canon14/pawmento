@@ -68,7 +68,10 @@ struct CoachChatView: View {
                         .onTapGesture { hideKeyboard() }
                 )
                 .safeAreaInset(edge: .top) {
-                    topBar
+                    VStack(spacing: 0) {
+                        topBar
+                        subscriptionErrorBanner
+                    }
                 }
                 .safeAreaInset(edge: .bottom) {
                     composerBar
@@ -143,8 +146,40 @@ struct CoachChatView: View {
             onSend: {
                 send(inputText)
             },
-            isSending: viewModel.isSending
+            isSending: viewModel.isSending,
+            showsQuotaCounter: viewModel.shouldEnforceFreeQuota
         )
+    }
+    
+    @ViewBuilder
+    private var subscriptionErrorBanner: some View {
+        if viewModel.showSubscriptionLoadError {
+            HStack(spacing: 8) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: 12))
+                    .foregroundColor(.warning)
+                
+                Text("Couldn't refresh your plan. Your access is unchanged.")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(.secondaryText)
+                    .lineLimit(2)
+                
+                Spacer(minLength: 0)
+                
+                Button("Retry") {
+                    Task {
+                        if let ownerId = await authManager.getCurrentUserId() {
+                            await viewModel.initializeQuotaAndSubscription(ownerId: ownerId)
+                        }
+                    }
+                }
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundColor(.primary)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(Color.warning.opacity(0.1))
+        }
     }
     
     private var welcomeHero: some View {

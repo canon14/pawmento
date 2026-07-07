@@ -7,6 +7,7 @@ struct ComposerView: View {
     let onCameraTap: () -> Void
     let onSend: () -> Void
     var isSending: Bool = false
+    var showsQuotaCounter: Bool = true
     
     @FocusState private var isFocused: Bool
     
@@ -80,17 +81,19 @@ struct ComposerView: View {
             }
             
             // Counter with icon
-            HStack(spacing: 5) {
-                Image(systemName: counterIcon())
-                    .font(.system(size: 10))
-                Text(counterText())
-                    .font(.system(size: 12, weight: .medium))
+            if showsQuotaCounter {
+                HStack(spacing: 5) {
+                    Image(systemName: counterIcon())
+                        .font(.system(size: 10))
+                    Text(counterText())
+                        .font(.system(size: 12, weight: .medium))
+                }
+                .foregroundColor(counterColor())
+                .padding(.horizontal, 10)
+                .padding(.vertical, 4)
+                .background(counterColor().opacity(0.08))
+                .clipShape(Capsule())
             }
-            .foregroundColor(counterColor())
-            .padding(.horizontal, 10)
-            .padding(.vertical, 4)
-            .background(counterColor().opacity(0.08))
-            .clipShape(Capsule())
         }
         .padding(.horizontal, 16)
         .padding(.top, 8)

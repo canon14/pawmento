@@ -10,7 +10,9 @@ class CoachViewModel: ObservableObject {
     @Published var isSending: Bool = false
     @Published var freeQuestionsRemaining: Int = SubscriptionEntitlement.freeCoachQuestionQuotaPerPeriod
     private var hasShownLowQuotaWarning = false
-    @Published var isPremium: Bool = false
+    @Published var isPremium: Bool = SubscriptionCache.cachedIsPremium ?? false
+    @Published var subscriptionLoadState: SubscriptionLoadState = .unknown
+    @Published var showSubscriptionLoadError: Bool = false
     @Published var showPremiumWall: Bool = false
     @Published var showAuthError: Bool = false
     
@@ -22,65 +24,34 @@ class CoachViewModel: ObservableObject {
     
     // MARK: - Quota & Subscription
     
-    func initializeQuotaAndSubscription(ownerId: UUID) async {
-        // 1. Fetch Subscription Status
+    /// Free-tier quota gates apply when the user is not premium and subscription status is known or stale.
+    var shouldEnforceFreeQuota: Bool {
+        guard !isPremium else { return false }
+        return subscriptionLoadState == .loaded || subscriptionLoadState == .failed
+    }
+    
+    func initializeQuotaAndSubscription(ownerId: UUID, attempt: Int = 1, maxAttempts: Int = 2) async {
         do {
-            struct SubscriptionDTO: Codable {
-                let status: String
-                let plan_type: String
-                let questions_used: Int
-                let period_start: Date
-                let current_period_end: Date?
+            let snapshot = try await SubscriptionStatusFetcher.fetch(ownerId: ownerId)
+            isPremium = snapshot.isPremium
+            freeQuestionsRemaining = snapshot.freeQuestionsRemaining
+            if snapshot.resetLowQuotaWarning {
+                hasShownLowQuotaWarning = false
             }
-            let sub: SubscriptionDTO = try await SupabaseManager.shared.client
-                .from("subscriptions")
-                .select()
-                .eq("user_id", value: ownerId.uuidString)
-                .single()
-                .execute()
-                .value
+            subscriptionLoadState = .loaded
+            showSubscriptionLoadError = false
+            SubscriptionCache.save(isPremium: isPremium)
+        } catch {
+            print("Failed to fetch subscription (attempt \(attempt)): \(error)")
             
-            self.isPremium = SubscriptionEntitlement.isPremium(
-                planType: sub.plan_type,
-                status: sub.status,
-                periodEnd: sub.current_period_end
-            )
-            
-            if isPremium {
-                self.freeQuestionsRemaining = SubscriptionEntitlement.unlimitedCoachQuota
+            if attempt < maxAttempts {
+                try? await Task.sleep(nanoseconds: 500_000_000)
+                await initializeQuotaAndSubscription(ownerId: ownerId, attempt: attempt + 1, maxAttempts: maxAttempts)
                 return
             }
             
-            // 2. Initialize Quota from server (free tier)
-            let now = Date()
-            let thirtyDays: TimeInterval = 30 * 24 * 60 * 60
-            
-            if now.timeIntervalSince(sub.period_start) >= thirtyDays {
-                // Period expired, reset locally and remotely
-                self.freeQuestionsRemaining = SubscriptionEntitlement.freeCoachQuestionQuotaPerPeriod
-                // Fix S18: Reset warning flag on actual period reset, not via didSet
-                self.hasShownLowQuotaWarning = false
-                
-                // Reset quota on server via RPC (SECURITY DEFINER bypasses SELECT-only RLS)
-                do {
-                    let remaining: Int = try await SupabaseManager.shared.client
-                        .rpc("reset_question_period")
-                        .execute()
-                        .value
-                    self.freeQuestionsRemaining = remaining
-                } catch {
-                    print("Failed to reset quota on server: \(error)")
-                }
-            } else {
-                // Still in period
-                self.freeQuestionsRemaining = SubscriptionEntitlement.freeQuestionsRemaining(questionsUsed: sub.questions_used)
-            }
-            
-        } catch {
-            print("Failed to fetch subscription: \(error)")
-            self.isPremium = false
-            // Fallback for new users / errors
-            self.freeQuestionsRemaining = SubscriptionEntitlement.freeCoachQuestionQuotaPerPeriod
+            subscriptionLoadState = .failed
+            showSubscriptionLoadError = true
         }
     }
     
@@ -128,7 +99,7 @@ class CoachViewModel: ObservableObject {
         defer { isSending = false }
         
         // Client-side pre-check (optimistic UI gate; ai-proxy enforces authoritatively).
-        if !isPremium {
+        if shouldEnforceFreeQuota {
             guard freeQuestionsRemaining > 0 else {
                 showPremiumWall = true
                 return
@@ -206,7 +177,7 @@ class CoachViewModel: ObservableObject {
             quickReplies = generateFollowUpReplies(from: responseContent, petName: pet?.name ?? "them")
             
             // Post-Stream Premium Gating (Gate 2: Coach Warning)
-            if !isPremium && freeQuestionsRemaining <= 2 && freeQuestionsRemaining > 0 && !hasShownLowQuotaWarning {
+            if !isPremium && shouldEnforceFreeQuota && freeQuestionsRemaining <= 2 && freeQuestionsRemaining > 0 && !hasShownLowQuotaWarning {
                 hasShownLowQuotaWarning = true
                 let warningMessage = ChatMessage(
                     role: .assistant,
@@ -246,10 +217,14 @@ class CoachViewModel: ObservableObject {
         messages = []
         isTyping = false
         isSending = false
+        isPremium = false
+        subscriptionLoadState = .unknown
+        showSubscriptionLoadError = false
         showPremiumWall = false
         showAuthError = false
         quickReplies = []
         loadedPetId = nil
+        SubscriptionCache.clear()
         // we deliberately keep freeQuestionsRemaining so we don't reset until initializeQuotaAndSubscription runs.
     }
     

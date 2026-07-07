@@ -51,7 +51,7 @@ struct AskCoachCard: View {
                 Spacer(minLength: 0)
                 
                 // Usage badge — hidden for premium/unlimited plans
-                if !coachViewModel.isPremium {
+                if coachViewModel.shouldEnforceFreeQuota {
                     HStack(spacing: 4) {
                         Image(systemName: "sparkle")
                             .font(.system(size: 9))
