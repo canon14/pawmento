@@ -195,11 +195,46 @@ DO $$ BEGIN
     END IF;
 END $$;
 
--- Logs policies: verify the log belongs to a pet owned by the auth user
+-- Logs policies: pet ownership + created_by must match auth.uid()
+DROP POLICY IF EXISTS "Users can manage logs for their pets" ON public.logs;
+
 DO $$ BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can manage logs for their pets' AND tablename = 'logs') THEN
-        CREATE POLICY "Users can manage logs for their pets" ON public.logs
-            FOR ALL USING (
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can select logs for their pets' AND tablename = 'logs') THEN
+        CREATE POLICY "Users can select logs for their pets" ON public.logs
+            FOR SELECT USING (
+                EXISTS (SELECT 1 FROM public.pets WHERE id = public.logs.pet_id AND owner_id = auth.uid())
+            );
+    END IF;
+END $$;
+
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can insert logs for their pets' AND tablename = 'logs') THEN
+        CREATE POLICY "Users can insert logs for their pets" ON public.logs
+            FOR INSERT WITH CHECK (
+                created_by = auth.uid()
+                AND EXISTS (SELECT 1 FROM public.pets WHERE id = public.logs.pet_id AND owner_id = auth.uid())
+            );
+    END IF;
+END $$;
+
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can update logs for their pets' AND tablename = 'logs') THEN
+        CREATE POLICY "Users can update logs for their pets" ON public.logs
+            FOR UPDATE
+            USING (
+                EXISTS (SELECT 1 FROM public.pets WHERE id = public.logs.pet_id AND owner_id = auth.uid())
+            )
+            WITH CHECK (
+                created_by = auth.uid()
+                AND EXISTS (SELECT 1 FROM public.pets WHERE id = public.logs.pet_id AND owner_id = auth.uid())
+            );
+    END IF;
+END $$;
+
+DO $$ BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can delete logs for their pets' AND tablename = 'logs') THEN
+        CREATE POLICY "Users can delete logs for their pets" ON public.logs
+            FOR DELETE USING (
                 EXISTS (SELECT 1 FROM public.pets WHERE id = public.logs.pet_id AND owner_id = auth.uid())
             );
     END IF;
