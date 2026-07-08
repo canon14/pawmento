@@ -13,7 +13,14 @@ class SignalLoader {
     // Fix I6: Maximum rows to load per query — prevents memory pressure on large histories
     private static let maxRows = 500
     
+    /// Test seam — when set, bypasses Supabase (used by InsightEngine coalescing tests).
+    static var loadHandler: (@Sendable (UUID, TimeRange) async throws -> [Signal])?
+    
     static func load(petId: UUID, window: TimeRange) async throws -> [Signal] {
+        if let loadHandler {
+            return try await loadHandler(petId, window)
+        }
+        
         let now = Date()
         
         // Fix I6: Build query conditionally — .all omits the date filter entirely

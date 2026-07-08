@@ -12,9 +12,16 @@ actor InsightEngine {
     
     private var cache: [String: CacheEntry] = [:]
     
+    // Fix I11: Coalesce concurrent generation for the same pet+window key.
+    private var inFlightTasks: [String: Task<(insights: [Insight], signalCount: Int), Error>] = [:]
+    
     // Fix I3: Cache configuration
     private let cacheTTL: TimeInterval = 15 * 60 // 15 minutes
     private let maxCacheEntries = 20
+    
+    // Test seams (InsightEngineTests)
+    private var pipelineExecutionCount = 0
+    var pipelineDelayNanoseconds: UInt64 = 0
     
     private init() {}
     
@@ -25,6 +32,17 @@ actor InsightEngine {
     func clearCache(for petId: UUID) {
         let prefix = "\(petId.uuidString)_"
         cache = cache.filter { !$0.key.hasPrefix(prefix) }
+    }
+    
+    func resetForTesting(pipelineDelayNanoseconds: UInt64 = 0) {
+        cache.removeAll()
+        inFlightTasks.removeAll()
+        pipelineExecutionCount = 0
+        self.pipelineDelayNanoseconds = pipelineDelayNanoseconds
+    }
+    
+    func pipelineExecutionCountForTesting() -> Int {
+        pipelineExecutionCount
     }
     
     func generateInsights(for pet: Pet?, window: TimeRange, forceRefresh: Bool = false) async throws -> (insights: [Insight], signalCount: Int) {
@@ -40,6 +58,36 @@ actor InsightEngine {
                 cache.removeValue(forKey: key)
             }
         }
+        
+        // Fix I11: Await an in-flight generation instead of starting duplicate detector+LLM work.
+        if let inFlight = inFlightTasks[key] {
+            return try await inFlight.value
+        }
+        
+        let task = Task<(insights: [Insight], signalCount: Int), Error> {
+            try await self.runPipeline(pet: pet, window: window, key: key)
+        }
+        inFlightTasks[key] = task
+        
+        defer {
+            inFlightTasks.removeValue(forKey: key)
+        }
+        
+        return try await task.value
+    }
+    
+    private func runPipeline(
+        pet: Pet?,
+        window: TimeRange,
+        key: String
+    ) async throws -> (insights: [Insight], signalCount: Int) {
+        pipelineExecutionCount += 1
+        
+        if pipelineDelayNanoseconds > 0 {
+            try await Task.sleep(nanoseconds: pipelineDelayNanoseconds)
+        }
+        
+        guard let petId = pet?.id else { return ([], 0) }
         
         // 2. Load signals
         let signals = try await SignalLoader.load(petId: petId, window: window)
