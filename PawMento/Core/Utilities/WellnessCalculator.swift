@@ -119,7 +119,7 @@ struct WellnessCalculator {
             var overduePenalty = 0
             for med in medications {
                 medCredit += min(Constants.maxStreakCreditPerMed, med.streakCount)
-                overduePenalty += overduePenalty(for: med, upTo: date)
+                overduePenalty += Self.overduePenalty(for: med, upTo: date)
             }
             medScore = max(0, min(Constants.medCap, medCredit) - overduePenalty)
         } else {
