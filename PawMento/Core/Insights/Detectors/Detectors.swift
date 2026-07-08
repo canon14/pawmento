@@ -20,6 +20,10 @@ class CorrelationDetector {
         // Fix I4: Raise minimum exposures from 3 → 5 for statistical rigor
         let minExposures = 5
         let minHits = 4
+        // Fix I6: Minimum observation span before correlation is meaningful.
+        // When totalSpan ≤ exposureWindow, lambda ≈ symptoms.count, baselineProb ≈ 1,
+        // and relativeRisk is capped near 1 — correlations silently fail via math, not intent.
+        let minObservationSpan: TimeInterval = 7 * 24 * 3600
         
         let symptoms = signals.filter { $0.category == .symptom }
         let triggers = signals.filter { signal in
@@ -28,6 +32,15 @@ class CorrelationDetector {
         }
         
         guard symptoms.count >= minExposures, !triggers.isEmpty else {
+            return []
+        }
+        
+        let timestamps = signals.map { $0.timestamp }
+        let minTime = timestamps.min()?.timeIntervalSince1970 ?? 0
+        let maxTime = timestamps.max()?.timeIntervalSince1970 ?? 0
+        let totalSpan = maxTime - minTime
+        
+        guard totalSpan >= minObservationSpan else {
             return []
         }
         
@@ -49,11 +62,6 @@ class CorrelationDetector {
                 window: exposureWindow
             )
         }
-        
-        let timestamps = signals.map { $0.timestamp }
-        let minTime = timestamps.min()?.timeIntervalSince1970 ?? 0
-        let maxTime = timestamps.max()?.timeIntervalSince1970 ?? 0
-        let totalSpan = maxTime - minTime
         
         // Statistical Model:
         // We model symptom occurrences as a Poisson process.

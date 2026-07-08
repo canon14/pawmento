@@ -76,6 +76,23 @@ final class CorrelationDetectorTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(chickenClaims.first?.evidenceCount ?? 0, 4)
     }
     
+    func testShortHistory_belowMinSpan_returnsNoCorrelation() async {
+        var signals: [Signal] = []
+        
+        // Strong local pattern within 5 days — would look correlated if span were allowed.
+        for daysAgo in 0..<5 {
+            signals.append(makeSignal(category: .meal, daysAgo: daysAgo, hour: 8, note: "chicken"))
+            signals.append(makeSignal(category: .symptom, daysAgo: daysAgo, hour: 20, severity: 4))
+        }
+        
+        let candidates = await CorrelationDetector.detect(signals)
+        
+        XCTAssertTrue(
+            candidates.isEmpty,
+            "Histories shorter than 7 days should return no correlations via the explicit span guard"
+        )
+    }
+    
     func testUnrelatedTrigger_noCorrelationWhenSymptomsUnlinked() async {
         var signals: [Signal] = []
         
