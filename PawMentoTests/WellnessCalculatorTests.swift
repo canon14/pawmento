@@ -100,10 +100,22 @@ final class WellnessCalculatorTests: XCTestCase {
         logs.append(makeLog(category: .symptom, severity: 1, daysAgo: 0))
         
         let result = WellnessCalculator.calculateScore(logs: logs, medications: [])
-        // Symptom: 40 - (1/5)*8 = 38.4 → 38 (Int)
+        // Symptom: 40 - (1/5)*8 = 38.4 → 38 (rounded)
         // Routine: 5 distinct days * 2 = 10
         // Activity: 0, Meds: n/a — renormalized from 48 → 56
         XCTAssertEqual(result.score, 56)
+    }
+    
+    func testSymptomScore_roundsNotFloors() {
+        // Severity 5 + severity 2 → penalty 11.2 → raw symptomScore 28.8
+        // Floored: 28; rounded: 29 — total should reflect the rounded value.
+        var logs = makeDistinctDayLogs(category: .meal, count: 3)
+        logs.append(makeLog(category: .symptom, severity: 5, daysAgo: 0))
+        logs.append(makeLog(category: .symptom, severity: 2, daysAgo: 1))
+        
+        let result = WellnessCalculator.calculateScore(logs: logs, medications: [])
+        // Symptom: 28.8 → 29, Routine: 3*2 = 6 — renormalized from 35 → 41
+        XCTAssertEqual(result.score, 41)
     }
     
     func testManySevereSymptoms_floorAtZero() {

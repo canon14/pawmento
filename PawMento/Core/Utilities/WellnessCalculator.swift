@@ -131,7 +131,7 @@ struct WellnessCalculator {
             anyOverdue = false
         }
         
-        let baseScore = Int(symptomScore) + routineScore + activityScore
+        let baseScore = Int(symptomScore.rounded()) + routineScore + activityScore
         
         // W1: Pets with no medications renormalize the 85-point base to 100.
         // W16: During new-med grace (all meds < 14 days old, none overdue), neutralize
