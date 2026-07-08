@@ -229,7 +229,8 @@ final class AICoachClient: Sendable {
         if let coachError = error as? AICoachError, coachError == .quotaExhausted {
             return false
         }
-        if let nsError = error as? NSError, nsError.domain == "AIProxy" {
+        let nsError = error as NSError
+        if nsError.domain == "AIProxy" {
             let code = nsError.code
             return code == 429 || (code >= 500 && code < 600)
         }

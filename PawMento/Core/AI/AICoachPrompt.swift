@@ -73,7 +73,7 @@ struct AICoachPrompt {
                 components.month = bday.month ?? 1 // Default to January if month-only
                 components.day = bday.day ?? 1      // Default to 1st if day missing
                 
-                if let year = bday.year, let birthDate = calendar.date(from: components) {
+                if let birthDate = calendar.date(from: components), bday.year != nil {
                     let age = calendar.dateComponents([.year, .month], from: birthDate, to: now)
                     let ageYears = age.year ?? 0
                     let ageMonths = age.month ?? 0

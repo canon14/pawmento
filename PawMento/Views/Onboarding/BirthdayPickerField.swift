@@ -87,7 +87,7 @@ struct BirthdayPickerField: View {
                         }
                         .pickerStyle(WheelPickerStyle())
                         .frame(maxWidth: .infinity)
-                        .onChange(of: selectedYear) { newValue in
+                        .onChange(of: selectedYear) { _, newValue in
                             let currentYear = Calendar.current.component(.year, from: Date())
                             let currentMonth = Calendar.current.component(.month, from: Date())
                             if newValue == currentYear && selectedMonth > currentMonth {

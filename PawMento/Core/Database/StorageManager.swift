@@ -67,7 +67,7 @@ class StorageManager {
         let fileOptions = FileOptions(cacheControl: "3600", contentType: "image/jpeg", upsert: true)
         try await SupabaseManager.shared.client.storage
             .from(bucketName)
-            .upload(path: path, file: data, options: fileOptions)
+            .upload(path, data: data, options: fileOptions)
         
         // Fix 2: Return the bucket-relative path, NOT the full public URL.
         // The caller stores this in photo_url; the read side uses publicURL(forPath:) to display.

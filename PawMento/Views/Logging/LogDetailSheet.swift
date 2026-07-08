@@ -194,7 +194,7 @@ struct LogDetailSheet: View {
             
             let finalNote = note.trimmingCharacters(in: .whitespacesAndNewlines)
             
-            var log = LogEntry(
+            let log = LogEntry(
                 id: existingLog?.id ?? UUID(),
                 petId: petId,
                 category: category,

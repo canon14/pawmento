@@ -141,7 +141,7 @@ struct AddFirstPetScreen: View {
                                         self.isShowingBreedSuggestions = !suggestions.isEmpty && !suggestions.contains(breed)
                                     }
                                 }
-                                .onChange(of: selectedSpecies) { _ in
+                                .onChange(of: selectedSpecies) { _, _ in
                                     breed = ""
                                     isShowingBreedSuggestions = false
                                 }

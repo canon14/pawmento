@@ -311,7 +311,7 @@ class AuthManager: ObservableObject {
         isLoading = true
         authError = nil
         do {
-            let response = try await SupabaseManager.shared.client.auth.signInWithIdToken(
+            try await SupabaseManager.shared.client.auth.signInWithIdToken(
                 credentials: .init(provider: .apple, idToken: idToken, nonce: nonce)
             )
             
