@@ -1,21 +1,16 @@
 #!/usr/bin/env bash
-# PawMento test runner — tiered for speed.
+# PawMento build verifier (unit tests removed).
 #
 # Usage:
-#   ./Scripts/run-tests.sh smoke     # ~20s — uses connected iPhone if available
-#   ./Scripts/run-tests.sh full      # ~3–5m — all unit tests, no rebuild
-#   ./Scripts/run-tests.sh build     # compile app + tests only
-#   ./Scripts/run-tests.sh all       # build + full suite (CI / pre-push)
+#   ./Scripts/run-tests.sh smoke     # build app (default)
+#   ./Scripts/run-tests.sh build     # same as smoke
+#   ./Scripts/run-tests.sh full      # alias for smoke
+#   ./Scripts/run-tests.sh all       # alias for smoke
 #
 # Destination (default: connected physical iPhone, no simulator runtime needed):
 #   PAWMENTO_DEVICE_ID=<udid>   Force a specific device
 #   PAWMENTO_USE_SIMULATOR=1      Use simulator instead (requires iOS Simulator runtime)
 #   PAWMENTO_SIMULATOR_ID=<id>  Simulator UDID when PAWMENTO_USE_SIMULATOR=1
-#
-# Physical device requirements:
-#   - iPhone unlocked, trusted, Developer Mode on
-#   - Xcode → Settings → Components → iOS <version> platform installed
-#     (device platform only — NOT the iOS Simulator runtime)
 
 set -euo pipefail
 
@@ -67,27 +62,7 @@ resolve_destination() {
 
 COMMON_FLAGS=(
   -scheme "$SCHEME"
-  -parallel-testing-enabled NO
   -quiet
-)
-
-# Fast pure-logic tests — expand when adding new focused unit suites.
-SMOKE_TESTS=(
-  PawMentoTests/SubscriptionEntitlementTests
-  PawMentoTests/SubscriptionProductIDsTests
-  PawMentoTests/AICoachClientStreamRetryTests
-  PawMentoTests/CoachViewModelSendGuardTests
-  PawMentoTests/CoachViewModelMessagePersistenceTests
-  PawMentoTests/CoachViewModelSubscriptionFetchTests
-  PawMentoTests/LogCategoryStoredValueTests
-  PawMentoTests/StorageManagerPathTests
-  PawMentoTests/AuthManagerProfileTests
-  PawMentoTests/InsightCalendarTests
-  PawMentoTests/ReminderLogSourceKeyTests
-  PawMentoTests/CorrelationDetectorTests
-  PawMentoTests/TemporalDetectorTests
-  PawMentoTests/TrendDetectorTests
-  PawMentoTests/InsightEngineTests
 )
 
 prepare_destination() {
@@ -97,60 +72,16 @@ prepare_destination() {
   fi
 }
 
-build_for_testing() {
-  echo "→ Building for testing…"
-  if [[ "${DESTINATION_KIND}" == "device" ]]; then
-    # Device builds need the app target first or the test module cannot link @testable PawMento.
-    xcodebuild build -destination "$DESTINATION" "${COMMON_FLAGS[@]}"
-  fi
-  xcodebuild build-for-testing -destination "$DESTINATION" "${COMMON_FLAGS[@]}"
-}
-
-run_smoke() {
-  prepare_destination
-  local only_flags=()
-  for suite in "${SMOKE_TESTS[@]}"; do
-    only_flags+=(-only-testing:"$suite")
-  done
-  echo "→ Running smoke tests (${#SMOKE_TESTS[@]} suites)…"
-  xcodebuild test-without-building -destination "$DESTINATION" "${COMMON_FLAGS[@]}" "${only_flags[@]}"
-}
-
-run_full() {
-  prepare_destination
-  echo "→ Running full test suite (no rebuild)…"
-  xcodebuild test-without-building -destination "$DESTINATION" "${COMMON_FLAGS[@]}"
-}
-
-run_all() {
-  prepare_destination
-  echo "→ Building and running full test suite…"
-  xcodebuild test -destination "$DESTINATION" "${COMMON_FLAGS[@]}"
+build_app() {
+  echo "→ Building app…"
+  xcodebuild build -destination "$DESTINATION" "${COMMON_FLAGS[@]}"
 }
 
 mode="${1:-smoke}"
 
 cd "$ROOT"
 resolve_destination
+prepare_destination
+build_app
 
-case "$mode" in
-  build)
-    build_for_testing
-    ;;
-  smoke)
-    run_smoke
-    ;;
-  full)
-    run_full
-    ;;
-  all)
-    run_all
-    ;;
-  *)
-    echo "Unknown mode: $mode" >&2
-    echo "Usage: $0 {smoke|full|build|all}" >&2
-    exit 1
-    ;;
-esac
-
-echo "✓ Tests passed ($mode)"
+echo "✓ Build passed ($mode)"

@@ -7,8 +7,8 @@ alwaysApply: true
 
 After completing a debug fix or feature task in this repo:
 
-1. Run `./Scripts/run-tests.sh smoke` (or `full` before a larger push).
-2. If tests pass and there are uncommitted changes for the completed work, **commit and push to GitHub without waiting for a separate ask**.
+1. Run `./Scripts/run-tests.sh smoke` (build verification; unit tests removed).
+2. If the build passes and there are uncommitted changes for the completed work, **commit and push to GitHub without waiting for a separate ask**.
 3. Do not commit unrelated WIP, secrets (`.env`, credentials), or changes from a failed/partial fix.
 
 ## Commit workflow

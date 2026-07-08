@@ -15,7 +15,7 @@ enum ConfidenceTier: String, Codable, Comparable {
     case emerging
     
     // Priority: strong > moderate > emerging > positive (lower number = higher priority)
-    var priority: Int {
+    nonisolated var priority: Int {
         switch self {
         case .strong: return 0
         case .moderate: return 1
@@ -51,7 +51,7 @@ enum ConfidenceTier: String, Codable, Comparable {
         }
     }
     
-    static func < (lhs: ConfidenceTier, rhs: ConfidenceTier) -> Bool {
+    nonisolated static func < (lhs: ConfidenceTier, rhs: ConfidenceTier) -> Bool {
         return lhs.priority < rhs.priority
     }
 }

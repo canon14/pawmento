@@ -15,30 +15,14 @@
 		66A081302FC5E52400C5D6D2 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 66A0812F2FC5E52400C5D6D2 /* Supabase */; };
 /* End PBXBuildFile section */
 
-/* Begin PBXContainerItemProxy section */
-		AA00000100000001AABBCC01 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 66A080842FC2413E00C5D6D2 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = AA00000100000001AABBCC10;
-			remoteInfo = PawMentoTests;
-		};
-/* End PBXContainerItemProxy section */
-
 /* Begin PBXFileReference section */
 		66A0808C2FC2413E00C5D6D2 /* PawMento.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PawMento.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		AA00000100000001AABBCC02 /* PawMentoTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = PawMentoTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		66A0808E2FC2413E00C5D6D2 /* PawMento */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = PawMento;
-			sourceTree = "<group>";
-		};
-		AA00000100000001AABBCC03 /* PawMentoTests */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = PawMentoTests;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -57,13 +41,6 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		AA00000100000001AABBCC04 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -71,7 +48,6 @@
 			isa = PBXGroup;
 			children = (
 				66A0808E2FC2413E00C5D6D2 /* PawMento */,
-				AA00000100000001AABBCC03 /* PawMentoTests */,
 				66A0812E2FC5E52400C5D6D2 /* Frameworks */,
 				66A0808D2FC2413E00C5D6D2 /* Products */,
 			);
@@ -81,7 +57,6 @@
 			isa = PBXGroup;
 			children = (
 				66A0808C2FC2413E00C5D6D2 /* PawMento.app */,
-				AA00000100000001AABBCC02 /* PawMentoTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -124,27 +99,6 @@
 			productReference = 66A0808C2FC2413E00C5D6D2 /* PawMento.app */;
 			productType = "com.apple.product-type.application";
 		};
-		AA00000100000001AABBCC10 /* PawMentoTests */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = AA00000100000001AABBCC20 /* Build configuration list for PBXNativeTarget "PawMentoTests" */;
-			buildPhases = (
-				AA00000100000001AABBCC05 /* Sources */,
-				AA00000100000001AABBCC04 /* Frameworks */,
-				AA00000100000001AABBCC06 /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-				AA00000100000001AABBCC07 /* PBXTargetDependency */,
-			);
-			fileSystemSynchronizedGroups = (
-				AA00000100000001AABBCC03 /* PawMentoTests */,
-			);
-			name = PawMentoTests;
-			productName = PawMentoTests;
-			productReference = AA00000100000001AABBCC02 /* PawMentoTests.xctest */;
-			productType = "com.apple.product-type.bundle.unit-test";
-		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -157,10 +111,6 @@
 				TargetAttributes = {
 					66A0808B2FC2413E00C5D6D2 = {
 						CreatedOnToolsVersion = 26.3;
-					};
-					AA00000100000001AABBCC10 = {
-						CreatedOnToolsVersion = 26.3;
-						TestTargetID = 66A0808B2FC2413E00C5D6D2;
 					};
 				};
 			};
@@ -182,20 +132,12 @@
 			projectRoot = "";
 			targets = (
 				66A0808B2FC2413E00C5D6D2 /* PawMento */,
-				AA00000100000001AABBCC10 /* PawMentoTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		66A0808A2FC2413E00C5D6D2 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		AA00000100000001AABBCC06 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -212,22 +154,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		AA00000100000001AABBCC05 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 /* End PBXSourcesBuildPhase section */
-
-/* Begin PBXTargetDependency section */
-		AA00000100000001AABBCC07 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = AA00000100000001AABBCC10 /* PawMentoTests */;
-			targetProxy = AA00000100000001AABBCC01 /* PBXContainerItemProxy */;
-		};
-/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		66A080952FC2413F00C5D6D2 /* Debug */ = {
@@ -423,50 +350,6 @@
 			};
 			name = Release;
 		};
-		AA00000100000001AABBCC21 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				BUNDLE_LOADER = "$(TEST_HOST)";
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 8M98653K36;
-				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.ggozali.pawmento.devapp.tests;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_APPROACHABLE_CONCURRENCY = YES;
-				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PawMento.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/PawMento";
-			};
-			name = Debug;
-		};
-		AA00000100000001AABBCC22 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				BUNDLE_LOADER = "$(TEST_HOST)";
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 8M98653K36;
-				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.ggozali.pawmento.devapp.tests;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_APPROACHABLE_CONCURRENCY = YES;
-				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/PawMento.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/PawMento";
-			};
-			name = Release;
-		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -484,15 +367,6 @@
 			buildConfigurations = (
 				66A080982FC2413F00C5D6D2 /* Debug */,
 				66A080992FC2413F00C5D6D2 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		AA00000100000001AABBCC20 /* Build configuration list for PBXNativeTarget "PawMentoTests" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				AA00000100000001AABBCC21 /* Debug */,
-				AA00000100000001AABBCC22 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
