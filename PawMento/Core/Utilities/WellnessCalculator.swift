@@ -49,6 +49,10 @@ struct WellnessCalculator {
         static let maxStreakCreditPerMed = 5     // Up to 5 pts earned per med via streak
         static let overduePenaltyPerMed = 3      // Deducted per overdue med
         static let overdueEscalationHours: TimeInterval = 48 * 3600  // Extra penalty beyond this age
+        /// Newly added meds get a grace window aligned with the wellness window.
+        /// During grace, on-time meds do not cap the score at 85 (streak component neutralized).
+        /// After grace, med credit requires real streak adherence.
+        static let newMedGracePeriod = windowDays
         
         // Fix W1: Data-sufficiency thresholds
         static let insufficientDataThreshold = 3
@@ -109,32 +113,39 @@ struct WellnessCalculator {
         // 4. Medication Compliance (Max 15) — only applies when the pet has medications
         let hasMedications = !medications.isEmpty
         var medScore = 0
+        let allMedsInGrace: Bool
+        let anyOverdue: Bool
         if hasMedications {
+            allMedsInGrace = medications.allSatisfy { isInGracePeriod($0, upTo: date) }
+            anyOverdue = medications.contains { isOverdue($0, upTo: date) }
+            
             var medCredit = 0
             var overduePenalty = 0
             for med in medications {
                 medCredit += min(Constants.maxStreakCreditPerMed, med.streakCount)
-                
-                if let due = med.nextDueDate, due < date {
-                    let overdueAge = date.timeIntervalSince(due)
-                    overduePenalty += Constants.overduePenaltyPerMed
-                    if overdueAge > Constants.overdueEscalationHours {
-                        overduePenalty += Constants.overduePenaltyPerMed
-                    }
-                }
+                overduePenalty += overduePenalty(for: med, upTo: date)
             }
             medScore = max(0, min(Constants.medCap, medCredit) - overduePenalty)
+        } else {
+            allMedsInGrace = false
+            anyOverdue = false
         }
         
-        let componentTotal = Int(symptomScore) + routineScore + activityScore + medScore
+        let baseScore = Int(symptomScore) + routineScore + activityScore
         
-        // W1: Pets with no medications should still reach 100 — renormalize the 85-point base.
+        // W1: Pets with no medications renormalize the 85-point base to 100.
+        // W16: During new-med grace (all meds < 14 days old, none overdue), neutralize
+        // the streak component so perfect adherence can still reach 100.
         let totalScore: Int
-        if hasMedications {
-            totalScore = componentTotal
+        if hasMedications && allMedsInGrace && !anyOverdue {
+            totalScore = Int(
+                (Double(baseScore) * 100.0 / Double(Constants.maxScoreWithoutMedications)).rounded()
+            )
+        } else if hasMedications {
+            totalScore = baseScore + medScore
         } else {
             totalScore = Int(
-                (Double(componentTotal) * 100.0 / Double(Constants.maxScoreWithoutMedications)).rounded()
+                (Double(baseScore) * 100.0 / Double(Constants.maxScoreWithoutMedications)).rounded()
             )
         }
         
@@ -142,6 +153,25 @@ struct WellnessCalculator {
     }
     
     // MARK: - Helpers
+    
+    private static func isInGracePeriod(_ med: Medication, upTo date: Date) -> Bool {
+        date.timeIntervalSince(med.createdAt) <= Constants.newMedGracePeriod
+    }
+    
+    private static func isOverdue(_ med: Medication, upTo date: Date) -> Bool {
+        guard let due = med.nextDueDate else { return false }
+        return due < date
+    }
+    
+    private static func overduePenalty(for med: Medication, upTo date: Date) -> Int {
+        guard let due = med.nextDueDate, due < date else { return 0 }
+        let overdueAge = date.timeIntervalSince(due)
+        var penalty = Constants.overduePenaltyPerMed
+        if overdueAge > Constants.overdueEscalationHours {
+            penalty += Constants.overduePenaltyPerMed
+        }
+        return penalty
+    }
     
     /// Count distinct UTC calendar days that have ≥1 log entry (aligned with InsightEngine detectors).
     private static func distinctDayCount(for logs: [LogEntry]) -> Int {

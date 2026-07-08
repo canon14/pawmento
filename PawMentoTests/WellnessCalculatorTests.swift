@@ -25,15 +25,29 @@ final class WellnessCalculatorTests: XCTestCase {
     /// Create a medication with the given streak and optional due date.
     private func makeMed(
         streak: Int = 0,
-        nextDueDate: Date? = nil
+        nextDueDate: Date? = nil,
+        createdAt: Date = Date()
     ) -> Medication {
         Medication(
             petId: testPetId,
             name: "TestMed",
             frequency: "Daily",
             nextDueDate: nextDueDate,
-            streakCount: streak
+            streakCount: streak,
+            createdAt: createdAt
         )
+    }
+    
+    /// Perfect routine + activity logs for max non-med component (85 raw).
+    private func makePerfectBaseLogs(from date: Date = Date()) -> [LogEntry] {
+        var logs: [LogEntry] = []
+        for i in 0..<14 {
+            logs.append(makeLog(category: .meal, daysAgo: Double(i), from: date))
+        }
+        for i in 0..<10 {
+            logs.append(makeLog(category: .walk, daysAgo: Double(i), from: date))
+        }
+        return logs
     }
     
     /// Generate N logs on distinct days for the given category.
@@ -222,6 +236,58 @@ final class WellnessCalculatorTests: XCTestCase {
         // Symptom: 40, Routine: 14, Activity: 0, Meds: 0
         // Total: 54
         XCTAssertEqual(result.score, 54)
+    }
+    
+    // MARK: - W16: New medication grace period
+    
+    func testNewMedication_perfectAdherence_reaches100() {
+        let now = Date()
+        let logs = makePerfectBaseLogs(from: now)
+        let meds = [
+            makeMed(
+                streak: 0,
+                nextDueDate: now.addingTimeInterval(3600),
+                createdAt: now
+            )
+        ]
+        
+        let result = WellnessCalculator.calculateScore(logs: logs, medications: meds, upTo: now)
+        XCTAssertEqual(result.score, 100)
+        XCTAssertEqual(result.confidence, .sufficient)
+    }
+    
+    func testNewMedication_overdue_duringGrace_notRenormalizedTo100() {
+        let now = Date()
+        let logs = makePerfectBaseLogs(from: now)
+        let meds = [
+            makeMed(
+                streak: 0,
+                nextDueDate: now.addingTimeInterval(-12 * 3600),
+                createdAt: now
+            )
+        ]
+        
+        let perfectNoMeds = WellnessCalculator.calculateScore(logs: logs, medications: [], upTo: now).score
+        let result = WellnessCalculator.calculateScore(logs: logs, medications: meds, upTo: now)
+        
+        XCTAssertLessThan(result.score, perfectNoMeds)
+        XCTAssertLessThan(result.score, 100)
+    }
+    
+    func testMatureMedication_zeroStreak_capsAt85() {
+        let now = Date()
+        let logs = makePerfectBaseLogs(from: now)
+        let createdAt = now.addingTimeInterval(-30 * 24 * 3600)
+        let meds = [
+            makeMed(
+                streak: 0,
+                nextDueDate: now.addingTimeInterval(3600),
+                createdAt: createdAt
+            )
+        ]
+        
+        let result = WellnessCalculator.calculateScore(logs: logs, medications: meds, upTo: now)
+        XCTAssertEqual(result.score, 85)
     }
     
     // MARK: - W5: Window Boundary
