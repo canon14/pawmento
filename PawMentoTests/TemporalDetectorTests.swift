@@ -3,9 +3,17 @@ import XCTest
 
 final class TemporalDetectorTests: XCTestCase {
     
-    private let testPetId = UUID()
+    private var calendar: Calendar {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(secondsFromGMT: 0)!
+        return cal
+    }
     
-    /// Create a Signal with a given category at a specific hour on a given day offset.
+    private var referenceDate: Date {
+        calendar.date(from: DateComponents(year: 2026, month: 1, day: 31, hour: 12))!
+    }
+    
+    /// Create a Signal at a specific UTC hour on a given day offset from referenceDate.
     private func makeSignal(
         category: LogCategory = .symptom,
         hour: Int,
@@ -13,41 +21,55 @@ final class TemporalDetectorTests: XCTestCase {
         note: String? = nil,
         severity: Int? = nil
     ) -> Signal {
-        var cal = Calendar(identifier: .gregorian)
-        cal.timeZone = .current
-        let today = cal.startOfDay(for: Date())
-        let date = cal.date(byAdding: .day, value: -daysAgo, to: today)!
-        let finalDate = cal.date(byAdding: .hour, value: hour, to: date)!
+        let dayStart = calendar.startOfDay(
+            for: calendar.date(byAdding: .day, value: -daysAgo, to: referenceDate)!
+        )
+        let timestamp = calendar.date(byAdding: .hour, value: hour, to: dayStart)!
         
         return Signal(
             id: UUID(),
             category: category,
             note: note,
             severity: severity,
-            timestamp: finalDate
+            timestamp: timestamp
         )
     }
     
     // MARK: - I1: Midnight Wraparound
     
-    func testMidnightWraparound_noCrash() async {
-        // Symptoms at hours 22, 23, 0, 1 — the 4-hour window should wrap around midnight
+    func testLateNightCluster_22to01_identifiesWraparoundWindow() async {
+        // UTC hours 22, 23, 0, 1 across midnight — exercises modulo indexing at startHour >= 21.
         let signals = [
-            makeSignal(hour: 22),
-            makeSignal(hour: 23),
+            makeSignal(hour: 22, daysAgo: 1),
+            makeSignal(hour: 23, daysAgo: 1),
             makeSignal(hour: 0, daysAgo: 0),
             makeSignal(hour: 1, daysAgo: 0),
-            // Need at least 5 symptoms to pass the guard
-            makeSignal(hour: 22, daysAgo: 1)
+            makeSignal(hour: 22, daysAgo: 2)
         ]
         
-        // This should NOT crash — the modulo in the sliding window prevents index-out-of-bounds
         let candidates = await TemporalPatternDetector.detect(signals)
         
-        // All 5 symptoms cluster in the 22-02 window → should produce a candidate
+        XCTAssertFalse(candidates.isEmpty, "Late-night UTC cluster should produce a temporal candidate")
+        let desc = candidates.first?.internalDescription ?? ""
+        XCTAssertTrue(
+            desc.contains("22:00"),
+            "Best window should start at 22:00 for the 22→23→0→1 wraparound cluster, got: \(desc)"
+        )
+    }
+    
+    func testMidnightWraparound_noCrash() async {
+        let signals = [
+            makeSignal(hour: 22, daysAgo: 1),
+            makeSignal(hour: 23, daysAgo: 1),
+            makeSignal(hour: 0, daysAgo: 0),
+            makeSignal(hour: 1, daysAgo: 0),
+            makeSignal(hour: 22, daysAgo: 2)
+        ]
+        
+        let candidates = await TemporalPatternDetector.detect(signals)
+        
         XCTAssertFalse(candidates.isEmpty, "Should detect the midnight-crossing temporal cluster")
         
-        // Verify the description mentions the correct window
         if let desc = candidates.first?.internalDescription {
             XCTAssertTrue(
                 desc.contains("22:00") || desc.contains("23:00"),
@@ -57,17 +79,15 @@ final class TemporalDetectorTests: XCTestCase {
     }
     
     func testMidnightWraparound_bestWindowSpansMidnight() async {
-        // 3 symptoms at hour 23, 2 at hour 0 → best 4h window is 23-03 or 22-02
         let signals = [
-            makeSignal(hour: 23, daysAgo: 0),
             makeSignal(hour: 23, daysAgo: 1),
             makeSignal(hour: 23, daysAgo: 2),
+            makeSignal(hour: 23, daysAgo: 3),
             makeSignal(hour: 0, daysAgo: 0),
             makeSignal(hour: 0, daysAgo: 1)
         ]
         
         let candidates = await TemporalPatternDetector.detect(signals)
-        // 5 symptoms in 2 hours → well above the 50%/2.5x threshold
         XCTAssertFalse(candidates.isEmpty)
     }
     
@@ -82,12 +102,10 @@ final class TemporalDetectorTests: XCTestCase {
     }
     
     func testSafetyClassifier_ambiguousNegation_doesNotSuppress() {
-        // "I'm not sure if he ate chocolate" — negation is NOT a tight consumption pattern
         XCTAssertTrue(SafetyClassifier.isEmergency(message: "I'm not sure if he ate chocolate"))
     }
     
     func testSafetyClassifier_traumaNeverSuppressed() {
-        // "no idea why he's seizing" — old code would suppress; new code does NOT
         XCTAssertTrue(SafetyClassifier.isEmergency(message: "no idea why he's seizing"))
         XCTAssertTrue(SafetyClassifier.isEmergency(message: "I don't know, he collapsed"))
         XCTAssertTrue(SafetyClassifier.isEmergency(message: "not sure if it's a seizure"))
@@ -112,7 +130,6 @@ final class TemporalDetectorTests: XCTestCase {
     }
     
     func testSafetyClassifier_substringProtection() {
-        // "companion" should NOT match "onion" via substring
         XCTAssertFalse(SafetyClassifier.isEmergency(message: "my companion is sleeping"))
     }
 }

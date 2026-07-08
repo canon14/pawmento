@@ -168,7 +168,8 @@ class TemporalPatternDetector {
         for startHour in 0..<24 {
             var currentCount = 0
             for offset in 0..<windowSize {
-                // Fix I1: Modulo wraps correctly for midnight crossing (already present)
+                // Fix I1: Without % 24, startHour >= 21 reaches byHour[24+] and crashes.
+                // Modulo wraps midnight-crossing windows (consistent with windowEnd below).
                 let hour = (startHour + offset) % 24
                 currentCount += byHour[hour]
             }
