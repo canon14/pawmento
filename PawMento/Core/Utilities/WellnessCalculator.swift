@@ -59,11 +59,7 @@ struct WellnessCalculator {
         static let lowDataThreshold = 7
     }
     
-    // Fix W6: routineCategories and activityCategories are DISJOINT (verified):
-    //   routine = {meal, potty, sleep, water}
-    //   activity = {walk, play, training}
-    // If a category is ever added to both sets, logs would be double-counted.
-    // Ensure LogCategory.routineCategories and .activityCategories remain disjoint.
+    // W6: Routine and activity buckets are disjoint by construction (see LogCategory.wellnessScoringBucket).
     
     static func calculateScore(logs: [LogEntry], medications: [Medication], upTo date: Date = Date()) -> WellnessResult {
         let windowStart = date.addingTimeInterval(-Constants.windowDays)
@@ -100,13 +96,13 @@ struct WellnessCalculator {
         
         // 2. Routine Adherence (Max 25)
         // Fix W2: Score based on distinct UTC calendar days with ≥1 routine log, not raw count.
-        let routineLogs = last14DaysLogs.filter { LogCategory.routineCategories.contains($0.category) }
+        let routineLogs = last14DaysLogs.filter { $0.category.wellnessScoringBucket == .routine }
         let distinctRoutineDays = Self.distinctDayCount(for: routineLogs)
         let routineScore = min(Constants.routineCap, distinctRoutineDays * Constants.routinePointsPerDay)
         
         // 3. Activity Level (Max 20)
         // Fix W2: Same distinct-day approach for activity.
-        let activityLogs = last14DaysLogs.filter { LogCategory.activityCategories.contains($0.category) }
+        let activityLogs = last14DaysLogs.filter { $0.category.wellnessScoringBucket == .activity }
         let distinctActivityDays = Self.distinctDayCount(for: activityLogs)
         let activityScore = min(Constants.activityCap, distinctActivityDays * Constants.activityPointsPerDay)
         

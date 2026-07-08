@@ -56,7 +56,7 @@ enum LogCategory: String, CaseIterable, Identifiable, Codable {
     
     /// Parses a category string from storage (DB defaults, notifications, legacy slugs).
     /// Accepts canonical `rawValue`, case-insensitive display names, and enum-case slugs (e.g. `"other"`).
-    static func fromStoredValue(_ value: String) -> LogCategory? {
+    nonisolated static func fromStoredValue(_ value: String) -> LogCategory? {
         let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
         
@@ -103,9 +103,30 @@ enum LogCategory: String, CaseIterable, Identifiable, Codable {
 }
 
 extension LogCategory {
-    // Canonical set for "Activity"
-    static let activityCategories: Set<LogCategory> = [.walk, .play, .training]
+    /// Wellness scoring buckets. Each `LogCategory` maps to at most one bucket via `wellnessScoringBucket`.
+    enum WellnessScoringBucket {
+        case routine
+        case activity
+    }
     
-    // Canonical set for "Routine"
-    static let routineCategories: Set<LogCategory> = [.meal, .potty, .sleep, .water]
+    /// Single source of truth for routine vs activity wellness scoring.
+    /// Categories not in either bucket (symptom, med, mood, etc.) are excluded from adherence scoring.
+    var wellnessScoringBucket: WellnessScoringBucket? {
+        switch self {
+        case .meal, .potty, .sleep, .water:
+            return .routine
+        case .walk, .play, .training:
+            return .activity
+        default:
+            return nil
+        }
+    }
+    
+    static let activityCategories: Set<LogCategory> = Set(
+        allCases.compactMap { $0.wellnessScoringBucket == .activity ? $0 : nil }
+    )
+    
+    static let routineCategories: Set<LogCategory> = Set(
+        allCases.compactMap { $0.wellnessScoringBucket == .routine ? $0 : nil }
+    )
 }

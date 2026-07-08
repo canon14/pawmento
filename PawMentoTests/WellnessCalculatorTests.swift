@@ -61,6 +61,32 @@ final class WellnessCalculatorTests: XCTestCase {
         }
     }
     
+    // MARK: - W6: Category bucket disjointness
+    
+    func testWellnessCategorySets_areDisjoint() {
+        let overlap = LogCategory.routineCategories.intersection(LogCategory.activityCategories)
+        XCTAssertTrue(
+            overlap.isEmpty,
+            "Overlapping categories double-count in wellness scoring: \(overlap)"
+        )
+    }
+    
+    func testWellnessScoringBucket_eachCategoryInAtMostOneBucket() {
+        for category in LogCategory.allCases {
+            let inRoutine = LogCategory.routineCategories.contains(category)
+            let inActivity = LogCategory.activityCategories.contains(category)
+            XCTAssertFalse(
+                inRoutine && inActivity,
+                "\(category) must not belong to both routine and activity buckets"
+            )
+        }
+    }
+    
+    func testWellnessScoringBucket_expectedMembership() {
+        XCTAssertEqual(LogCategory.routineCategories, Set([.meal, .potty, .sleep, .water]))
+        XCTAssertEqual(LogCategory.activityCategories, Set([.walk, .play, .training]))
+    }
+    
     // MARK: - W1: Data Sufficiency
     
     func testNoData_insufficientConfidence() {
