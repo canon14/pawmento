@@ -164,7 +164,7 @@ final class WellnessCalculatorTests: XCTestCase {
     
     func testOverdueMeds_recentlyOverdue_penalized() {
         let logs = makeDistinctDayLogs(category: .meal, count: 7)
-        // Med overdue by 12 hours (within 48h window)
+        // Med overdue by 12 hours — base penalty only
         let meds = [makeMed(streak: 5, nextDueDate: Date().addingTimeInterval(-12 * 3600))]
         
         let result = WellnessCalculator.calculateScore(logs: logs, medications: meds)
@@ -174,13 +174,51 @@ final class WellnessCalculatorTests: XCTestCase {
         XCTAssertEqual(result.score, 56)
     }
     
-    func testOverdueMeds_staleOverdue_noPenalty() {
+    func testOverdueMeds_severelyOverdue_penaltyAtLeastAsHighAsRecentlyOverdue() {
         let logs = makeDistinctDayLogs(category: .meal, count: 7)
-        // Med overdue by 72 hours (outside 48h window) — no penalty, just no streak
-        let meds = [makeMed(streak: 0, nextDueDate: Date().addingTimeInterval(-72 * 3600))]
+        let meds12h = [makeMed(streak: 5, nextDueDate: Date().addingTimeInterval(-12 * 3600))]
+        let meds72h = [makeMed(streak: 5, nextDueDate: Date().addingTimeInterval(-72 * 3600))]
+        
+        let score12h = WellnessCalculator.calculateScore(logs: logs, medications: meds12h).score
+        let score72h = WellnessCalculator.calculateScore(logs: logs, medications: meds72h).score
+        
+        XCTAssertLessThanOrEqual(score72h, score12h)
+    }
+    
+    func testOverdueMeds_exactly48h_getsBasePenaltyOnly() {
+        let logs = makeDistinctDayLogs(category: .meal, count: 7)
+        let now = Date()
+        let meds48h = [makeMed(streak: 5, nextDueDate: now.addingTimeInterval(-48 * 3600))]
+        let medsOnTime = [makeMed(streak: 5, nextDueDate: now.addingTimeInterval(3600))]
+        
+        let score48h = WellnessCalculator.calculateScore(logs: logs, medications: meds48h, upTo: now).score
+        let scoreOnTime = WellnessCalculator.calculateScore(logs: logs, medications: medsOnTime, upTo: now).score
+        
+        // 48h overdue: base penalty (3) → med net 2, same as 12h overdue
+        XCTAssertEqual(score48h, 56)
+        XCTAssertLessThan(score48h, scoreOnTime)
+    }
+    
+    func testOnTimeMeds_noOverduePenalty() {
+        let logs = makeDistinctDayLogs(category: .meal, count: 7)
+        let now = Date()
+        let onTime = [makeMed(streak: 5, nextDueDate: now.addingTimeInterval(24 * 3600))]
+        let noDueDate = [makeMed(streak: 5, nextDueDate: nil)]
+        
+        let scoreOnTime = WellnessCalculator.calculateScore(logs: logs, medications: onTime, upTo: now).score
+        let scoreNoDue = WellnessCalculator.calculateScore(logs: logs, medications: noDueDate, upTo: now).score
+        
+        XCTAssertEqual(scoreOnTime, scoreNoDue)
+        XCTAssertEqual(scoreOnTime, 59)
+    }
+    
+    func testOverdueMeds_staleOverdue_escalatedPenalty() {
+        let logs = makeDistinctDayLogs(category: .meal, count: 7)
+        // Med overdue by 72 hours — base + escalation penalty
+        let meds = [makeMed(streak: 5, nextDueDate: Date().addingTimeInterval(-72 * 3600))]
         
         let result = WellnessCalculator.calculateScore(logs: logs, medications: meds)
-        // Med credit: 0 (no streak), no penalty (outside window)
+        // Med credit: 5, penalty: 6, net: max(0, 5-6) = 0
         // Symptom: 40, Routine: 14, Activity: 0, Meds: 0
         // Total: 54
         XCTAssertEqual(result.score, 54)

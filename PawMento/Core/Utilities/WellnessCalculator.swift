@@ -48,7 +48,7 @@ struct WellnessCalculator {
         // Fix W3: Medication compliance
         static let maxStreakCreditPerMed = 5     // Up to 5 pts earned per med via streak
         static let overduePenaltyPerMed = 3      // Deducted per overdue med
-        static let overdueWindowHours: TimeInterval = 48 * 3600  // Only penalize recent overdue
+        static let overdueEscalationHours: TimeInterval = 48 * 3600  // Extra penalty beyond this age
         
         // Fix W1: Data-sufficiency thresholds
         static let insufficientDataThreshold = 3
@@ -117,7 +117,8 @@ struct WellnessCalculator {
                 
                 if let due = med.nextDueDate, due < date {
                     let overdueAge = date.timeIntervalSince(due)
-                    if overdueAge <= Constants.overdueWindowHours {
+                    overduePenalty += Constants.overduePenaltyPerMed
+                    if overdueAge > Constants.overdueEscalationHours {
                         overduePenalty += Constants.overduePenaltyPerMed
                     }
                 }
