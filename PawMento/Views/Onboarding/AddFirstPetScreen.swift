@@ -293,9 +293,12 @@ struct AddFirstPetScreen: View {
             }
             
             do {
-                try await petStore.addPet(newPet, ownerId: ownerId)
+                let result = try await petStore.addPet(newPet, ownerId: ownerId)
                 await MainActor.run {
                     isSubmitting = false
+                    if let warning = result.photoUploadWarning {
+                        ToastManager.shared.show(warning, duration: 4.0)
+                    }
                     dismiss()
                     onComplete()
                 }

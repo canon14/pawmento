@@ -68,14 +68,14 @@ class PetStore: ObservableObject {
     }
     
     @MainActor
-    func addPet(_ pet: Pet, ownerId: UUID) async throws {
+    func addPet(_ pet: Pet, ownerId: UUID) async throws -> AddPetResult {
+        try await UserBootstrap.ensure()
+        
         var finalPet = pet
+        let imageToUpload = finalPet.photoImage
+        finalPet.photoImage = nil
         
         do {
-            finalPet.photoLocalURL = try await uploadPhoto(for: finalPet, ownerId: ownerId)
-            // Fix S3: Clear in-memory image after upload to prevent re-uploads
-            finalPet.photoImage = nil
-            
             let dto = finalPet.toDTO(ownerId: ownerId)
             let insertedDTO: PetDTO = try await SupabaseManager.shared.client
                 .from("pets")
@@ -86,11 +86,30 @@ class PetStore: ObservableObject {
                 .value
             
             var insertedPet = insertedDTO.toPet()
-            insertedPet.photoImage = nil // Ensure no stale image reference
+            var photoWarning: String?
+            
+            if let image = imageToUpload {
+                do {
+                    let path = Self.petPhotoPath(ownerId: ownerId, petId: insertedPet.id)
+                    let relativePath = try await StorageManager.shared.uploadImage(image, path: path)
+                    try await SupabaseManager.shared.client
+                        .from("pets")
+                        .update(PetPhotoUpdateDTO(photo_url: relativePath))
+                        .eq("id", value: insertedPet.id.uuidString)
+                        .execute()
+                    insertedPet.photoLocalURL = StorageManager.shared.publicURL(forPath: relativePath)
+                } catch {
+                    print("Failed to upload pet photo: \(error)")
+                    photoWarning = "Pet saved, but photo upload failed. You can add a photo later from the pet profile."
+                }
+            }
+            
+            insertedPet.photoImage = nil
             if !pets.contains(where: { $0.id == insertedPet.id }) {
                 self.pets.append(insertedPet)
             }
             self.activePet = insertedPet
+            return AddPetResult(pet: insertedPet, photoUploadWarning: photoWarning)
         } catch {
             print("Failed to insert pet: \(error)")
             throw error

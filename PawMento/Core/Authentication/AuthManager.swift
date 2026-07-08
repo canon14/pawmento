@@ -68,18 +68,29 @@ class AuthManager: ObservableObject {
     private func fetchStoredFullName(userId: UUID) async -> String? {
         struct UserProfileRow: Codable { let full_name: String? }
         do {
-            let row: UserProfileRow = try await SupabaseManager.shared.client
+            let rows: [UserProfileRow] = try await SupabaseManager.shared.client
                 .from("users")
                 .select("full_name")
                 .eq("id", value: userId.uuidString)
-                .single()
+                .limit(1)
                 .execute()
                 .value
+            guard let row = rows.first else { return nil }
             let trimmed = row.full_name?.trimmingCharacters(in: .whitespacesAndNewlines)
             return trimmed?.isEmpty == true ? nil : trimmed
         } catch {
             print("Failed to fetch user profile name: \(error)")
             return nil
+        }
+    }
+    
+    /// Ensures `public.users` and `subscriptions` rows exist for the current session.
+    /// Logs and continues on failure so auth is not blocked by transient races.
+    func ensureUserBootstrap() async {
+        do {
+            try await UserBootstrap.ensure()
+        } catch {
+            print("Failed to bootstrap user profile: \(error)")
         }
     }
     
@@ -204,6 +215,7 @@ class AuthManager: ObservableObject {
             // The Supabase swift SDK natively handles background refreshing and validation
             // If the session is hopelessly expired, this will throw.
             _ = try await SupabaseManager.shared.client.auth.session
+            await ensureUserBootstrap()
             await checkOnboardingState()
             isAuthenticated = true
         } catch {
@@ -220,6 +232,7 @@ class AuthManager: ObservableObject {
         authError = nil
         do {
             _ = try await SupabaseManager.shared.client.auth.signIn(email: email, password: password)
+            await ensureUserBootstrap()
             await checkOnboardingState()
             isAuthenticated = true
         } catch {
@@ -243,6 +256,7 @@ class AuthManager: ObservableObject {
             
             if response.session != nil {
                 // User has an active session, skip email confirmation
+                await ensureUserBootstrap()
                 await checkOnboardingState()
                 isAuthenticated = true
             } else {
@@ -318,6 +332,7 @@ class AuthManager: ObservableObject {
             // We no longer rely on brittle timestamp heuristics for new user detection.
             // Onboarding is driven entirely by the per-user flag and pet presence.
             
+            await ensureUserBootstrap()
             await checkOnboardingState()
             isAuthenticated = true
         } catch {

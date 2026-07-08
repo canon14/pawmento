@@ -23,7 +23,7 @@
 		66A081402FC2700000C5D6D2 /* Exceptions for "PawMento" folder in "PawMento" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				Custom-Info.plist,
+				"Custom-Info.plist",
 			);
 			target = 66A0808B2FC2413E00C5D6D2 /* PawMento */;
 		};

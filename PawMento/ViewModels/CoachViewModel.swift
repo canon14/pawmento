@@ -30,7 +30,7 @@ class CoachViewModel: ObservableObject {
         return subscriptionLoadState == .loaded || subscriptionLoadState == .failed
     }
     
-    func initializeQuotaAndSubscription(ownerId: UUID, attempt: Int = 1, maxAttempts: Int = 2) async {
+    func initializeQuotaAndSubscription(ownerId: UUID, attempt: Int = 1, maxAttempts: Int = 3) async {
         do {
             let snapshot = try await SubscriptionStatusFetcher.fetch(ownerId: ownerId)
             isPremium = snapshot.isPremium
@@ -45,7 +45,7 @@ class CoachViewModel: ObservableObject {
             print("Failed to fetch subscription (attempt \(attempt)): \(error)")
             
             if attempt < maxAttempts {
-                try? await Task.sleep(nanoseconds: 500_000_000)
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
                 await initializeQuotaAndSubscription(ownerId: ownerId, attempt: attempt + 1, maxAttempts: maxAttempts)
                 return
             }

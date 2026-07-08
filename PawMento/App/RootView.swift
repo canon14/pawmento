@@ -29,6 +29,7 @@ struct RootView: View {
             .onChange(of: authManager.isAuthenticated) { oldValue, newValue in
                 if newValue {
                     Task {
+                        await authManager.ensureUserBootstrap()
                         await authManager.checkOnboardingState()
                         await subscriptionManager.loadProducts()
                         if let ownerId = await authManager.getCurrentUserId() {
