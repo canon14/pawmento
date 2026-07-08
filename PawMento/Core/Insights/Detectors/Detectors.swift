@@ -219,11 +219,34 @@ class TrendDetector {
             return []
         }
         
-        let oneWeek: TimeInterval = 7 * 24 * 3600
+        let oneDay: TimeInterval = 24 * 3600
+        let oneWeek: TimeInterval = 7 * oneDay
         let span = last - first
         let weeks = max(2, Int(span / oneWeek) + 1)
         
         var counts = [Double](repeating: 0, count: weeks)
+        var binDurationsDays = [Double](repeating: 0, count: weeks)
+        
+        // Fix I7: Normalize each bin to symptoms/day so a partial trailing week does not
+        // bias the regression toward a false "improving" slope.
+        for i in 0..<weeks {
+            let binStart = first + Double(i) * oneWeek
+            guard last >= binStart else { continue }
+            
+            if i == weeks - 1 {
+                let startDay = InsightCalendar.utc.startOfDay(
+                    for: Date(timeIntervalSince1970: binStart)
+                )
+                let endDay = InsightCalendar.utc.startOfDay(
+                    for: Date(timeIntervalSince1970: last)
+                )
+                let daySpan = InsightCalendar.utc.dateComponents([.day], from: startDay, to: endDay).day ?? 0
+                binDurationsDays[i] = Double(max(1, daySpan + 1))
+            } else {
+                binDurationsDays[i] = 7.0
+            }
+        }
+        
         for t in timestamps {
             let bin = min(weeks - 1, Int((t - first) / oneWeek))
             if bin >= 0 && bin < weeks {
@@ -231,8 +254,12 @@ class TrendDetector {
             }
         }
         
+        let rates = (0..<weeks).map { i in
+            binDurationsDays[i] > 0 ? counts[i] / binDurationsDays[i] : 0
+        }
+        
         let xs = (0..<weeks).map { Double($0) }
-        let ys = counts
+        let ys = rates
         
         let meanX = xs.reduce(0, +) / Double(weeks)
         let meanY = ys.reduce(0, +) / Double(weeks)
@@ -248,15 +275,16 @@ class TrendDetector {
         }
         
         guard varX > 0 else { return [] }
-        let slope = cov / varX
+        let slopePerDay = cov / varX
         
-        let relativeSlope = slope / max(meanY, 1.0)
+        let relativeSlope = slopePerDay / max(meanY, 1.0)
         guard abs(relativeSlope) >= 0.25 else { return [] }
         
-        let direction = slope > 0 ? "worsening" : "improving"
-        let sign = slope > 0 ? "+" : ""
-        let slopeStr = String(format: "%.1f", slope)
-        let avgStr = String(format: "%.1f", meanY)
+        let slopePerWeek = slopePerDay * 7.0
+        let direction = slopePerDay > 0 ? "worsening" : "improving"
+        let sign = slopePerDay > 0 ? "+" : ""
+        let slopeStr = String(format: "%.1f", slopePerWeek)
+        let avgStr = String(format: "%.1f", meanY * 7.0)
         
         let internalDescription = "Trend is \(direction). Change is \(sign)\(slopeStr) symptoms/week over \(weeks) weeks (avg \(avgStr) per week)."
         

@@ -86,6 +86,7 @@ SMOKE_TESTS=(
   PawMentoTests/ReminderLogSourceKeyTests
   PawMentoTests/CorrelationDetectorTests
   PawMentoTests/TemporalDetectorTests
+  PawMentoTests/TrendDetectorTests
 )
 
 prepare_destination() {
