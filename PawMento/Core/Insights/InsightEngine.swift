@@ -22,10 +22,6 @@ actor InsightEngine {
     private let cacheTTL: TimeInterval = 15 * 60 // 15 minutes
     private let maxCacheEntries = 20
     
-    // Test seams (InsightEngineTests)
-    private var pipelineExecutionCount = 0
-    var pipelineDelayNanoseconds: UInt64 = 0
-    
     private init() {}
     
     private func cacheKey(petId: UUID, window: TimeRange) -> String {
@@ -40,22 +36,6 @@ actor InsightEngine {
             inFlightTasks.removeValue(forKey: key)
         }
         cache = cache.filter { !$0.key.hasPrefix(prefix) }
-    }
-    
-    func isCachedForTesting(petId: UUID, window: TimeRange) -> Bool {
-        cache[cacheKey(petId: petId, window: window)] != nil
-    }
-    
-    func resetForTesting(pipelineDelayNanoseconds: UInt64 = 0) {
-        cache.removeAll()
-        inFlightTasks.removeAll()
-        cacheGenerationByPet.removeAll()
-        pipelineExecutionCount = 0
-        self.pipelineDelayNanoseconds = pipelineDelayNanoseconds
-    }
-    
-    func pipelineExecutionCountForTesting() -> Int {
-        pipelineExecutionCount
     }
     
     func generateInsights(for pet: Pet?, window: TimeRange, forceRefresh: Bool = false) async throws -> (insights: [Insight], signalCount: Int) {
@@ -94,12 +74,6 @@ actor InsightEngine {
         window: TimeRange,
         key: String
     ) async throws -> (insights: [Insight], signalCount: Int) {
-        pipelineExecutionCount += 1
-        
-        if pipelineDelayNanoseconds > 0 {
-            try await Task.sleep(nanoseconds: pipelineDelayNanoseconds)
-        }
-        
         guard let petId = pet?.id else { return ([], 0) }
         let generationAtStart = cacheGenerationByPet[petId] ?? 0
         
