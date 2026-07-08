@@ -26,6 +26,7 @@ class LogStore: ObservableObject {
     
     // MARK: - Save
     
+    /// Fix I12: All log mutations must invalidate insight cache for that pet (see `invalidateInsightsCache`).
     @MainActor
     func saveLog(_ log: LogEntry, userId: UUID) async throws {
         // 1. Upload photo if exists
@@ -54,8 +55,8 @@ class LogStore: ObservableObject {
         let key = "lastUsedCategory_\(log.petId.uuidString)"
         UserDefaults.standard.set(log.category.rawValue, forKey: key)
         
-        // Fix I3: Invalidate insight cache so new logs surface on next Insights load
-        await InsightEngine.shared.clearCache(for: finalLog.petId)
+        // Fix I3/I12: Invalidate insight cache so new logs surface on next Insights load
+        await invalidateInsightsCache(for: finalLog.petId)
     }
     
     // MARK: - Update
@@ -91,8 +92,8 @@ class LogStore: ObservableObject {
             }
         }
         
-        // Fix I3: Invalidate insight cache so edits surface on next Insights load
-        await InsightEngine.shared.clearCache(for: finalLog.petId)
+        // Fix I3/I12: Invalidate insight cache so edits surface on next Insights load
+        await invalidateInsightsCache(for: finalLog.petId)
     }
     
     // MARK: - Delete
@@ -115,8 +116,8 @@ class LogStore: ObservableObject {
         // 3. Remove locally after success
         logs.removeAll { $0.id == log.id }
         
-        // Fix I3: Invalidate insight cache so deletion surfaces on next Insights load
-        await InsightEngine.shared.clearCache(for: log.petId)
+        // Fix I3/I12: Invalidate insight cache so deletion surfaces on next Insights load
+        await invalidateInsightsCache(for: log.petId)
     }
     
     // MARK: - Fetch
@@ -157,6 +158,10 @@ class LogStore: ObservableObject {
     }
     
     // MARK: - Helpers
+    
+    private func invalidateInsightsCache(for petId: UUID) async {
+        await InsightEngine.shared.clearCache(for: petId)
+    }
     
     func shouldShowLogInLocalCache(_ log: LogEntry) -> Bool {
         if let loadedPetId {

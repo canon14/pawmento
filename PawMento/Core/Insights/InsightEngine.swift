@@ -15,6 +15,9 @@ actor InsightEngine {
     // Fix I11: Coalesce concurrent generation for the same pet+window key.
     private var inFlightTasks: [String: Task<(insights: [Insight], signalCount: Int), Error>] = [:]
     
+    /// Bumped on `clearCache(for:)` so in-flight pipelines skip stale cache writes after log mutations.
+    private var cacheGenerationByPet: [UUID: Int] = [:]
+    
     // Fix I3: Cache configuration
     private let cacheTTL: TimeInterval = 15 * 60 // 15 minutes
     private let maxCacheEntries = 20
@@ -31,12 +34,22 @@ actor InsightEngine {
     
     func clearCache(for petId: UUID) {
         let prefix = "\(petId.uuidString)_"
+        cacheGenerationByPet[petId, default: 0] += 1
+        for (key, task) in inFlightTasks where key.hasPrefix(prefix) {
+            task.cancel()
+            inFlightTasks.removeValue(forKey: key)
+        }
         cache = cache.filter { !$0.key.hasPrefix(prefix) }
+    }
+    
+    func isCachedForTesting(petId: UUID, window: TimeRange) -> Bool {
+        cache[cacheKey(petId: petId, window: window)] != nil
     }
     
     func resetForTesting(pipelineDelayNanoseconds: UInt64 = 0) {
         cache.removeAll()
         inFlightTasks.removeAll()
+        cacheGenerationByPet.removeAll()
         pipelineExecutionCount = 0
         self.pipelineDelayNanoseconds = pipelineDelayNanoseconds
     }
@@ -88,6 +101,7 @@ actor InsightEngine {
         }
         
         guard let petId = pet?.id else { return ([], 0) }
+        let generationAtStart = cacheGenerationByPet[petId] ?? 0
         
         // 2. Load signals
         let signals = try await SignalLoader.load(petId: petId, window: window)
@@ -147,7 +161,9 @@ actor InsightEngine {
             }
         }
         
-        cache[key] = CacheEntry(insights: topInsights, signalCount: signals.count, generatedAt: Date())
+        if generationAtStart == (cacheGenerationByPet[petId] ?? 0) {
+            cache[key] = CacheEntry(insights: topInsights, signalCount: signals.count, generatedAt: Date())
+        }
         
         return (topInsights, signals.count)
     }
