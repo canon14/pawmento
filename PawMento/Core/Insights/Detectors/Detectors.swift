@@ -31,21 +31,23 @@ class CorrelationDetector {
             return []
         }
         
-        var totalByTrigger: [String: Int] = [:]
-        var hitsByTrigger: [String: Int] = [:]
-        
+        // Fix I5: Group exposures by trigger key, then de-duplicate hits so overlapping
+        // 48h windows cannot credit the same symptom to multiple exposures.
+        var exposuresByTrigger: [String: [Signal]] = [:]
         for trigger in triggers {
             let key = (trigger.note ?? "").lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
-            totalByTrigger[key, default: 0] += 1
-            
-            let hasHit = symptoms.contains { symptom in
-                let dt = symptom.timestamp.timeIntervalSince(trigger.timestamp)
-                return dt >= 0 && dt <= exposureWindow
-            }
-            
-            if hasHit {
-                hitsByTrigger[key, default: 0] += 1
-            }
+            exposuresByTrigger[key, default: []].append(trigger)
+        }
+        
+        var totalByTrigger: [String: Int] = [:]
+        var hitsByTrigger: [String: Int] = [:]
+        for (key, exposures) in exposuresByTrigger {
+            totalByTrigger[key] = exposures.count
+            hitsByTrigger[key] = deduplicatedHitCount(
+                exposures: exposures,
+                symptoms: symptoms,
+                window: exposureWindow
+            )
         }
         
         let timestamps = signals.map { $0.timestamp }
@@ -102,6 +104,36 @@ class CorrelationDetector {
         // Fix I4: Cap surfaced correlations to top 2 by evidence count to limit false discovery rate
         candidates.sort { $0.evidenceCount > $1.evidenceCount }
         return Array(candidates.prefix(2))
+    }
+    
+    /// Count exposures credited with ≥1 symptom, attributing each symptom to at most one
+    /// nearest preceding exposure within the forward window (prevents overlap inflation).
+    private static func deduplicatedHitCount(
+        exposures: [Signal],
+        symptoms: [Signal],
+        window: TimeInterval
+    ) -> Int {
+        let sortedExposures = exposures.sorted { $0.timestamp < $1.timestamp }
+        let sortedSymptoms = symptoms.sorted { $0.timestamp < $1.timestamp }
+        var creditedExposureIds = Set<UUID>()
+        
+        for symptom in sortedSymptoms {
+            var nearestExposure: Signal?
+            var nearestDelta = TimeInterval.greatestFiniteMagnitude
+            
+            for exposure in sortedExposures {
+                let delta = symptom.timestamp.timeIntervalSince(exposure.timestamp)
+                guard delta >= 0, delta <= window, delta < nearestDelta else { continue }
+                nearestDelta = delta
+                nearestExposure = exposure
+            }
+            
+            if let exposure = nearestExposure {
+                creditedExposureIds.insert(exposure.id)
+            }
+        }
+        
+        return creditedExposureIds.count
     }
 }
 

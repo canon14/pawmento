@@ -84,6 +84,7 @@ SMOKE_TESTS=(
   PawMentoTests/AuthManagerProfileTests
   PawMentoTests/InsightCalendarTests
   PawMentoTests/ReminderLogSourceKeyTests
+  PawMentoTests/CorrelationDetectorTests
 )
 
 prepare_destination() {
