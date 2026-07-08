@@ -298,7 +298,7 @@ BEGIN
 
   RETURN new;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- Recreate trigger idempotently
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
@@ -379,23 +379,34 @@ $$;
 
 -- (Fix S9 + DB-M2) Atomically increment question usage and return remaining count.
 -- Derives quota from plan_type/status: paid plans return -1 (unlimited).
+-- UPSERT ensures a missing subscriptions row cannot bypass quota (migration 012).
 CREATE OR REPLACE FUNCTION public.increment_question_usage()
 RETURNS INTEGER
-LANGUAGE plpgsql SECURITY DEFINER AS $$
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = public
+AS $$
 DECLARE
   new_used    INTEGER;
   plan        TEXT;
   sub_status  TEXT;
   period_end  TIMESTAMPTZ;
   quota       INTEGER;
+  uid         UUID;
 BEGIN
-  UPDATE public.subscriptions
-    SET questions_used = questions_used + 1
-    WHERE user_id = auth.uid()
+  uid := auth.uid();
+  IF uid IS NULL THEN
+    RAISE EXCEPTION 'Not authenticated';
+  END IF;
+
+  PERFORM public.ensure_coach_question_period_for_user(uid);
+
+  INSERT INTO public.subscriptions (user_id, status, plan_type, questions_used, period_start)
+  VALUES (uid, 'free', 'free', 1, NOW())
+  ON CONFLICT (user_id) DO UPDATE
+    SET questions_used = public.subscriptions.questions_used + 1
   RETURNING questions_used, plan_type, status, current_period_end
     INTO new_used, plan, sub_status, period_end;
 
-  -- Paid / active plans are unlimited
   IF public.is_premium_subscription(plan, sub_status, period_end) THEN
     RETURN -1;
   END IF;
@@ -465,6 +476,23 @@ REVOKE EXECUTE ON FUNCTION public.reset_question_period() FROM public;
 GRANT EXECUTE ON FUNCTION public.reset_question_period() TO authenticated;
 
 -- Server-side coach quota RPCs (ai-proxy; service_role only).
+CREATE OR REPLACE FUNCTION public.ensure_subscription_row_for_user(p_user_id UUID)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF p_user_id IS NULL THEN
+    RAISE EXCEPTION 'user_id is required';
+  END IF;
+
+  INSERT INTO public.subscriptions (user_id, status, plan_type, questions_used, period_start)
+  VALUES (p_user_id, 'free', 'free', 0, NOW())
+  ON CONFLICT (user_id) DO NOTHING;
+END;
+$$;
+
 CREATE OR REPLACE FUNCTION public.ensure_coach_question_period_for_user(p_user_id UUID)
 RETURNS void
 LANGUAGE plpgsql
@@ -502,17 +530,13 @@ BEGIN
     RAISE EXCEPTION 'user_id is required';
   END IF;
 
+  PERFORM public.ensure_subscription_row_for_user(p_user_id);
   PERFORM public.ensure_coach_question_period_for_user(p_user_id);
 
   SELECT questions_used, plan_type, status, current_period_end
     INTO used, plan, sub_status, period_end
   FROM public.subscriptions
   WHERE user_id = p_user_id;
-
-  IF NOT FOUND THEN
-    quota := public.free_coach_question_quota();
-    RETURN quota;
-  END IF;
 
   IF public.is_premium_subscription(plan, sub_status, period_end) THEN
     RETURN -1;
@@ -542,18 +566,12 @@ BEGIN
 
   PERFORM public.ensure_coach_question_period_for_user(p_user_id);
 
-  UPDATE public.subscriptions
-    SET questions_used = questions_used + 1
-    WHERE user_id = p_user_id
+  INSERT INTO public.subscriptions (user_id, status, plan_type, questions_used, period_start)
+  VALUES (p_user_id, 'free', 'free', 1, NOW())
+  ON CONFLICT (user_id) DO UPDATE
+    SET questions_used = public.subscriptions.questions_used + 1
   RETURNING questions_used, plan_type, status, current_period_end
     INTO new_used, plan, sub_status, period_end;
-
-  IF NOT FOUND THEN
-    INSERT INTO public.subscriptions (user_id, status, plan_type, questions_used, period_start)
-    VALUES (p_user_id, 'free', 'free', 1, NOW())
-    RETURNING questions_used, plan_type, status, current_period_end
-      INTO new_used, plan, sub_status, period_end;
-  END IF;
 
   IF public.is_premium_subscription(plan, sub_status, period_end) THEN
     RETURN -1;
@@ -564,10 +582,12 @@ BEGIN
 END;
 $$;
 
+REVOKE ALL ON FUNCTION public.ensure_subscription_row_for_user(UUID) FROM public;
 REVOKE ALL ON FUNCTION public.ensure_coach_question_period_for_user(UUID) FROM public;
 REVOKE ALL ON FUNCTION public.coach_question_quota_remaining(UUID) FROM public;
 REVOKE ALL ON FUNCTION public.consume_coach_question_usage(UUID) FROM public;
 
+GRANT EXECUTE ON FUNCTION public.ensure_subscription_row_for_user(UUID) TO service_role;
 GRANT EXECUTE ON FUNCTION public.ensure_coach_question_period_for_user(UUID) TO service_role;
 GRANT EXECUTE ON FUNCTION public.coach_question_quota_remaining(UUID) TO service_role;
 GRANT EXECUTE ON FUNCTION public.consume_coach_question_usage(UUID) TO service_role;
