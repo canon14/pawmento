@@ -1,6 +1,7 @@
 -- ==========================================
 -- PawMento Database Schema (PostgreSQL)
--- Idempotent — safe to re-run at any time.
+-- Single source of truth — idempotent, safe to re-run at any time.
+-- Replaces the former migrations/001–013 sequence.
 -- ==========================================
 
 -- Enable UUID extension
@@ -87,8 +88,8 @@ CREATE TABLE IF NOT EXISTS public.logs (
 -- Existing rows get NOW() as default; new rows auto-populate both columns.
 ALTER TABLE public.logs ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
 
--- R1: Idempotency key for programmatic log sources (reminder notification taps, etc.)
--- Uniqueness is per pet — see migration 010 / idx_logs_pet_source_key_unique.
+-- Idempotency key for programmatic log sources (reminder notification taps, etc.)
+-- Uniqueness is per pet — see idx_logs_pet_source_key_unique.
 ALTER TABLE public.logs ADD COLUMN IF NOT EXISTS source_key TEXT;
 DROP INDEX IF EXISTS idx_logs_source_key_unique;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_logs_pet_source_key_unique
@@ -123,6 +124,14 @@ CREATE TABLE IF NOT EXISTS public.reminders (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Legacy rows may have lowercase slug "other" from an older default.
+UPDATE public.reminders
+SET category_id = 'Other'
+WHERE lower(category_id) = 'other';
+
+ALTER TABLE public.reminders
+    ALTER COLUMN category_id SET DEFAULT 'Other';
+
 -- 7. Chat Messages Table (AI Coach History)
 CREATE TABLE IF NOT EXISTS public.chat_messages (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -147,6 +156,12 @@ CREATE TABLE IF NOT EXISTS public.medications (
     logged_today BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- Legacy DBs created before dose/form/logged_today existed.
+ALTER TABLE public.medications
+    ADD COLUMN IF NOT EXISTS dose TEXT,
+    ADD COLUMN IF NOT EXISTS form TEXT,
+    ADD COLUMN IF NOT EXISTS logged_today BOOLEAN NOT NULL DEFAULT FALSE;
 
 -- ==========================================
 -- ROW LEVEL SECURITY (RLS) POLICIES
@@ -197,48 +212,51 @@ END $$;
 
 -- Logs policies: pet ownership + created_by must match auth.uid()
 DROP POLICY IF EXISTS "Users can manage logs for their pets" ON public.logs;
+DROP POLICY IF EXISTS "Users can select logs for their pets" ON public.logs;
+DROP POLICY IF EXISTS "Users can insert logs for their pets" ON public.logs;
+DROP POLICY IF EXISTS "Users can update logs for their pets" ON public.logs;
+DROP POLICY IF EXISTS "Users can delete logs for their pets" ON public.logs;
 
-DO $$ BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can select logs for their pets' AND tablename = 'logs') THEN
-        CREATE POLICY "Users can select logs for their pets" ON public.logs
-            FOR SELECT USING (
-                EXISTS (SELECT 1 FROM public.pets WHERE id = public.logs.pet_id AND owner_id = auth.uid())
-            );
-    END IF;
-END $$;
+CREATE POLICY "Users can select logs for their pets" ON public.logs
+    FOR SELECT USING (
+        EXISTS (
+            SELECT 1 FROM public.pets
+            WHERE id = public.logs.pet_id AND owner_id = auth.uid()
+        )
+    );
 
-DO $$ BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can insert logs for their pets' AND tablename = 'logs') THEN
-        CREATE POLICY "Users can insert logs for their pets" ON public.logs
-            FOR INSERT WITH CHECK (
-                created_by = auth.uid()
-                AND EXISTS (SELECT 1 FROM public.pets WHERE id = public.logs.pet_id AND owner_id = auth.uid())
-            );
-    END IF;
-END $$;
+CREATE POLICY "Users can insert logs for their pets" ON public.logs
+    FOR INSERT WITH CHECK (
+        created_by = auth.uid()
+        AND EXISTS (
+            SELECT 1 FROM public.pets
+            WHERE id = public.logs.pet_id AND owner_id = auth.uid()
+        )
+    );
 
-DO $$ BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can update logs for their pets' AND tablename = 'logs') THEN
-        CREATE POLICY "Users can update logs for their pets" ON public.logs
-            FOR UPDATE
-            USING (
-                EXISTS (SELECT 1 FROM public.pets WHERE id = public.logs.pet_id AND owner_id = auth.uid())
-            )
-            WITH CHECK (
-                created_by = auth.uid()
-                AND EXISTS (SELECT 1 FROM public.pets WHERE id = public.logs.pet_id AND owner_id = auth.uid())
-            );
-    END IF;
-END $$;
+CREATE POLICY "Users can update logs for their pets" ON public.logs
+    FOR UPDATE
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.pets
+            WHERE id = public.logs.pet_id AND owner_id = auth.uid()
+        )
+    )
+    WITH CHECK (
+        created_by = auth.uid()
+        AND EXISTS (
+            SELECT 1 FROM public.pets
+            WHERE id = public.logs.pet_id AND owner_id = auth.uid()
+        )
+    );
 
-DO $$ BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can delete logs for their pets' AND tablename = 'logs') THEN
-        CREATE POLICY "Users can delete logs for their pets" ON public.logs
-            FOR DELETE USING (
-                EXISTS (SELECT 1 FROM public.pets WHERE id = public.logs.pet_id AND owner_id = auth.uid())
-            );
-    END IF;
-END $$;
+CREATE POLICY "Users can delete logs for their pets" ON public.logs
+    FOR DELETE USING (
+        EXISTS (
+            SELECT 1 FROM public.pets
+            WHERE id = public.logs.pet_id AND owner_id = auth.uid()
+        )
+    );
 
 -- Symptoms policies: mirrors logs policy (Fix 1)
 -- ⚠️  This table is UNUSED — see note on the symptoms CREATE TABLE above.
@@ -289,9 +307,9 @@ CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
 BEGIN
   INSERT INTO public.users (id)
-  VALUES (new.id);
+  VALUES (new.id)
+  ON CONFLICT (id) DO NOTHING;
 
-  -- Fix 5: seed a default free subscription so reads never fail
   INSERT INTO public.subscriptions (user_id, status, plan_type, questions_used, period_start)
   VALUES (new.id, 'free', 'free', 0, NOW())
   ON CONFLICT (user_id) DO NOTHING;
@@ -673,3 +691,92 @@ $$;
 REVOKE EXECUTE ON FUNCTION public.activate_premium_subscription(TEXT, TEXT) FROM public;
 REVOKE EXECUTE ON FUNCTION public.activate_premium_subscription(TEXT, TEXT) FROM authenticated;
 
+-- ==========================================
+-- User bootstrap (client-callable after auth)
+-- ==========================================
+CREATE OR REPLACE FUNCTION public.ensure_user_bootstrap()
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  uid UUID;
+BEGIN
+  uid := auth.uid();
+  IF uid IS NULL THEN
+    RAISE EXCEPTION 'Not authenticated';
+  END IF;
+
+  INSERT INTO public.users (id)
+  VALUES (uid)
+  ON CONFLICT (id) DO NOTHING;
+
+  PERFORM public.ensure_subscription_row_for_user(uid);
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.ensure_user_bootstrap() FROM public;
+GRANT EXECUTE ON FUNCTION public.ensure_user_bootstrap() TO authenticated;
+
+-- ==========================================
+-- Data backfills (idempotent repairs)
+-- ==========================================
+INSERT INTO public.users (id)
+SELECT au.id
+FROM auth.users au
+WHERE NOT EXISTS (
+  SELECT 1 FROM public.users u WHERE u.id = au.id
+);
+
+INSERT INTO public.subscriptions (user_id, status, plan_type, questions_used, period_start)
+SELECT u.id, 'free', 'free', 0, NOW()
+FROM public.users u
+WHERE NOT EXISTS (
+  SELECT 1 FROM public.subscriptions s WHERE s.user_id = u.id
+);
+
+-- ==========================================
+-- Storage: pawmento-media bucket + RLS
+-- Paths: {userId}/pets/{petId}.jpg, {userId}/logs/...
+-- ==========================================
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('pawmento-media', 'pawmento-media', true)
+ON CONFLICT (id) DO UPDATE SET public = EXCLUDED.public;
+
+DROP POLICY IF EXISTS "Public read pawmento media" ON storage.objects;
+CREATE POLICY "Public read pawmento media"
+ON storage.objects FOR SELECT
+TO public
+USING (bucket_id = 'pawmento-media');
+
+DROP POLICY IF EXISTS "Users upload own pawmento media" ON storage.objects;
+CREATE POLICY "Users upload own pawmento media"
+ON storage.objects FOR INSERT
+TO authenticated
+WITH CHECK (
+  bucket_id = 'pawmento-media'
+  AND (storage.foldername(name))[1] = auth.uid()::text
+);
+
+DROP POLICY IF EXISTS "Users update own pawmento media" ON storage.objects;
+CREATE POLICY "Users update own pawmento media"
+ON storage.objects FOR UPDATE
+TO authenticated
+USING (
+  bucket_id = 'pawmento-media'
+  AND (storage.foldername(name))[1] = auth.uid()::text
+)
+WITH CHECK (
+  bucket_id = 'pawmento-media'
+  AND (storage.foldername(name))[1] = auth.uid()::text
+);
+
+DROP POLICY IF EXISTS "Users delete own pawmento media" ON storage.objects;
+CREATE POLICY "Users delete own pawmento media"
+ON storage.objects FOR DELETE
+TO authenticated
+USING (
+  bucket_id = 'pawmento-media'
+  AND (storage.foldername(name))[1] = auth.uid()::text
+);

@@ -143,16 +143,10 @@ The PostgreSQL schema (`Core/Database/schema.sql`) defines 8 tables, all protect
 
 2. **Set up the database**
    - Create a Supabase project.
-   - Run [`PawMento/Core/Database/schema.sql`](PawMento/Core/Database/schema.sql) in the Supabase SQL editor to create tables, RLS policies, and triggers.
-   - Apply migrations in order from [`PawMento/Core/Database/migrations/`](PawMento/Core/Database/migrations/) (at minimum **010**, **011**, **012**, and **013** for onboarding fixes).
-   - Migration **013** creates the `pawmento-media` storage bucket, storage RLS policies, and the `ensure_user_bootstrap` RPC used by the app on sign-in.
-   - Verify deployment with [`PawMento/Core/Database/migrations/VERIFY_DEPLOYMENT.sql`](PawMento/Core/Database/migrations/VERIFY_DEPLOYMENT.sql) in the SQL editor (checks 7–8 should return zero rows).
+   - Run [`PawMento/Core/Database/schema.sql`](PawMento/Core/Database/schema.sql) in the Supabase SQL editor. This single file is idempotent — safe to re-run on new or existing projects (tables, RLS, RPCs, storage bucket, triggers).
+   - Verify deployment with [`PawMento/Core/Database/VERIFY_DEPLOYMENT.sql`](PawMento/Core/Database/VERIFY_DEPLOYMENT.sql) in the SQL editor (checks 7–8 should return zero rows).
 
-3. **Configure storage (if not using migration 013)**
-   - In Supabase Dashboard → Storage, ensure bucket `pawmento-media` exists and is **public** (the app uses public URLs for pet photos).
-   - Objects must live under `{userId}/...` so RLS policies can scope uploads to `auth.uid()`.
-
-4. **Configure secrets**
+3. **Configure secrets**
    - Create `PawMento/Core/Secrets.swift` (git-ignored) with your keys:
      ```swift
      enum Secrets {
@@ -163,7 +157,7 @@ The PostgreSQL schema (`Core/Database/schema.sql`) defines 8 tables, all protect
      }
      ```
 
-5. **Open and run**
+4. **Open and run**
    ```bash
    open PawMento.xcodeproj
    ```

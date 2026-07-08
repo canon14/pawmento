@@ -1,4 +1,4 @@
--- Run in Supabase SQL editor to verify onboarding-related deployment.
+-- Run in Supabase SQL editor to verify deployment after schema.sql.
 -- All checks should return at least one row where noted.
 
 -- 1. Signup trigger exists
