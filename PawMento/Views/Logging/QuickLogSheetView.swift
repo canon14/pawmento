@@ -32,15 +32,9 @@ struct QuickLogSheetView: View {
         "quickLogDraft_\(petStore.activePet?.id.uuidString ?? "")"
     }
     
-    private var hasContent: Bool {
-        let trimmedNote = note.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !trimmedNote.isEmpty { return true }
-        if selectedCategory == .med && !dose.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            return true
-        }
-        if photo != nil { return true }
-        if selectedCategory == .symptom { return true }
-        return false
+    /// Category alone unlocks save; note, photo, and dose stay optional.
+    private var canSave: Bool {
+        selectedCategory != nil
     }
     
     /// Dose merged into note for More details (detail sheet has no separate dose field).
@@ -158,7 +152,7 @@ struct QuickLogSheetView: View {
             .safeAreaInset(edge: .bottom) {
                 // Floating Glass Footer
                 VStack(spacing: 12) {
-                    let isDisabled = selectedCategory == nil || !hasContent
+                    let isDisabled = !canSave
                     
                     Button(action: saveLog) {
                         HStack {
@@ -299,7 +293,7 @@ struct QuickLogSheetView: View {
     }
     
     private func saveLog() {
-        guard let category = selectedCategory, let petId = petStore.activePet?.id, hasContent else {
+        guard canSave, let category = selectedCategory, let petId = petStore.activePet?.id else {
             showErrorShake = true
             let generator = UINotificationFeedbackGenerator()
             generator.notificationOccurred(.error)
