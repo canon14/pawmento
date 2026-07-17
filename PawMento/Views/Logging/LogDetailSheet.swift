@@ -33,6 +33,8 @@ struct LogDetailSheet: View {
     @State private var errorMessage = ""
     @State private var showErrorAlert = false
     
+    @FocusState private var isNoteFocused: Bool
+    
     var body: some View {
         ZStack {
             Color.warmCream.ignoresSafeArea()
@@ -90,7 +92,7 @@ struct LogDetailSheet: View {
                         }
                         
                         // Note and Photo (Reusing existing components or custom)
-                        PhotoNoteRowView(note: $note, photo: $photo)
+                        PhotoNoteRowView(note: $note, photo: $photo, isNoteFocused: $isNoteFocused)
                             .padding(.horizontal, 20)
                             
                         // Show existing photo if one exists and user hasn't selected a new one

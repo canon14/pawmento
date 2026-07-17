@@ -4,11 +4,12 @@ import UIKit
 struct PhotoNoteRowView: View {
     @Binding var note: String
     @Binding var photo: UIImage?
+    var isNoteFocused: FocusState<Bool>.Binding
+    
     @State private var showingImagePicker = false
     @State private var showingActionSheet = false
     @State private var pickerSourceType: UIImagePickerController.SourceType = .camera
     
-    @FocusState private var isNoteFocused: Bool
     @State private var noteFocusStartTime: Date?
     
     var body: some View {
@@ -70,22 +71,22 @@ struct PhotoNoteRowView: View {
             }
             .buttonStyle(PlainButtonStyle())
             
-            // Note Field
+            // Note Field — focus only when the user taps (parent owns FocusState)
             ZStack(alignment: .topLeading) {
                 RoundedRectangle(cornerRadius: 16)
-                    .fill(isNoteFocused ? Color.surfaceContainerLowest : Color.surface0)
+                    .fill(isNoteFocused.wrappedValue ? Color.surfaceContainerLowest : Color.surface0)
                     .overlay(
                         RoundedRectangle(cornerRadius: 16)
                             .stroke(
-                                isNoteFocused ? Color.primary.opacity(0.4) : Color.primary.opacity(0.08),
-                                lineWidth: isNoteFocused ? 1.5 : 1
+                                isNoteFocused.wrappedValue ? Color.primary.opacity(0.4) : Color.primary.opacity(0.08),
+                                lineWidth: isNoteFocused.wrappedValue ? 1.5 : 1
                             )
                     )
                     .shadow(
-                        color: isNoteFocused ? Color.primary.opacity(0.08) : Color.clear,
+                        color: isNoteFocused.wrappedValue ? Color.primary.opacity(0.08) : Color.clear,
                         radius: 6, x: 0, y: 3
                     )
-                    .animation(.easeInOut(duration: 0.2), value: isNoteFocused)
+                    .animation(.easeInOut(duration: 0.2), value: isNoteFocused.wrappedValue)
                 
                 if note.isEmpty {
                     Text(AppStrings.QuickLog.tapToDescribe)
@@ -99,13 +100,13 @@ struct PhotoNoteRowView: View {
                 
                 TextEditor(text: $note)
                     .font(.bodyMD)
-                    .focused($isNoteFocused)
+                    .focused(isNoteFocused)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
                     .frame(height: 72)
                     .scrollContentBackground(.hidden)
                     .background(Color.clear)
-                    .onChange(of: isNoteFocused) { _, focused in
+                    .onChange(of: isNoteFocused.wrappedValue) { _, focused in
                         if focused {
                             noteFocusStartTime = Date()
                         } else if let start = noteFocusStartTime {

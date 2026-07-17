@@ -27,6 +27,8 @@ struct QuickLogSheetView: View {
     @State private var showDetailedLog = false
     
     @State private var sheetOpenedAt: Date?
+    @FocusState private var isNoteFocused: Bool
+    @State private var emphasizeCategory = false
     
     private var draftKey: String {
         "quickLogDraft_\(petStore.activePet?.id.uuidString ?? "")"
@@ -117,37 +119,60 @@ struct QuickLogSheetView: View {
                     .padding(.bottom, 16)
                 }
                 
-                ScrollView(showsIndicators: false) {
-                    VStack(spacing: 24) {
-                        PhotoNoteRowView(note: $note, photo: $photo)
-                            .padding(.horizontal, 20)
-                        
-                        CategoryScrollerView(selectedCategory: $selectedCategory)
-                            .padding(.leading, 20)
-                        
-                        if selectedCategory == .symptom {
-                            SeveritySliderView(severity: $severity)
+                ScrollViewReader { proxy in
+                    ScrollView(showsIndicators: false) {
+                        VStack(spacing: 24) {
+                            // (1) Category first — tag before details
+                            CategoryScrollerView(selectedCategory: $selectedCategory)
+                                .padding(.leading, 20)
+                                .padding(.trailing, 8)
+                                .padding(.vertical, 4)
+                                .background(
+                                    RoundedRectangle(cornerRadius: AppRadius.md, style: .continuous)
+                                        .fill(Color.primary.opacity(emphasizeCategory ? 0.06 : 0))
+                                )
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: AppRadius.md, style: .continuous)
+                                        .stroke(Color.primary.opacity(emphasizeCategory ? 0.28 : 0), lineWidth: 1.5)
+                                )
+                                .scaleEffect(emphasizeCategory && !reduceMotion ? 1.02 : 1.0)
+                                .animation(.spring(response: 0.45, dampingFraction: 0.78), value: emphasizeCategory)
+                                .id("categoryScroller")
+                            
+                            // (2) Photo + Note
+                            PhotoNoteRowView(note: $note, photo: $photo, isNoteFocused: $isNoteFocused)
                                 .padding(.horizontal, 20)
-                        }
-                        
-                        if selectedCategory == .med {
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text("Medication Dose")
-                                    .font(.labelSM)
-                                    .foregroundColor(.primaryText)
-                                TextField("e.g. 16mg, 1 tablet", text: $dose)
-                                    .padding()
-                                    .background(Color.surface0)
-                                    .cornerRadius(16)
-                                    .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.primary.opacity(0.05), lineWidth: 1))
+                            
+                            // (3) Conditional fields after category
+                            if selectedCategory == .symptom {
+                                SeveritySliderView(severity: $severity)
+                                    .padding(.horizontal, 20)
                             }
-                            .padding(.horizontal, 20)
+                            
+                            if selectedCategory == .med {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text("Medication Dose")
+                                        .font(.labelSM)
+                                        .foregroundColor(.primaryText)
+                                    TextField("e.g. 16mg, 1 tablet", text: $dose)
+                                        .padding()
+                                        .background(Color.surface0)
+                                        .cornerRadius(16)
+                                        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.primary.opacity(0.05), lineWidth: 1))
+                                }
+                                .padding(.horizontal, 20)
+                            }
+                        }
+                        .padding(.bottom, 24) // Spacing before the sticky footer
+                    }
+                    .scrollDismissesKeyboard(.interactively)
+                    .onChange(of: emphasizeCategory) { _, shouldEmphasize in
+                        guard shouldEmphasize else { return }
+                        withAnimation(.easeOut(duration: 0.35)) {
+                            proxy.scrollTo("categoryScroller", anchor: .top)
                         }
                     }
-                    .padding(.bottom, 24) // Spacing before the sticky footer
                 }
-                .scrollDismissesKeyboard(.interactively)
-                
             }
             .safeAreaInset(edge: .bottom) {
                 // Floating Glass Footer
@@ -267,8 +292,28 @@ struct QuickLogSheetView: View {
                 }
             }
             
+            // Never auto-raise the keyboard; note focus only via user tap.
+            isNoteFocused = false
+            
+            // Emphasize category only when nothing is pre-selected.
+            if selectedCategory == nil {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                    withAnimation(.spring(response: 0.45, dampingFraction: 0.78)) {
+                        emphasizeCategory = true
+                    }
+                }
+            }
+            
             sheetOpenedAt = Date()
             TelemetryEngine.shared.track(event: .quick_log_opened)
+        }
+        .onChange(of: selectedCategory) { _, newCategory in
+            if newCategory != nil {
+                withAnimation(.easeOut(duration: 0.25)) {
+                    emphasizeCategory = false
+                }
+                // Do not auto-focus the note — wait for an explicit tap.
+            }
         }
         .onDisappear {
             if !isSaving && !showSuccess {
