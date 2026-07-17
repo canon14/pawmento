@@ -15,7 +15,7 @@ struct OnboardingCarouselView: View {
             Color.background.ignoresSafeArea()
             
             VStack(spacing: 0) {
-                // Header with Skip Button
+                // Header with Skip Button (hidden on final slide)
                 HStack {
                     // Page counter
                     Text("\(currentIndex + 1)/\(slideCount)")
@@ -26,19 +26,21 @@ struct OnboardingCarouselView: View {
                     
                     Spacer()
                     
-                    Button(action: {
-                        showingSkipConfirmation = true
-                    }) {
-                        Text("Skip")
-                            .font(.labelMD)
-                            .foregroundColor(.tertiaryText)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 8)
-                            .background(Color.surfaceContainer.opacity(0.5))
-                            .clipShape(Capsule())
+                    if currentIndex < slideCount - 1 {
+                        Button(action: {
+                            showingSkipConfirmation = true
+                        }) {
+                            Text("Skip")
+                                .font(.labelSM)
+                                .foregroundColor(.tertiaryText)
+                                .frame(minWidth: 44, minHeight: 44)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.top, 20)
+                        .padding(.trailing, 20)
+                        .accessibilityLabel("Skip")
                     }
-                    .padding(.top, 20)
-                    .padding(.trailing, 20)
                 }
                 
                 // Carousel
