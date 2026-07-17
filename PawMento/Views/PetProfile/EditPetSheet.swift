@@ -30,7 +30,7 @@ struct EditPetSheet: View {
     @State private var isSubmitting = false
     
     var canSubmit: Bool {
-        !name.isEmpty && selectedSpecies != nil
+        !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && selectedSpecies != nil
     }
     
     var body: some View {
@@ -175,6 +175,7 @@ struct EditPetSheet: View {
                         submitForm()
                     }
                     .font(.headlineMD)
+                    .fontWeight(.semibold)
                     .foregroundColor(canSubmit ? .primary : .outline)
                     .disabled(!canSubmit || isSubmitting)
                 }
@@ -300,7 +301,7 @@ struct EditPetSheet: View {
         isSubmitting = true
         
         var updatedPet = editingPet
-        updatedPet.name = name
+        updatedPet.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
         updatedPet.species = species
         updatedPet.breed = breed.isEmpty ? nil : breed
         updatedPet.birthday = birthday

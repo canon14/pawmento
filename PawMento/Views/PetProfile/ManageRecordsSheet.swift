@@ -61,12 +61,19 @@ struct ManageRecordsSheet: View {
             .navigationTitle("Vital Records")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                    .foregroundColor(.onSurfaceVariant)
+                }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Done") {
                         dismiss()
                     }
-                    .foregroundColor(.primary)
                     .font(.headlineMD)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.primary)
                 }
             }
         }

@@ -66,12 +66,15 @@ struct MedicationSheet: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Cancel") { dismiss() }
+                        .foregroundColor(.onSurfaceVariant)
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Save") {
                         Task { await saveMedication() }
                     }
+                    .font(.headlineMD)
                     .fontWeight(.semibold)
+                    .foregroundColor(canSave ? .primary : .outline)
                     .disabled(!canSave || isSaving)
                 }
             }

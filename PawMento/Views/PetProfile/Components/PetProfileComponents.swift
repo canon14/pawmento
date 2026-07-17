@@ -220,16 +220,70 @@ struct AICoachCardView: View {
     let pet: Pet
     @ObservedObject var viewModel: PetProfileViewModel
     @EnvironmentObject var logStore: LogStore
+    @EnvironmentObject var coachViewModel: CoachViewModel
+    @EnvironmentObject var authManager: AuthManager
     @State private var showPaywall = false
     @State private var showCoach = false
     
+    private var ageYears: Int? {
+        guard let bday = pet.birthday,
+              let bdayDate = Calendar.current.date(from: bday),
+              let year = Calendar.current.dateComponents([.year], from: bdayDate, to: Date()).year else {
+            return nil
+        }
+        return year
+    }
+    
+    private var speciesLabel: String {
+        switch pet.species {
+        case .dog: return "dog"
+        case .cat: return "cat"
+        case .rabbit: return "rabbit"
+        case .other(let name): return name.lowercased()
+        }
+    }
+    
+    /// Profile-specific prompts — not generic Coach launchers.
+    private var profileCoachPrompts: [String] {
+        var prompts: [String] = []
+        
+        if viewModel.wellnessConfidence != .insufficient {
+            prompts.append(
+                "\(pet.name)'s wellness score is \(viewModel.wellnessScore). What should I pay attention to for a \(speciesLabel)?"
+            )
+        }
+        
+        if let years = ageYears {
+            prompts.append(
+                "What should I watch for in a \(years)-year-old \(speciesLabel) like \(pet.name)?"
+            )
+        } else if let breed = pet.breed, !breed.isEmpty {
+            prompts.append(
+                "Any care tips for \(pet.name), my \(breed) \(speciesLabel)?"
+            )
+        } else {
+            prompts.append(
+                "Based on \(pet.name)'s profile as a \(speciesLabel), what should I focus on this week?"
+            )
+        }
+        
+        if let last = logStore.logs.first {
+            prompts.append(
+                "I recently logged \"\(last.category.rawValue)\" for \(pet.name). Anything I should follow up on?"
+            )
+        }
+        
+        // Cap to two chips so the card stays compact.
+        return Array(prompts.prefix(2))
+    }
+    
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 8) {
-                Image(systemName: "pawprint.fill")
+                Image(systemName: "pawprint.circle.fill")
                     .foregroundColor(.primary)
                     .font(.headlineSM)
-                Text("AI Coach · \(pet.name)")
+                Text("Coach on \(pet.name)'s profile")
                     .font(.labelSM)
             }
             
@@ -254,53 +308,98 @@ struct AICoachCardView: View {
                     }
             }
             
+            // Contextual chips — seed Coach with this pet's profile context
+            if !profileCoachPrompts.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(profileCoachPrompts, id: \.self) { prompt in
+                        Button {
+                            openCoach(seeding: prompt)
+                        } label: {
+                            HStack(spacing: 8) {
+                                Text(prompt)
+                                    .font(.labelSM)
+                                    .foregroundColor(.primaryText)
+                                    .multilineTextAlignment(.leading)
+                                    .lineLimit(2)
+                                Spacer(minLength: 4)
+                                Image(systemName: "arrow.up.right")
+                                    .font(.system(size: 11, weight: .semibold))
+                                    .foregroundColor(.primary.opacity(0.55))
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 10)
+                            .frame(minHeight: 44)
+                            .background(Color.primaryContainer.opacity(0.28))
+                            .cornerRadius(AppRadius.sm)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: AppRadius.sm)
+                                    .stroke(Color.primary.opacity(0.1), lineWidth: 1)
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+            
+            // Compact inline row — not a second full-weight Coach hero CTA
+            Button {
+                openCoach(seeding: profileCoachPrompts.first)
+            } label: {
+                HStack(spacing: 6) {
+                    Text("Continue in Coach")
+                        .font(.labelSM)
+                    Image(systemName: "chevron.right")
+                        .font(.caption)
+                    Spacer(minLength: 0)
+                }
+                .foregroundColor(.primary)
+            }
+            .buttonStyle(.plain)
+            .padding(.top, 2)
+            
             Button(action: { showPaywall = true }) {
                 HStack {
-                    Spacer()
                     Text("See Full Pattern Analysis")
-                        .font(.labelMD)
+                        .font(.labelSM)
                         .foregroundColor(.primary)
                     Spacer()
-                    Text("Premium 🔒")
+                    Text("Premium")
                         .font(.caption.weight(.bold))
                         .foregroundColor(.white)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
-                        .background(LinearGradient(colors: [Color.primary, Color.primary.opacity(0.8)], startPoint: .topLeading, endPoint: .bottomTrailing))
+                        .background(Color.primary.opacity(0.85))
                         .clipShape(Capsule())
                 }
-                .frame(height: 48)
+                .padding(.vertical, 10)
+                .padding(.horizontal, 12)
                 .background(Color.surfaceContainerLowest)
-                .cornerRadius(AppRadius.input)
-                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.primary, lineWidth: 1))
+                .cornerRadius(AppRadius.sm)
+                .overlay(RoundedRectangle(cornerRadius: AppRadius.sm).stroke(Color.primary.opacity(0.2), lineWidth: 1))
             }
+            .buttonStyle(.plain)
             .sheet(isPresented: $showPaywall) {
                 PaywallSheet(featureContext: "Pattern Analysis")
             }
-            
-            Button(action: { showCoach = true }) {
-                HStack {
-                    Text("Ask the Coach about \(pet.name)")
-                    Spacer()
-                    Image(systemName: "arrow.right")
-                }
-                .font(.labelSM)
-                .foregroundColor(.white)
-                .padding()
-                .background(Color.primary)
-                .cornerRadius(16)
-            }
-            .buttonStyle(SquishyCardStyle())
-            .fullScreenCover(isPresented: $showCoach) {
-                CoachChatView()
-            }
         }
-        .padding(20)
+        .padding(16)
         .background(
             Color.surfaceContainerLowest.opacity(0.8)
                 .background(.ultraThinMaterial)
         )
         .cornerRadius(AppRadius.card)
+        .fullScreenCover(isPresented: $showCoach) {
+            CoachChatView()
+        }
+    }
+    
+    private func openCoach(seeding prompt: String?) {
+        showCoach = true
+        guard let prompt, !prompt.isEmpty else { return }
+        Task {
+            let ownerId = await authManager.getCurrentUserId()
+            await coachViewModel.sendMessage(prompt, pet: pet, ownerId: ownerId)
+        }
     }
 }
 
