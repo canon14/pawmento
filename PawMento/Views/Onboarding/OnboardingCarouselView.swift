@@ -15,15 +15,8 @@ struct OnboardingCarouselView: View {
             Color.background.ignoresSafeArea()
             
             VStack(spacing: 0) {
-                // Header with Skip Button (hidden on final slide)
+                // Quiet Skip — trailing only, hidden on final slide (no page counter)
                 HStack {
-                    // Page counter
-                    Text("\(currentIndex + 1)/\(slideCount)")
-                        .font(.labelSM)
-                        .foregroundColor(.tertiaryText)
-                        .padding(.leading, 20)
-                        .padding(.top, 20)
-                    
                     Spacer()
                     
                     if currentIndex < slideCount - 1 {
@@ -37,13 +30,18 @@ struct OnboardingCarouselView: View {
                                 .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
-                        .padding(.top, 20)
-                        .padding(.trailing, 20)
                         .accessibilityLabel("Skip")
+                    } else {
+                        Color.clear
+                            .frame(width: 44, height: 44)
                     }
                 }
+                .padding(.top, 20)
+                .padding(.trailing, 20)
                 
                 // Carousel
+                // TODO: parallax pending scroll-offset access
+                // (plain TabView(.page) does not expose per-page scroll offset cleanly)
                 TabView(selection: $currentIndex) {
                     OnboardingSlideView(
                         illustration: Slide1Illustration(),
@@ -82,7 +80,7 @@ struct OnboardingCarouselView: View {
                 
                 // Footer (Dots + CTA)
                 VStack(spacing: 28) {
-                    // Capsule Progress Indicators
+                    // Capsule Progress Indicators — sole progress feedback
                     HStack(spacing: 6) {
                         ForEach(0..<slideCount, id: \.self) { index in
                             Capsule()
@@ -100,7 +98,7 @@ struct OnboardingCarouselView: View {
                         }
                     }
                     
-                    // Primary CTA
+                    // Primary CTA — single instance; label driven by index
                     Button(action: {
                         if currentIndex < slideCount - 1 {
                             withAnimation {
@@ -111,7 +109,7 @@ struct OnboardingCarouselView: View {
                         }
                     }) {
                         HStack(spacing: 8) {
-                            Text(currentIndex == slideCount - 1 ? "Get started" : "Continue")
+                            Text(currentIndex == slideCount - 1 ? "Set up my pet" : "Continue")
                             
                             if currentIndex == slideCount - 1 {
                                 Image(systemName: "arrow.right")
@@ -124,11 +122,11 @@ struct OnboardingCarouselView: View {
                     .padding(.bottom, 32)
                 }
                 .opacity(footerVisible ? 1 : 0)
-                .offset(y: footerVisible ? 0 : 10)
+                .offset(y: footerVisible ? 0 : 12)
             }
         }
         .onAppear {
-            withAnimation(.easeOut(duration: 0.5).delay(0.3)) {
+            withAnimation(.easeOut(duration: 0.4).delay(0.15)) {
                 footerVisible = true
             }
         }
