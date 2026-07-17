@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import CryptoKit
 
 enum InsightType: String, Codable {
     case correlation
@@ -97,6 +98,27 @@ struct Insight: Identifiable, Codable, Hashable {
         case .moderate, .strong:
             return true
         }
+    }
+    
+    /// Deterministic id so dismissals survive engine regenerations.
+    /// Uses detector-stable fields (not LLM-rewritten headlines).
+    nonisolated static func stableId(
+        type: InsightType,
+        evidenceCount: Int,
+        isRuleBased: Bool,
+        fingerprint: String
+    ) -> UUID {
+        let material = "\(type.rawValue)|\(evidenceCount)|\(isRuleBased)|\(fingerprint)"
+        let digest = Insecure.MD5.hash(data: Data(material.utf8))
+        var bytes = Array(digest)
+        bytes[6] = (bytes[6] & 0x0F) | 0x30
+        bytes[8] = (bytes[8] & 0x3F) | 0x80
+        return UUID(uuid: (
+            bytes[0], bytes[1], bytes[2], bytes[3],
+            bytes[4], bytes[5], bytes[6], bytes[7],
+            bytes[8], bytes[9], bytes[10], bytes[11],
+            bytes[12], bytes[13], bytes[14], bytes[15]
+        ))
     }
 }
 

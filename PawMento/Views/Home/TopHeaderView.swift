@@ -2,6 +2,7 @@ import SwiftUI
 
 struct TopHeaderView: View {
     @EnvironmentObject var petStore: PetStore
+    var loggingStreak: Int = 0
     @State private var showSettings = false
     
     // Time-of-day aware emoji
@@ -36,15 +37,21 @@ struct TopHeaderView: View {
                 .clipShape(Circle())
                 .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
                 
-                VStack(alignment: .leading, spacing: 0) {
+                VStack(alignment: .leading, spacing: 4) {
                     Text("\(greetingTimeOfDay) \(greetingEmoji)")
                         .font(.headlineSM)
                         .foregroundColor(.primary)
-                        .tracking(-0.5) // tracking-tight
+                        .tracking(-0.5)
                     
-                    Text(formattedDate)
-                        .font(.labelMD)
-                        .foregroundColor(.onSurfaceVariant)
+                    HStack(spacing: 8) {
+                        Text(formattedDate)
+                            .font(.labelMD)
+                            .foregroundColor(.onSurfaceVariant)
+                        
+                        if petStore.activePet != nil {
+                            StreakChip(streak: loggingStreak)
+                        }
+                    }
                 }
             }
             
@@ -53,7 +60,7 @@ struct TopHeaderView: View {
             Button(action: {
                 showSettings = true
             }) {
-                Image(systemName: "gear") // Replaced bell with gear
+                Image(systemName: "gear")
                     .foregroundColor(.primary)
                     .frame(width: 40, height: 40)
                     .background(Color.surfaceContainer)

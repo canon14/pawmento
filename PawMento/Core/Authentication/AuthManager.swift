@@ -305,18 +305,27 @@ class AuthManager: ObservableObject {
         isLoading = true
         authError = nil
         defer { isLoading = false }
+        
         do {
             _ = try await SupabaseManager.shared.client.rpc("delete_user").execute()
-            try await SupabaseManager.shared.client.auth.signOut()
-            isAuthenticated = false
-            needsEmailConfirmation = false
-            hasCompletedOnboarding = false
-            return true
         } catch {
             print("Failed to delete user via RPC: \(error)")
             authError = "Account deletion failed. Please try again or contact support."
             return false
         }
+        
+        // Account is gone on the server — always tear down local session even if signOut fails.
+        do {
+            try await SupabaseManager.shared.client.auth.signOut()
+        } catch {
+            print("Account deleted but signOut failed: \(error)")
+            authError = "Account deleted. Please restart the app if you stay signed in."
+        }
+        
+        isAuthenticated = false
+        needsEmailConfirmation = false
+        hasCompletedOnboarding = false
+        return true
     }
     
     // Apple Sign In

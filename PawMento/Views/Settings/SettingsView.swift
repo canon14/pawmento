@@ -12,10 +12,12 @@ struct SettingsView: View {
     @State private var userEmail: String = "Loading..."
     @State private var displayName: String = "PawMento User"
     
-    // Delete Account State
+    // Delete / Sign-out State
     @State private var showDeleteConfirmation = false
     @State private var deleteConfirmationText = ""
     @State private var isDeleting = false
+    @State private var isSigningOut = false
+    @State private var isUpdatingNotifications = false
     
     // Subscription sheets
     @State private var showPaywall = false
@@ -23,6 +25,10 @@ struct SettingsView: View {
     
     private var isDeleteConfirmationValid: Bool {
         deleteConfirmationText.lowercased() == "delete me"
+    }
+    
+    private var isAccountActionInFlight: Bool {
+        isSigningOut || isDeleting || authManager.isLoading
     }
     
     var body: some View {
@@ -82,18 +88,17 @@ struct SettingsView: View {
                         SettingsSection(title: "ACCOUNT") {
                             SettingsRow(icon: "star.fill", iconColor: .brandAccent, title: "Manage Subscription") {
                                 HStack {
-                                    SubscriptionPlanBadge(isPremium: coachViewModel.isPremium)
+                                    SubscriptionPlanBadge(
+                                        isPremium: coachViewModel.isPremium,
+                                        loadState: coachViewModel.subscriptionLoadState
+                                    )
                                     Image(systemName: "chevron.right")
                                         .font(.caption.weight(.bold))
                                         .foregroundColor(.tertiaryText)
                                         .padding(.leading, 4)
                                 }
                             } action: {
-                                if coachViewModel.isPremium {
-                                    showSubscriptionManagement = true
-                                } else {
-                                    showPaywall = true
-                                }
+                                Task { await handleManageSubscriptionTap() }
                             }
                             
                             SettingsDivider()
@@ -109,11 +114,15 @@ struct SettingsView: View {
                         
                         // Preferences Section
                         SettingsSection(title: "PREFERENCES") {
-                            SettingsToggleRow(
-                                icon: "bell.badge.fill",
-                                iconColor: .orange,
-                                title: "Push Notifications",
-                                isOn: notificationsToggleBinding
+                            SettingsNotificationStatusRow(
+                                isAuthorized: notificationManager.isAuthorized,
+                                isUpdating: isUpdatingNotifications,
+                                onEnable: {
+                                    Task { await enableNotifications() }
+                                },
+                                onOpenSettings: {
+                                    openSystemSettings()
+                                }
                             )
                         }
                         
@@ -154,8 +163,12 @@ struct SettingsView: View {
                                 Task { await handleSignOut() }
                             }) {
                                 HStack {
+                                    if isSigningOut {
+                                        ProgressView()
+                                            .padding(.trailing, 4)
+                                    }
                                     Image(systemName: "rectangle.portrait.and.arrow.right")
-                                    Text("Sign Out")
+                                    Text(isSigningOut ? "Signing Out..." : "Sign Out")
                                 }
                                 .font(.headlineSM)
                                 .foregroundColor(.primaryText)
@@ -166,6 +179,7 @@ struct SettingsView: View {
                                 .shadow(color: Color.black.opacity(0.02), radius: 8, x: 0, y: 4)
                             }
                             .buttonStyle(SquishyCardStyle())
+                            .disabled(isAccountActionInFlight)
                             
                             Button(action: {
                                 showDeleteConfirmation = true
@@ -182,6 +196,7 @@ struct SettingsView: View {
                                 .cornerRadius(20)
                             }
                             .buttonStyle(SquishyCardStyle())
+                            .disabled(isAccountActionInFlight)
                         }
                         .padding(.horizontal, 20)
                         
@@ -211,7 +226,7 @@ struct SettingsView: View {
                     }
                 }
             }
-            .disabled(isDeleting)
+            .disabled(isDeleting || isSigningOut)
             .overlay {
                 if isDeleting {
                     ZStack {
@@ -237,7 +252,7 @@ struct SettingsView: View {
             .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
                 Task {
                     await notificationManager.refreshAuthorization()
-                    if userEmail == "Loading..." {
+                    if userEmail == "Loading..." || userEmail == AuthManager.profileUnavailableEmail {
                         await loadUserProfile()
                     }
                 }
@@ -254,7 +269,7 @@ struct SettingsView: View {
                     deleteConfirmationText = ""
                     Task { await handleDeleteAccount() }
                 }
-                .disabled(!isDeleteConfirmationValid)
+                .disabled(!isDeleteConfirmationValid || isAccountActionInFlight)
             } message: {
                 Text("This action cannot be undone. All your pets, logs, and data will be permanently deleted. Type 'delete me' to confirm.")
             }
@@ -276,6 +291,26 @@ struct SettingsView: View {
         await coachViewModel.initializeQuotaAndSubscription(ownerId: ownerId)
     }
     
+    private func handleManageSubscriptionTap() async {
+        if coachViewModel.subscriptionLoadState != .loaded {
+            await refreshSubscriptionEntitlement()
+        }
+        
+        guard coachViewModel.subscriptionLoadState == .loaded else {
+            toastManager.show(
+                "Couldn't verify your subscription. Check your connection and try again.",
+                duration: 4.0
+            )
+            return
+        }
+        
+        if coachViewModel.isPremium {
+            showSubscriptionManagement = true
+        } else {
+            showPaywall = true
+        }
+    }
+    
     private func loadUserProfile() async {
         if let profile = await authManager.fetchSettingsProfile() {
             userEmail = profile.email
@@ -287,6 +322,10 @@ struct SettingsView: View {
     }
     
     private func handleSignOut() async {
+        guard !isAccountActionInFlight else { return }
+        isSigningOut = true
+        defer { isSigningOut = false }
+        
         let success = await authManager.signOut()
         if success {
             dismiss()
@@ -299,8 +338,17 @@ struct SettingsView: View {
     }
     
     private func handleDeleteAccount() async {
+        guard !isSigningOut else {
+            isDeleting = false
+            return
+        }
+        
         let success = await authManager.deleteAccount()
         if success {
+            // Surface partial signOut messaging if present, then dismiss into logged-out state.
+            if let message = authManager.authError, message.contains("Account deleted") {
+                toastManager.show(message, duration: 4.0)
+            }
             dismiss()
         } else {
             isDeleting = false
@@ -311,35 +359,21 @@ struct SettingsView: View {
         }
     }
     
-    private var notificationsToggleBinding: Binding<Bool> {
-        Binding(
-            get: { notificationManager.isAuthorized },
-            set: { enabled in
-                Task { await handleNotificationToggle(enabled) }
-            }
-        )
-    }
-    
-    private func handleNotificationToggle(_ enabled: Bool) async {
-        if enabled {
-            let granted = await notificationManager.requestAuthorization()
-            if granted {
-                let enabledReminders = ReminderStore.shared.reminders.filter { $0.isEnabled }
-                await notificationManager.syncNotifications(enabledReminders: enabledReminders)
-            } else {
-                toastManager.show(
-                    "Notifications are off. Enable them in Settings to receive reminders.",
-                    duration: 4.0
-                )
-                openSystemSettings()
-            }
+    private func enableNotifications() async {
+        guard !isUpdatingNotifications else { return }
+        isUpdatingNotifications = true
+        defer { isUpdatingNotifications = false }
+        
+        let granted = await notificationManager.requestAuthorization()
+        if granted {
+            let enabledReminders = ReminderStore.shared.reminders.filter { $0.isEnabled }
+            await notificationManager.syncNotifications(enabledReminders: enabledReminders)
         } else {
             toastManager.show(
-                "To turn off notifications, use iOS Settings.",
-                duration: 3.0
+                "Notifications are off. Enable them in Settings to receive reminders.",
+                duration: 4.0
             )
             openSystemSettings()
-            await notificationManager.refreshAuthorization()
         }
     }
     
@@ -353,15 +387,31 @@ struct SettingsView: View {
 
 private struct SubscriptionPlanBadge: View {
     let isPremium: Bool
+    let loadState: SubscriptionLoadState
+    
+    private var label: String {
+        switch loadState {
+        case .loaded:
+            return isPremium ? "Pro" : "Free"
+        case .failed:
+            return "Retry"
+        case .unknown:
+            return "—"
+        }
+    }
+    
+    private var showsProStyle: Bool {
+        loadState == .loaded && isPremium
+    }
     
     var body: some View {
-        Text(isPremium ? "Pro" : "Free")
+        Text(label)
             .font(.caption.weight(.bold))
-            .foregroundColor(isPremium ? .white : .secondaryText)
+            .foregroundColor(showsProStyle ? .white : .secondaryText)
             .padding(.horizontal, 10)
             .padding(.vertical, 4)
             .background {
-                if isPremium {
+                if showsProStyle {
                     LinearGradient(
                         colors: [Color.brandAccent, Color.brandAccent.opacity(0.8)],
                         startPoint: .topLeading,
@@ -373,13 +423,59 @@ private struct SubscriptionPlanBadge: View {
             }
             .clipShape(Capsule())
             .overlay {
-                if !isPremium {
+                if !showsProStyle {
                     Capsule()
                         .stroke(Color.outlineVariant.opacity(0.6), lineWidth: 1)
                 }
             }
-            .shadow(color: isPremium ? Color.brandAccent.opacity(0.3) : .clear, radius: 4, x: 0, y: 2)
-            .animation(.easeInOut(duration: 0.2), value: isPremium)
+            .shadow(color: showsProStyle ? Color.brandAccent.opacity(0.3) : .clear, radius: 4, x: 0, y: 2)
+            .animation(.easeInOut(duration: 0.2), value: label)
+    }
+}
+
+private struct SettingsNotificationStatusRow: View {
+    let isAuthorized: Bool
+    let isUpdating: Bool
+    let onEnable: () -> Void
+    let onOpenSettings: () -> Void
+    
+    var body: some View {
+        HStack(spacing: 16) {
+            ZStack {
+                Circle()
+                    .fill(Color.orange.opacity(0.15))
+                    .frame(width: 36, height: 36)
+                Image(systemName: "bell.badge.fill")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.orange)
+            }
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Push Notifications")
+                    .font(.bodyMD)
+                    .foregroundColor(.primaryText)
+                Text(isAuthorized ? "On" : "Off")
+                    .font(.labelSM)
+                    .foregroundColor(.secondaryText)
+            }
+            
+            Spacer()
+            
+            if isUpdating {
+                ProgressView()
+            } else if isAuthorized {
+                Button("Open Settings", action: onOpenSettings)
+                    .font(.labelSM.weight(.semibold))
+                    .foregroundColor(.brandAccent)
+            } else {
+                Button("Enable", action: onEnable)
+                    .font(.labelSM.weight(.semibold))
+                    .foregroundColor(.brandAccent)
+            }
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 12)
+        .background(Color.surfaceContainerLowest)
     }
 }
 

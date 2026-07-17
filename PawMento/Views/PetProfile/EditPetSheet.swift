@@ -20,6 +20,9 @@ struct EditPetSheet: View {
     
     // Photo State
     @State private var petImage: UIImage? = nil
+    @State private var didChangePhoto = false
+    @State private var isLoadingRemotePhoto = false
+    @State private var photoLoadTask: Task<Void, Never>?
     
     // Validation
     @State private var showError = false
@@ -40,7 +43,12 @@ struct EditPetSheet: View {
                         
                         // Photo Picker
                         CenterContainer {
-                            PetPhotoWellView(selectedImage: $petImage)
+                            ZStack {
+                                PetPhotoWellView(selectedImage: $petImage)
+                                if isLoadingRemotePhoto && petImage == nil {
+                                    ProgressView()
+                                }
+                            }
                         }
                         .padding(.top, 24)
                         
@@ -173,6 +181,21 @@ struct EditPetSheet: View {
             }
             .onAppear {
                 populateData()
+                loadRemotePhotoIfNeeded()
+            }
+            .onDisappear {
+                photoLoadTask?.cancel()
+                photoLoadTask = nil
+            }
+            .onChange(of: petImage) { oldValue, newValue in
+                // Ignore the async remote preload; only user picks count as a change.
+                if isLoadingRemotePhoto { return }
+                if oldValue != newValue {
+                    didChangePhoto = true
+                }
+            }
+            .onChange(of: isKg) { _, newIsKg in
+                convertDisplayedWeight(toKg: newIsKg)
             }
             .overlay {
                 if isSubmitting {
@@ -200,9 +223,48 @@ struct EditPetSheet: View {
         self.breed = editingPet.breed ?? ""
         self.birthday = editingPet.birthday
         if let wt = editingPet.weightKg {
-            self.weight = String(format: "%.1f", wt)
+            let display = isKg ? wt : (wt * 2.20462)
+            self.weight = String(format: "%.1f", display)
         }
-        self.petImage = editingPet.photoImage // We might want to load from photoLocalURL if image isn't loaded, but for MVP this is fine.
+        self.petImage = editingPet.photoImage
+        self.didChangePhoto = false
+    }
+    
+    private func loadRemotePhotoIfNeeded() {
+        guard petImage == nil, let url = editingPet.photoLocalURL else { return }
+        
+        isLoadingRemotePhoto = true
+        let petId = editingPet.id
+        photoLoadTask?.cancel()
+        photoLoadTask = Task {
+            defer {
+                Task { @MainActor in
+                    isLoadingRemotePhoto = false
+                }
+            }
+            do {
+                let (data, _) = try await URLSession.shared.data(from: url)
+                guard !Task.isCancelled else { return }
+                guard let image = UIImage(data: data) else { return }
+                await MainActor.run {
+                    guard editingPet.id == petId, !didChangePhoto else { return }
+                    petImage = image
+                }
+            } catch {
+                // Keep empty well; existing URL is preserved on save when didChangePhoto is false.
+            }
+        }
+    }
+    
+    private func convertDisplayedWeight(toKg: Bool) {
+        let trimmed = weight.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return }
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.locale = Locale.current
+        guard let num = formatter.number(from: trimmed)?.doubleValue else { return }
+        let converted = toKg ? (num / 2.20462) : (num * 2.20462)
+        weight = String(format: "%.1f", converted)
     }
     
     private func submitForm() {
@@ -212,6 +274,29 @@ struct EditPetSheet: View {
             return
         }
         
+        var finalWeightKg: Double? = nil
+        let trimmedWeight = weight.trimmingCharacters(in: .whitespaces)
+        
+        if !trimmedWeight.isEmpty {
+            let formatter = NumberFormatter()
+            formatter.numberStyle = .decimal
+            formatter.locale = Locale.current
+            
+            if let num = formatter.number(from: trimmedWeight) {
+                let w = num.doubleValue
+                if w <= 0 || w > 1000 {
+                    errorMessage = "Please enter a valid weight (between 0 and 1000)."
+                    showError = true
+                    return
+                }
+                finalWeightKg = isKg ? w : (w * 0.453592)
+            } else {
+                errorMessage = "Please enter a valid number for weight."
+                showError = true
+                return
+            }
+        }
+        
         isSubmitting = true
         
         var updatedPet = editingPet
@@ -219,11 +304,13 @@ struct EditPetSheet: View {
         updatedPet.species = species
         updatedPet.breed = breed.isEmpty ? nil : breed
         updatedPet.birthday = birthday
-        updatedPet.weightKg = Double(weight)
+        updatedPet.weightKg = finalWeightKg
         
-        // If they chose a new image
-        if let newImage = petImage {
+        // Only attach image for upload when the user picked a new one.
+        if didChangePhoto, let newImage = petImage {
             updatedPet.photoImage = newImage
+        } else {
+            updatedPet.photoImage = nil
         }
         
         Task {

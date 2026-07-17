@@ -40,7 +40,7 @@ class LogStore: ObservableObject {
         }
         
         // 2. Sync to Supabase
-        let dto = finalLog.toDTO(userId: userId)
+        let dto = finalLog.toInsertDTO(userId: userId)
         try await SupabaseManager.shared.client
             .from("logs")
             .insert(dto)
@@ -57,6 +57,31 @@ class LogStore: ObservableObject {
         
         // Fix I3/I12: Invalidate insight cache so new logs surface on next Insights load
         await invalidateInsightsCache(for: finalLog.petId)
+    }
+    
+    /// Inserts only if `sourceKey` is absent for this pet. Returns `false` when a duplicate exists.
+    @MainActor
+    @discardableResult
+    func saveLogIfAbsent(_ log: LogEntry, userId: UUID) async throws -> Bool {
+        guard let sourceKey = log.sourceKey else {
+            try await saveLog(log, userId: userId)
+            return true
+        }
+        
+        let existing: [LogDTO] = try await SupabaseManager.shared.client
+            .from("logs")
+            .select()
+            .eq("pet_id", value: log.petId.uuidString)
+            .eq("source_key", value: sourceKey)
+            .execute()
+            .value
+        
+        if !existing.isEmpty {
+            return false
+        }
+        
+        try await saveLog(log, userId: userId)
+        return true
     }
     
     // MARK: - Update
@@ -127,6 +152,12 @@ class LogStore: ObservableObject {
         // Fix S2: Latest-wins guard — capture a token so stale responses are discarded.
         let requestId = UUID()
         fetchRequestId = requestId
+        
+        // Clear immediately on pet change so Home never refreshes with another pet's logs.
+        if loadedPetId != petId {
+            logs = []
+            fetchError = nil
+        }
         loadedPetId = petId
         
         isFetching = true

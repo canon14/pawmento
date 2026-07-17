@@ -183,7 +183,10 @@ Deno.serve(async (req: Request) => {
     return jsonResponse({ error: { message: "Invalid JSON body" } }, 400);
   }
 
-  const { system, messages, max_tokens, stream } = body;
+  const { system, messages, max_tokens, stream, exempt_quota, purpose } = body;
+
+  const isQuotaExempt =
+    exempt_quota === true && purpose === "welcome_primer";
 
   if (!messages) {
     return jsonResponse(
@@ -206,7 +209,7 @@ Deno.serve(async (req: Request) => {
     return jsonResponse({ error: { message } }, 500);
   }
 
-  if (quotaRemaining === 0) {
+  if (!isQuotaExempt && quotaRemaining === 0) {
     return jsonResponse(
       {
         error: {
@@ -249,13 +252,15 @@ Deno.serve(async (req: Request) => {
     }
 
     if (stream) {
-      if (isPremium) {
+      if (isPremium || isQuotaExempt) {
         return new Response(response.body, {
           status: response.status,
           headers: {
             "Content-Type": response.headers.get("Content-Type") ||
               "text/event-stream",
-            "X-Coach-Questions-Remaining": "-1",
+            "X-Coach-Questions-Remaining": isPremium
+              ? "-1"
+              : String(quotaRemaining),
           },
         });
       }
@@ -265,7 +270,7 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    if (!isPremium) {
+    if (!isPremium && !isQuotaExempt) {
       quotaRemaining = await consumeQuota(adminClient, user.id);
     }
 

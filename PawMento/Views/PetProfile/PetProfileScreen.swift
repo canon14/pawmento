@@ -6,7 +6,6 @@ struct PetProfileScreen: View {
     @EnvironmentObject var medicationStore: MedicationStore
     @StateObject private var viewModel = PetProfileViewModel()
     
-    // Top app bar components
     var body: some View {
         VStack(spacing: 0) {
             // Top App Bar
@@ -43,6 +42,7 @@ struct PetProfileScreen: View {
                         VitalRecordsList()
                         
                         ArchiveButton(pet: pet)
+                            .id(pet.id)
                     } else {
                         // Empty state (🟡 11.1 — was plain text)
                         VStack(spacing: 16) {
@@ -87,12 +87,27 @@ struct PetProfileScreen: View {
             }
         }
         .background(Color.background.ignoresSafeArea())
-        .onAppear {
-            if let pet = petStore.activePet {
-                Task {
-                    await medicationStore.fetchMedications(for: pet.id)
-                    await viewModel.refreshProfile(for: pet, logs: logStore.logs, fetchedMedications: medicationStore.medications)
-                }
+        .task(id: petStore.activePet?.id) {
+            guard let pet = petStore.activePet else {
+                viewModel.resetForPetChange()
+                return
+            }
+            await medicationStore.fetchMedications(for: pet.id)
+            await viewModel.refreshProfile(
+                for: pet,
+                logs: logStore.logs,
+                fetchedMedications: medicationStore.medications,
+                forceRefresh: true
+            )
+        }
+        .onChange(of: logStore.logs.count) { _, _ in
+            guard let pet = petStore.activePet else { return }
+            Task {
+                await viewModel.refreshProfile(
+                    for: pet,
+                    logs: logStore.logs,
+                    fetchedMedications: medicationStore.medications
+                )
             }
         }
     }

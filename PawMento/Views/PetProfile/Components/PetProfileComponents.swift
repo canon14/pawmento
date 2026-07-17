@@ -107,7 +107,7 @@ struct HeroCardView: View {
                 .overlay(
                     Circle().stroke(Color.warmSand, lineWidth: 4)
                 )
-                .shadow(color: viewModel.wellnessScore >= 80 ? Color.primary.opacity(0.4) : Color.clear, radius: 16, x: 0, y: 8)
+                .shadow(color: (viewModel.wellnessConfidence != .insufficient && viewModel.wellnessScore >= 80) ? Color.primary.opacity(0.4) : Color.clear, radius: 16, x: 0, y: 8)
                 
                 // Identity Stack
                 VStack(alignment: .leading, spacing: 2) {
@@ -136,12 +136,12 @@ struct HeroCardView: View {
                     Circle()
                         .stroke(Color.primary.opacity(0.05), lineWidth: 10)
                     Circle()
-                        .trim(from: 0, to: CGFloat(viewModel.wellnessScore) / 100.0)
+                        .trim(from: 0, to: ringProgress)
                         .stroke(LinearGradient(colors: [ringColor, ringColor.opacity(0.6)], startPoint: .topLeading, endPoint: .bottomTrailing), style: StrokeStyle(lineWidth: 10, lineCap: .round))
                         .rotationEffect(.degrees(-90))
                         .animation(.easeOut(duration: 0.8), value: viewModel.wellnessScore)
                     
-                    Text("\(viewModel.wellnessScore)")
+                    Text(ringLabel)
                         .monospacedDigit()
                         .contentTransition(.numericText())
                         .font(.headlineLG)
@@ -173,6 +173,18 @@ struct HeroCardView: View {
         .contentShape(Rectangle())
     }
     
+    private var hasNumericScore: Bool {
+        viewModel.wellnessConfidence != .insufficient
+    }
+    
+    private var ringProgress: CGFloat {
+        hasNumericScore ? CGFloat(viewModel.wellnessScore) / 100.0 : 0
+    }
+    
+    private var ringLabel: String {
+        hasNumericScore ? "\(viewModel.wellnessScore)" : "—"
+    }
+    
     private var formattedWeight: String {
         guard let kg = pet.weightKg else { return "Unknown weight" }
         let isMetric = Locale.current.measurementSystem == .metric
@@ -185,6 +197,7 @@ struct HeroCardView: View {
     }
     
     private var ringColor: Color {
+        guard hasNumericScore else { return .secondaryText }
         if viewModel.wellnessScore >= 80 { return .primary }
         if viewModel.wellnessScore >= 60 { return .amber }
         return .error
@@ -206,6 +219,7 @@ struct HeroCardView: View {
 struct AICoachCardView: View {
     let pet: Pet
     @ObservedObject var viewModel: PetProfileViewModel
+    @EnvironmentObject var logStore: LogStore
     @State private var showPaywall = false
     @State private var showCoach = false
     
@@ -231,6 +245,13 @@ struct AICoachCardView: View {
                     .font(.labelMD)
                     .foregroundColor(.primaryText)
                     .lineSpacing(4)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        guard viewModel.isInsightRetryable else { return }
+                        Task {
+                            await viewModel.generateInsight(for: pet, logs: logStore.logs, forceRefresh: true)
+                        }
+                    }
             }
             
             Button(action: { showPaywall = true }) {
@@ -655,13 +676,18 @@ struct ArchiveButton: View {
                 showingSecondAlert = true
             }
         } message: {
-            Text("This will hide \(pet.name) from your dashboard. You can restore them within 90 days from Settings.")
+            Text("This will hide \(pet.name) from your dashboard and remove them from your active pets.")
         }
         .alert("Are you absolutely sure?", isPresented: $showingSecondAlert) {
             Button("Cancel", role: .cancel) { }
             Button("Archive", role: .destructive) {
                 isArchiving = true
                 Task {
+                    defer {
+                        Task { @MainActor in
+                            isArchiving = false
+                        }
+                    }
                     if let ownerId = await authManager.getCurrentUserId() {
                         do {
                             try await petStore.archivePet(pet, ownerId: ownerId)
@@ -670,11 +696,13 @@ struct ArchiveButton: View {
                             await MainActor.run {
                                 errorMessage = "Failed to archive profile: \(error.localizedDescription)"
                                 showErrorAlert = true
-                                isArchiving = false
                             }
                         }
                     } else {
-                        isArchiving = false
+                        await MainActor.run {
+                            errorMessage = "Your session expired. Please sign in again."
+                            showErrorAlert = true
+                        }
                     }
                 }
             }

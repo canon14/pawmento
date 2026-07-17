@@ -2,6 +2,8 @@ import SwiftUI
 
 struct RecentActivityTimeline: View {
     @EnvironmentObject var logStore: LogStore
+    var petName: String = PetStore.fallbackPetName
+    var onLogCTA: (() -> Void)? = nil
     @State private var showFullTimeline = false
     
     var body: some View {
@@ -12,12 +14,30 @@ struct RecentActivityTimeline: View {
             
             ZStack(alignment: .topLeading) {
                 if logStore.logs.isEmpty {
-                    Text("No logs added yet.")
-                        .font(.bodyMD)
-                        .foregroundColor(.secondaryText)
-                        .padding(.vertical, 20)
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Nothing logged yet — tap below to add \(petName)'s first entry.")
+                            .font(.bodyMD)
+                            .foregroundColor(.secondaryText)
+                            .fixedSize(horizontal: false, vertical: true)
+                        
+                        if let onLogCTA {
+                            Button(action: onLogCTA) {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "plus.circle.fill")
+                                    Text("Log an entry")
+                                        .font(.labelMD)
+                                }
+                                .foregroundColor(.primary)
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 10)
+                                .background(Color.primary.opacity(0.08))
+                                .cornerRadius(AppRadius.sm)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.vertical, 12)
                 } else {
-                    // Vertical Line
                     Rectangle()
                         .fill(Color.surfaceContainerHighest)
                         .frame(width: 2)
@@ -63,14 +83,25 @@ struct RecentActivityTimeline: View {
         .cornerRadius(AppRadius.card)
         .warmShadow()
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Recent activity. \(logStore.logs.count) logs available. Double tap to see full timeline.")
+        .accessibilityLabel(accessibilitySummary)
         .accessibilityAction {
-            showFullTimeline = true
+            if logStore.logs.isEmpty {
+                onLogCTA?()
+            } else {
+                showFullTimeline = true
+            }
         }
         .fullScreenCover(isPresented: $showFullTimeline) {
             FullTimelineView()
                 .presentationDragIndicator(.visible)
         }
+    }
+    
+    private var accessibilitySummary: String {
+        if logStore.logs.isEmpty {
+            return "Recent activity. No logs yet. Double tap to log an entry."
+        }
+        return "Recent activity. \(logStore.logs.count) logs available. Double tap to see full timeline."
     }
     
     private func formatTime(_ date: Date) -> String {
@@ -137,7 +168,7 @@ struct TimelineItem: View {
 }
 
 #Preview {
-    RecentActivityTimeline()
+    RecentActivityTimeline(petName: "Luna", onLogCTA: {})
         .padding()
         .background(Color.background)
 }

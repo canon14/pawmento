@@ -10,6 +10,8 @@ class ReminderStore: ObservableObject {
     @Published var reminders: [Reminder] = []
     
     private let remindersKey = "pawmento_saved_reminders"
+    /// In-flight logout cleanup so re-login fetch/sync cannot race a late cancel.
+    private var logoutCleanupTask: Task<Void, Never>?
     
     private init() {
         loadReminders()
@@ -38,6 +40,12 @@ class ReminderStore: ObservableObject {
     // Fix R2: Server is the source of truth (online-only app).
     // Fetch replaces local cache entirely — no offline pending state needed.
     func fetchReminders() async {
+        // Wait for any logout cancel to finish before scheduling this session's notifications.
+        if let logoutCleanupTask {
+            await logoutCleanupTask.value
+            self.logoutCleanupTask = nil
+        }
+        
         do {
             let dtos: [ReminderDTO] = try await SupabaseManager.shared.client
                 .from("reminders")
@@ -164,10 +172,13 @@ class ReminderStore: ObservableObject {
     
     // Fix R8: Reset clears everything — UserDefaults key AND OS notifications.
     // Prevents cross-account leakage after logout.
+    // Cleanup is tracked so fetchReminders can await it before re-syncing.
     func reset() {
         reminders = []
         UserDefaults.standard.removeObject(forKey: remindersKey)
-        Task {
+        let previous = logoutCleanupTask
+        logoutCleanupTask = Task {
+            await previous?.value
             await NotificationManager.shared.cancelAllPawMentoNotifications()
         }
     }

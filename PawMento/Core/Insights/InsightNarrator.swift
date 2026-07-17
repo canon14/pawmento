@@ -135,7 +135,12 @@ class InsightNarrator {
             let visualization = candidate.precomputedVisualization ?? VisualizationData(dataPoints: [], labels: nil, chartType: chartType)
             
             let insight = Insight(
-                id: UUID(),
+                id: Insight.stableId(
+                    type: candidate.type,
+                    evidenceCount: candidate.evidenceCount,
+                    isRuleBased: candidate.isRuleBased,
+                    fingerprint: candidate.dismissalFingerprint
+                ),
                 type: candidate.type,
                 tier: tier,
                 headline: dto.headline,
@@ -243,7 +248,12 @@ class InsightNarrator {
             let visualization = candidate.precomputedVisualization ?? VisualizationData(dataPoints: [], labels: nil, chartType: chartType)
             
             let insight = Insight(
-                id: UUID(),
+                id: Insight.stableId(
+                    type: candidate.type,
+                    evidenceCount: candidate.evidenceCount,
+                    isRuleBased: candidate.isRuleBased,
+                    fingerprint: candidate.dismissalFingerprint
+                ),
                 type: candidate.type,
                 tier: tier,
                 headline: headline,

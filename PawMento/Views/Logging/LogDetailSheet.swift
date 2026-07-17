@@ -16,6 +16,8 @@ struct LogDetailSheet: View {
     var initialSeverity: Int = 1
     var initialNote: String = ""
     var initialPhoto: UIImage? = nil
+    /// Called after a successful *create* save (not edit), before the sheet dismisses.
+    var onCreateSaved: (() -> Void)? = nil
     
     @State private var selectedCategory: LogCategory?
     @State private var severity: Int = 1
@@ -219,7 +221,12 @@ struct LogDetailSheet: View {
                     UINotificationFeedbackGenerator().notificationOccurred(.success)
                     
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                        toastManager.show(existingLog != nil ? "Log updated" : "Detailed log saved")
+                        if existingLog == nil {
+                            onCreateSaved?()
+                            toastManager.show("Detailed log saved")
+                        } else {
+                            toastManager.show("Log updated")
+                        }
                         dismiss()
                     }
                 }

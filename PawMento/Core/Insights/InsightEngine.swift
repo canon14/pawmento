@@ -98,7 +98,12 @@ actor InsightEngine {
         // Convert rule-based directly — derive tier from candidate type
         for rb in ruleBasedCandidates {
             let insight = Insight(
-                id: UUID(),
+                id: Insight.stableId(
+                    type: rb.type,
+                    evidenceCount: rb.evidenceCount,
+                    isRuleBased: rb.isRuleBased,
+                    fingerprint: rb.dismissalFingerprint
+                ),
                 type: rb.type,
                 tier: tierForType(rb.type),
                 headline: rb.precomputedHeadline ?? "Positive Update",
@@ -122,8 +127,8 @@ actor InsightEngine {
             finalInsights.append(contentsOf: scored)
         }
         
-        // 6. Sort and Cache
-        finalInsights.sort { $0.tier.priority < $1.tier.priority }
+        // 6. Sort and Cache — early detectors (milestone/temporal) before correlation/trend
+        finalInsights.sort { InsightOrdering.sortsBefore($0, $1) }
         let topInsights = Array(finalInsights.prefix(8))
         
         // Fix I3: Enforce cache size bound — evict oldest entries if over limit

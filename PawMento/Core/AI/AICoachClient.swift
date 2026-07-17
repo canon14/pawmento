@@ -52,13 +52,21 @@ final class AICoachClient: Sendable {
     /// - Parameters:
     ///   - messages: Chat history as role/content dicts
     ///   - systemPrompt: System prompt (default: pet-less; CoachViewModel passes buildPrompt(for:))
-    func streamAdvice(messages: [[String: String]], systemPrompt: String = AICoachPrompt.systemPrompt) -> AsyncThrowingStream<String, Error> {
-        return streamViaProxy(messages: messages, systemPrompt: systemPrompt)
+    func streamAdvice(
+        messages: [[String: String]],
+        systemPrompt: String = AICoachPrompt.systemPrompt,
+        exemptQuota: Bool = false
+    ) -> AsyncThrowingStream<String, Error> {
+        return streamViaProxy(messages: messages, systemPrompt: systemPrompt, exemptQuota: exemptQuota)
     }
     
     // MARK: - Supabase Edge Function Proxy
     
-    private func streamViaProxy(messages: [[String: String]], systemPrompt: String) -> AsyncThrowingStream<String, Error> {
+    private func streamViaProxy(
+        messages: [[String: String]],
+        systemPrompt: String,
+        exemptQuota: Bool
+    ) -> AsyncThrowingStream<String, Error> {
         return AsyncThrowingStream<String, Error> { continuation in
             Task {
                 var lastError: Error?
@@ -69,6 +77,7 @@ final class AICoachClient: Sendable {
                         try await self.executeStream(
                             messages: messages,
                             systemPrompt: systemPrompt,
+                            exemptQuota: exemptQuota,
                             continuation: continuation,
                             hasYieldedContent: &hasYieldedContent
                         )
@@ -111,6 +120,7 @@ final class AICoachClient: Sendable {
     private func executeStream(
         messages: [[String: String]],
         systemPrompt: String,
+        exemptQuota: Bool,
         continuation: AsyncThrowingStream<String, Error>.Continuation,
         hasYieldedContent: inout Bool
     ) async throws {
@@ -127,13 +137,17 @@ final class AICoachClient: Sendable {
         request.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
         
         // Fix C5: Provider is no longer mutable — Anthropic-only via proxy
-        let body: [String: Any] = [
+        var body: [String: Any] = [
             "model": AIConfig.haikuModel,
             "max_tokens": AIConfig.maxResponseTokens,
             "system": systemPrompt,
             "messages": messages,
             "stream": true
         ]
+        if exemptQuota {
+            body["exempt_quota"] = true
+            body["purpose"] = "welcome_primer"
+        }
         
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         

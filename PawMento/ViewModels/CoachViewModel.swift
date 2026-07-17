@@ -3,6 +3,13 @@ import Combine
 import SwiftUI
 import Supabase
 
+enum WelcomePrimerState: Equatable {
+    case idle
+    case loading
+    case loaded(String)
+    case failed
+}
+
 @MainActor
 class CoachViewModel: ObservableObject {
     @Published var messages: [ChatMessage] = []
@@ -14,13 +21,23 @@ class CoachViewModel: ObservableObject {
     @Published var subscriptionLoadState: SubscriptionLoadState = .unknown
     @Published var showSubscriptionLoadError: Bool = false
     @Published var showPremiumWall: Bool = false
+    @Published var paywallTrigger: PaywallTrigger = .manual(featureContext: nil)
     @Published var showAuthError: Bool = false
     
     // Quick Replies context
     @Published var quickReplies: [String] = []
     
+    // Welcome primer (first-run Home card)
+    @Published var welcomePrimer: WelcomePrimerState = .idle
+    @Published var welcomeFollowUps: [String] = []
+    private var primerGenerationPetId: UUID?
+    private static let primerCachePrefix = "welcomePrimerCache_"
+    
     // Fix S14: Track the pet whose messages are currently loaded
     private var loadedPetId: UUID?
+    private var fetchRequestId = UUID()
+    /// Bumped whenever local messages are mutated by a send so in-flight fetches don't clobber.
+    private var historyGeneration = 0
     
     // MARK: - Quota & Subscription
     
@@ -28,6 +45,17 @@ class CoachViewModel: ObservableObject {
     var shouldEnforceFreeQuota: Bool {
         guard !isPremium else { return false }
         return subscriptionLoadState == .loaded || subscriptionLoadState == .failed
+    }
+    
+    func presentManualPremiumWall(featureContext: String? = "Unlimited Coaching") {
+        paywallTrigger = .manual(featureContext: featureContext)
+        showPremiumWall = true
+    }
+    
+    func presentQuotaPaywallIfAllowed() {
+        guard PaywallEventGate.shouldPresentCoachQuotaExhausted() else { return }
+        paywallTrigger = .coachQuotaExhausted
+        showPremiumWall = true
     }
     
     func initializeQuotaAndSubscription(ownerId: UUID, attempt: Int = 1, maxAttempts: Int = 3) async {
@@ -55,14 +83,174 @@ class CoachViewModel: ObservableObject {
         }
     }
     
+    // MARK: - Welcome Primer (quota-exempt gift; cached per pet)
+    
+    func generateWelcomePrimer(for pet: Pet) async {
+        if let cached = Self.loadCachedPrimer(for: pet.id) {
+            welcomePrimer = .loaded(cached)
+            welcomeFollowUps = Self.welcomeFollowUpSuggestions(for: pet)
+            primerGenerationPetId = pet.id
+            return
+        }
+        
+        if primerGenerationPetId == pet.id {
+            switch welcomePrimer {
+            case .loading, .loaded:
+                return
+            case .idle, .failed:
+                break
+            }
+        } else {
+            welcomePrimer = .loading
+            welcomeFollowUps = Self.welcomeFollowUpSuggestions(for: pet)
+        }
+        
+        primerGenerationPetId = pet.id
+        welcomePrimer = .loading
+        welcomeFollowUps = Self.welcomeFollowUpSuggestions(for: pet)
+        
+        let systemPrompt = AICoachPrompt.profilePrimer(for: pet)
+        let triggerMessage: [[String: String]] = [
+            ["role": "user", "content": "Generate my profile welcome primer."]
+        ]
+        
+        do {
+            var assembled = ""
+            let stream = AICoachClient.shared.streamAdvice(
+                messages: triggerMessage,
+                systemPrompt: systemPrompt,
+                exemptQuota: true
+            )
+            for try await token in stream {
+                assembled += token
+            }
+            
+            let trimmed = assembled.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else {
+                welcomePrimer = .failed
+                return
+            }
+            
+            Self.saveCachedPrimer(trimmed, for: pet.id)
+            welcomePrimer = .loaded(trimmed)
+        } catch {
+            print("Welcome primer generation failed: \(error)")
+            welcomePrimer = .failed
+        }
+    }
+    
+    static func welcomeFollowUpSuggestions(for pet: Pet) -> [String] {
+        let name = pet.name
+        let lifeStage = petLifeStage(for: pet)
+        
+        switch pet.species {
+        case .dog:
+            switch lifeStage {
+            case .puppy:
+                return [
+                    "What vaccines does \(name) need as a puppy?",
+                    "How often should I feed \(name)?"
+                ]
+            case .senior:
+                return [
+                    "What symptoms should I watch for in senior dogs?",
+                    "How can I keep \(name) comfortable?"
+                ]
+            case .adult:
+                return [
+                    "How much exercise does \(name) need?",
+                    "What should I know about \(name)'s breed?"
+                ]
+            }
+        case .cat:
+            switch lifeStage {
+            case .puppy:
+                return [
+                    "What vaccines does \(name) need as a kitten?",
+                    "How do I litter-train \(name)?"
+                ]
+            case .senior:
+                return [
+                    "What should I watch for in senior cats?",
+                    "How can I keep \(name) comfortable?"
+                ]
+            case .adult:
+                return [
+                    "How much should \(name) eat each day?",
+                    "Is \(name) getting enough playtime?"
+                ]
+            }
+        case .rabbit:
+            return [
+                "What should \(name) eat daily?",
+                "How do I keep \(name)'s habitat healthy?"
+            ]
+        case .other:
+            return [
+                "What does \(name) need day to day?",
+                "When should I see a vet for \(name)?"
+            ]
+        }
+    }
+    
+    private enum PetLifeStage {
+        case puppy
+        case adult
+        case senior
+    }
+    
+    private static func petLifeStage(for pet: Pet) -> PetLifeStage {
+        guard let bday = pet.birthday,
+              let birthDate = calendarBirthDate(from: bday) else {
+            return .adult
+        }
+        
+        let ageYears = Calendar.current.dateComponents([.year], from: birthDate, to: Date()).year ?? 0
+        
+        if ageYears < 1 {
+            return .puppy
+        }
+        
+        switch pet.species {
+        case .dog:
+            return ageYears >= 7 ? .senior : .adult
+        case .cat:
+            return ageYears >= 10 ? .senior : .adult
+        case .rabbit, .other:
+            return ageYears >= 6 ? .senior : .adult
+        }
+    }
+    
+    private static func calendarBirthDate(from bday: DateComponents) -> Date? {
+        var components = DateComponents()
+        components.year = bday.year
+        components.month = bday.month ?? 1
+        components.day = bday.day ?? 1
+        guard bday.year != nil else { return nil }
+        return Calendar.current.date(from: components)
+    }
+    
+    private static func loadCachedPrimer(for petId: UUID) -> String? {
+        UserDefaults.standard.string(forKey: primerCachePrefix + petId.uuidString)
+    }
+    
+    private static func saveCachedPrimer(_ text: String, for petId: UUID) {
+        UserDefaults.standard.set(text, forKey: primerCachePrefix + petId.uuidString)
+    }
+    
     // Fetch previous messages for a pet
     func fetchMessages(for petId: UUID?, ownerId: UUID, forceRefresh: Bool = false) async {
         guard let petId = petId else { return }
+        guard !isSending else { return }
         
         // Fix S14: Gate cache-skip on loadedPetId, not messages.last?.petId
         if !forceRefresh && !messages.isEmpty && loadedPetId == petId {
             return
         }
+        
+        let requestId = UUID()
+        fetchRequestId = requestId
+        let generationAtStart = historyGeneration
         
         do {
             let dtos: [ChatMessageDTO] = try await SupabaseManager.shared.client
@@ -73,6 +261,11 @@ class CoachViewModel: ObservableObject {
                 .order("created_at", ascending: true)
                 .execute()
                 .value
+            
+            // Latest-wins + don't clobber an in-flight or completed send that mutated local history.
+            guard fetchRequestId == requestId else { return }
+            guard !isSending else { return }
+            guard historyGeneration == generationAtStart else { return }
             
             self.messages = dtos.map { $0.toMessage() }
             self.loadedPetId = petId
@@ -101,19 +294,21 @@ class CoachViewModel: ObservableObject {
         // Client-side pre-check (optimistic UI gate; ai-proxy enforces authoritatively).
         if shouldEnforceFreeQuota {
             guard freeQuestionsRemaining > 0 else {
-                showPremiumWall = true
+                presentQuotaPaywallIfAllowed()
                 return
             }
         }
         
         let userMessage = ChatMessage(role: .user, content: trimmed, petId: pet?.id)
         messages.append(userMessage)
+        historyGeneration += 1
         quickReplies.removeAll()
         
         // 1. Safety Check (Regex before LLM runs in <50ms)
         if SafetyClassifier.isEmergency(message: trimmed) {
             let emergencyResponse = ChatMessage(role: .assistant, content: "This sounds urgent.\nGet to an emergency vet now.", isEmergency: true, petId: pet?.id)
             messages.append(emergencyResponse)
+            historyGeneration += 1
             
             // Emergencies skip the LLM entirely — no ai-proxy call, no quota consumed.
             
@@ -131,18 +326,19 @@ class CoachViewModel: ObservableObject {
                 }
             }
             
+            loadedPetId = pet?.id
             return
         }
+        
+        // Snapshot context before any await — fetchMessages can run concurrently on open.
+        let apiMessages = Array(messages.suffix(8)).map { $0.toAPIFormat() }
         
         // Persist user message before streaming so it survives assistant failures.
         if let ownerId = ownerId {
             await CoachMessagePersistence.insert(userMessage, ownerId: ownerId)
         }
         
-        // 2. Prepare context window (last 8 messages)
-        let recentMessages = Array(messages.suffix(8)).map { $0.toAPIFormat() }
-        
-        // Stream via ai-proxy (quota checked before Anthropic; consumed after success).
+        // 2. Stream via ai-proxy (quota checked before Anthropic; consumed after success).
         isTyping = true
         defer { isTyping = false }
         
@@ -153,7 +349,7 @@ class CoachViewModel: ObservableObject {
         let systemPrompt = AICoachPrompt.buildPrompt(for: pet)
         
         do {
-            let stream = AICoachClient.shared.streamAdvice(messages: recentMessages, systemPrompt: systemPrompt)
+            let stream = AICoachClient.shared.streamAdvice(messages: apiMessages, systemPrompt: systemPrompt)
             for try await token in stream {
                 if let index = messages.firstIndex(where: { $0.id == assistantMessageId }) {
                     messages[index].content += token
@@ -165,6 +361,20 @@ class CoachViewModel: ObservableObject {
             
             if assistantContent.isEmpty {
                 messages.remove(at: index)
+                historyGeneration += 1
+                // User was already persisted; remove orphan so reopen doesn't show a user-only row.
+                if let ownerId = ownerId {
+                    await CoachMessagePersistence.delete(id: userMessage.id, ownerId: ownerId)
+                }
+                let failure = ChatMessage(
+                    role: .assistant,
+                    content: "Something went wrong on my end. Please try again in a moment.",
+                    isRetryable: true,
+                    petId: pet?.id
+                )
+                messages.append(failure)
+                historyGeneration += 1
+                loadedPetId = pet?.id
                 return
             }
             
@@ -185,6 +395,7 @@ class CoachViewModel: ObservableObject {
                     petId: pet?.id
                 )
                 messages.append(warningMessage)
+                historyGeneration += 1
                 quickReplies = ["See Premium", "Got it"]
             }
             
@@ -192,6 +403,8 @@ class CoachViewModel: ObservableObject {
             if let ownerId = ownerId {
                 await CoachMessagePersistence.insert(messages[index], ownerId: ownerId)
             }
+            
+            loadedPetId = pet?.id
             
         } catch {
             print("Coach stream failed: \(error)")
@@ -202,14 +415,40 @@ class CoachViewModel: ObservableObject {
                     showAuthError = true
                 } else if let coachError = error as? AICoachError, coachError == .quotaExhausted {
                     messages.remove(at: index)
-                    showPremiumWall = true
+                    historyGeneration += 1
+                    presentQuotaPaywallIfAllowed()
                 } else if let urlError = error as? URLError, urlError.code == .notConnectedToInternet {
                     messages[index].content = "I lost connection — tap to retry."
+                    messages[index].isRetryable = true
                 } else {
                     messages[index].content = "Something went wrong on my end. Please try again in a moment."
+                    messages[index].isRetryable = true
                 }
             }
+            
+            loadedPetId = pet?.id
         }
+    }
+    
+    /// Retries the user message preceding the last retryable assistant error bubble.
+    func retryLastFailedSend(pet: Pet?, ownerId: UUID?) async {
+        guard !isSending else { return }
+        guard let retryIndex = messages.lastIndex(where: { $0.role == .assistant && $0.isRetryable }) else { return }
+        guard retryIndex > 0, messages[retryIndex - 1].role == .user else { return }
+        
+        let userText = messages[retryIndex - 1].content
+        let userId = messages[retryIndex - 1].id
+        
+        messages.remove(at: retryIndex)
+        messages.remove(at: retryIndex - 1)
+        historyGeneration += 1
+        
+        // Orphan user may still be in DB from the failed attempt — clear before re-send.
+        if let ownerId = ownerId {
+            await CoachMessagePersistence.delete(id: userId, ownerId: ownerId)
+        }
+        
+        await sendMessage(userText, pet: pet, ownerId: ownerId)
     }
     
     @MainActor
@@ -221,15 +460,23 @@ class CoachViewModel: ObservableObject {
         subscriptionLoadState = .unknown
         showSubscriptionLoadError = false
         showPremiumWall = false
+        paywallTrigger = .manual(featureContext: nil)
         showAuthError = false
         quickReplies = []
+        welcomePrimer = .idle
+        welcomeFollowUps = []
+        primerGenerationPetId = nil
         loadedPetId = nil
+        historyGeneration = 0
+        fetchRequestId = UUID()
         SubscriptionCache.clear()
         // we deliberately keep freeQuestionsRemaining so we don't reset until initializeQuotaAndSubscription runs.
     }
     
     /// Server-first wipe: deletes chat history for the current user and pet, then clears local state.
     func wipeConversationHistory(for petId: UUID, ownerId: UUID) async throws {
+        guard !isSending else { return }
+        
         try await SupabaseManager.shared.client
             .from("chat_messages")
             .delete()
@@ -239,6 +486,7 @@ class CoachViewModel: ObservableObject {
         
         messages = []
         quickReplies = []
+        historyGeneration += 1
         loadedPetId = petId
     }
     

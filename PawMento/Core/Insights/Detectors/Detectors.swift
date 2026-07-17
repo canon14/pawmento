@@ -6,11 +6,16 @@ struct InsightCandidate {
     let internalDescription: String // Passed to LLM
     let evidenceCount: Int
     let isRuleBased: Bool
-    
+
     // For rule-based (positive) ones, we can just supply the final fields
     var precomputedHeadline: String?
     var precomputedNarrative: String?
     var precomputedVisualization: VisualizationData?
+    
+    /// Stable fingerprint for dismiss persistence across regenerations.
+    nonisolated var dismissalFingerprint: String {
+        precomputedHeadline ?? internalDescription
+    }
 }
 
 class CorrelationDetector {
@@ -308,23 +313,44 @@ class TrendDetector {
 
 class MilestoneDetector {
     static func detect(_ signals: [Signal]) async -> [InsightCandidate] {
-        let activities = signals.filter { LogCategory.activityCategories.contains($0.category) }
-        guard activities.count >= 5 else { return [] }
+        var candidates: [InsightCandidate] = []
         
-        // Rule-based: just return a precomputed InsightCandidate
-        return [InsightCandidate(
-            id: UUID(),
-            type: .positive,
-            internalDescription: "Great activity logging streak.",
-            evidenceCount: activities.count,
-            isRuleBased: true,
-            precomputedHeadline: "Great activity tracking streak",
-            precomputedNarrative: "You logged \(activities.count) activities recently.",
-            precomputedVisualization: VisualizationData(
-                dataPoints: Array(repeating: 1, count: min(10, activities.count)),
-                labels: nil,
-                chartType: "streak"
-            )
-        )]
+        let distinctDays = InsightCalendar.distinctDayCount(for: signals.map(\.timestamp))
+        if distinctDays >= 3 {
+            candidates.append(InsightCandidate(
+                id: UUID(),
+                type: .positive,
+                internalDescription: "Three-day logging habit milestone.",
+                evidenceCount: distinctDays,
+                isRuleBased: true,
+                precomputedHeadline: "3-day logging streak",
+                precomputedNarrative: "You've logged on \(distinctDays) different days — a great start to building a logging habit.",
+                precomputedVisualization: VisualizationData(
+                    dataPoints: Array(repeating: 1, count: min(10, distinctDays)),
+                    labels: nil,
+                    chartType: "streak"
+                )
+            ))
+        }
+        
+        let activities = signals.filter { LogCategory.activityCategories.contains($0.category) }
+        if activities.count >= 5 {
+            candidates.append(InsightCandidate(
+                id: UUID(),
+                type: .positive,
+                internalDescription: "Great activity logging streak.",
+                evidenceCount: activities.count,
+                isRuleBased: true,
+                precomputedHeadline: "Great activity tracking streak",
+                precomputedNarrative: "You logged \(activities.count) activities recently.",
+                precomputedVisualization: VisualizationData(
+                    dataPoints: Array(repeating: 1, count: min(10, activities.count)),
+                    labels: nil,
+                    chartType: "streak"
+                )
+            ))
+        }
+        
+        return candidates
     }
 }

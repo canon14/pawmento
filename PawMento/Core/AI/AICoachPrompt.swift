@@ -93,4 +93,69 @@ struct AICoachPrompt {
         }
         return base
     }
+    
+    /// Profile-only welcome primer for first-run Home. Inherits all guardrails from `buildPrompt`.
+    static func profilePrimer(for pet: Pet) -> String {
+        var base = buildPrompt(for: pet)
+        
+        let speciesStr: String
+        switch pet.species {
+        case .dog: speciesStr = "dog"
+        case .cat: speciesStr = "cat"
+        case .rabbit: speciesStr = "rabbit"
+        case .other(let name): speciesStr = name.lowercased()
+        }
+        
+        let breedFragment: String
+        if let breed = pet.breed, !breed.isEmpty {
+            breedFragment = " \(breed)"
+        } else {
+            breedFragment = ""
+        }
+        
+        let ageFragment = petAgePhrase(for: pet) ?? "young"
+        
+        base += """
+        
+        
+        # Task: Profile Welcome Primer
+        - Produce a warm welcome answer with 2–3 short, practical, life-stage-appropriate points about \(pet.name).
+        - Open with a line like: "A few things to know about \(pet.name), a \(ageFragment)\(breedFragment) \(speciesStr), right now."
+        - Use ONLY profile facts already in context (species, breed, age, weight). Do not reference logs, patterns, trends, wellness scores, or statistical insights — the owner has not logged yet.
+        - Keep it concise (under 120 words). Use short paragraphs, not bullet lists.
+        - This is an honest profile-based primer, not a health assessment.
+        """
+        
+        return base
+    }
+    
+    private static func petAgePhrase(for pet: Pet) -> String? {
+        guard let bday = pet.birthday else { return nil }
+        let calendar = Calendar.current
+        let now = Date()
+        
+        var components = DateComponents()
+        components.year = bday.year
+        components.month = bday.month ?? 1
+        components.day = bday.day ?? 1
+        
+        guard let birthDate = calendar.date(from: components), bday.year != nil else {
+            return nil
+        }
+        
+        let age = calendar.dateComponents([.year, .month], from: birthDate, to: now)
+        let ageYears = age.year ?? 0
+        let ageMonths = age.month ?? 0
+        
+        if ageYears > 0 {
+            if bday.month != nil {
+                return "\(ageYears)-year-old"
+            }
+            return "approximately \(ageYears)-year-old"
+        }
+        if ageMonths > 0 {
+            return "\(ageMonths)-month-old"
+        }
+        return "young"
+    }
 }

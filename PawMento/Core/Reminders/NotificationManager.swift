@@ -323,4 +323,10 @@ class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterD
         let components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: fireDate)
         return "reminder:\(reminderId)_\(components.year ?? 0)_\(components.month ?? 0)_\(components.day ?? 0)_\(components.hour ?? 0)_\(components.minute ?? 0)"
     }
+    
+    /// Stable idempotency key for Home reminder-pill taps (one log per reminder per local day).
+    nonisolated static func reminderPillLogSourceKey(reminderId: UUID, day: Date = Date()) -> String {
+        let components = Calendar.current.dateComponents([.year, .month, .day], from: day)
+        return "reminder_pill:\(reminderId.uuidString)_\(components.year ?? 0)_\(components.month ?? 0)_\(components.day ?? 0)"
+    }
 }

@@ -23,12 +23,21 @@ class MedicationStore: ObservableObject {
     @Published var fetchError: String? = nil
     
     private var activePetId: UUID?
+    private var fetchRequestId = UUID()
     
     func fetchMedications(for petId: UUID) async {
+        let requestId = UUID()
+        fetchRequestId = requestId
+        
+        // Clear immediately on pet change so Profile/Home never show another pet's meds.
+        if activePetId != petId {
+            medications = []
+            fetchError = nil
+        }
+        activePetId = petId
+        
         isLoading = true
         fetchError = nil
-        activePetId = petId
-        defer { isLoading = false }
         
         do {
             let dtos: [MedicationDTO] = try await SupabaseManager.shared.client
@@ -39,10 +48,17 @@ class MedicationStore: ObservableObject {
                 .execute()
                 .value
             
+            guard fetchRequestId == requestId, activePetId == petId else { return }
+            
             self.medications = dtos.map { normalizeLoggedToday($0.toModel()) }
         } catch {
+            guard fetchRequestId == requestId, activePetId == petId else { return }
             print("Failed to fetch medications: \(error)")
             fetchError = "Unable to load medications. Please check your connection and try again."
+        }
+        
+        if fetchRequestId == requestId {
+            isLoading = false
         }
     }
     

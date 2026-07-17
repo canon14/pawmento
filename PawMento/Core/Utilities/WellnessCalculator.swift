@@ -4,11 +4,11 @@ import Foundation
 
 /// The output of the wellness calculator, including a confidence level
 /// that communicates data maturity to the UI.
-struct WellnessResult {
+struct WellnessResult: Equatable {
     let score: Int // 0–100
     let confidence: DataConfidence
     
-    enum DataConfidence {
+    enum DataConfidence: Equatable {
         /// < 3 logs in window — score is unreliable, UI should show "Gathering data"
         case insufficient
         /// 3–6 logs — score is directional but noisy

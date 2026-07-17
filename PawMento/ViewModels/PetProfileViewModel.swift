@@ -6,30 +6,53 @@ class PetProfileViewModel: ObservableObject {
     @Published var isLoading: Bool = false
     @Published var aiInsight: String? = nil
     @Published var isGeneratingInsight: Bool = false
-    
-    // Extracted Mock Data for Care Team and Meds
+    @Published var isInsightRetryable: Bool = false
     
     @Published var medications: [Medication] = []
     
     @Published var wellnessScore: Int = 0
+    @Published var wellnessConfidence: WellnessResult.DataConfidence = .insufficient
     @Published var scoreTrend: String = "Trending →"
     @Published var scoreDelta: String = "Calculating..."
-    // Fix S11: Track previous score for session-local delta
+    // Fix S11: Track previous score for session-local delta (per pet — cleared on switch)
     private var previousScore: Int?
+    private var loadedPetId: UUID?
+    
+    /// Clears derived profile state so a pet switch never shows the previous pet's data.
+    func resetForPetChange() {
+        aiInsight = nil
+        isInsightRetryable = false
+        isGeneratingInsight = false
+        medications = []
+        wellnessScore = 0
+        wellnessConfidence = .insufficient
+        scoreTrend = "Trending →"
+        scoreDelta = "Calculating..."
+        previousScore = nil
+        loadedPetId = nil
+    }
     
     // Fix S13: Accept forceRefresh parameter to bypass insight caching
     func refreshProfile(for pet: Pet, logs: [LogEntry], fetchedMedications: [Medication], forceRefresh: Bool = false) async {
+        if loadedPetId != pet.id {
+            resetForPetChange()
+            loadedPetId = pet.id
+        }
+        
         isLoading = true
         defer { isLoading = false }
         
         self.medications = fetchedMedications
         
         let result = WellnessCalculator.calculateScore(logs: logs, medications: fetchedMedications)
+        wellnessConfidence = result.confidence
         
         // Fix W1: Use data confidence to gate score display
         if result.confidence == .insufficient {
             scoreTrend = "Need more logs"
             scoreDelta = "Gathering data"
+            previousScore = nil
+            self.wellnessScore = 0
         } else if let oldScore = previousScore {
             let delta = result.score - oldScore
             if delta > 0 {
@@ -42,6 +65,8 @@ class PetProfileViewModel: ObservableObject {
                 scoreTrend = "Trending →"
                 scoreDelta = "Stable"
             }
+            previousScore = result.score
+            self.wellnessScore = result.score
         } else {
             // First calculation this session — no prior baseline to compare
             if result.score >= 80 {
@@ -52,10 +77,9 @@ class PetProfileViewModel: ObservableObject {
                 scoreTrend = "Trending ↘"
             }
             scoreDelta = "Gathering data"
+            previousScore = result.score
+            self.wellnessScore = result.score
         }
-        
-        previousScore = result.score
-        self.wellnessScore = result.score
         
         // Fix S13: Generate AI Insight — support forceRefresh to bypass nil-guard and cache
         if aiInsight == nil || forceRefresh {
@@ -67,6 +91,8 @@ class PetProfileViewModel: ObservableObject {
     func generateInsight(for pet: Pet, logs: [LogEntry], forceRefresh: Bool = false) async {
         let cacheKey = "ai_insight_\(pet.id.uuidString)"
         let cacheDateKey = "ai_insight_date_\(pet.id.uuidString)"
+        
+        isInsightRetryable = false
         
         // 1. Check cache (24 hours) — skip if forceRefresh
         if !forceRefresh,
@@ -115,8 +141,7 @@ class PetProfileViewModel: ObservableObject {
         } catch {
             // Fix S12: Replace hardcoded "Buddy" with pet.name
             self.aiInsight = "I lost connection while trying to analyze \(pet.name)'s data. Tap to retry."
+            self.isInsightRetryable = true
         }
     }
 }
-
-

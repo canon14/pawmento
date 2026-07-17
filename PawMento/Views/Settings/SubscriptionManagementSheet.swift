@@ -20,7 +20,11 @@ struct SubscriptionManagementSheet: View {
                         Text("PawMento Pro")
                             .font(.headlineLG)
                             .foregroundColor(.primaryText)
-                        Text("Active subscription")
+                        Text(
+                            coachViewModel.subscriptionLoadState == .loaded && coachViewModel.isPremium
+                            ? "Active subscription"
+                            : "Unable to verify status"
+                        )
                             .font(.bodySM)
                             .foregroundColor(.secondaryText)
                     }

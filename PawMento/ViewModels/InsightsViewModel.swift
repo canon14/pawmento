@@ -7,7 +7,8 @@ final class InsightsViewModel: ObservableObject {
     /// Population breed benchmarks require cohort data — disabled until backend support lands.
     static let breedBenchmarksEnabled = false
     
-    var petId: UUID?
+    private(set) var petId: UUID?
+    private var loadRequestId = UUID()
     
     @Published var timeRange: TimeRange = .days30
     
@@ -50,6 +51,15 @@ final class InsightsViewModel: ObservableObject {
     func loadInsights(for pet: Pet?, forceRefresh: Bool = false) async {
         guard let pet = pet else { return }
         
+        let requestId = UUID()
+        loadRequestId = requestId
+        let loadingPetId = pet.id
+        
+        if petId != nil && petId != loadingPetId {
+            clearDisplayedInsights()
+        }
+        petId = loadingPetId
+        
         isAnalyzing = true
         viewState = .loading
         
@@ -58,6 +68,8 @@ final class InsightsViewModel: ObservableObject {
         
         do {
             let result = try await InsightEngine.shared.generateInsights(for: pet, window: timeRange, forceRefresh: forceRefresh)
+            
+            guard loadRequestId == requestId, petId == loadingPetId else { return }
             
             // Fix S16: Filter out dismissed insights
             let fetchedInsights = result.insights.filter { !dismissedIds.contains($0.id) }
@@ -86,16 +98,20 @@ final class InsightsViewModel: ObservableObject {
                 signalCount: result.signalCount
             )
         } catch {
+            guard loadRequestId == requestId, petId == loadingPetId else { return }
+            
             print("Failed to load insights: \(error)")
-            self.breedBenchmark = nil
-            self.coachSuggestions = []
+            clearDisplayedInsights()
             if let urlError = error as? URLError, urlError.code == .notConnectedToInternet {
                 self.viewState = .offline
             } else {
                 self.viewState = .error(error.localizedDescription)
             }
         }
-        isAnalyzing = false
+        
+        if loadRequestId == requestId {
+            isAnalyzing = false
+        }
     }
     
     func changeTimeRange(to range: TimeRange, for pet: Pet?) async {
@@ -142,13 +158,16 @@ final class InsightsViewModel: ObservableObject {
         }
     }
     
+    private func clearDisplayedInsights() {
+        heroInsight = nil
+        patternCards = []
+        patternCount = 0
+        breedBenchmark = nil
+        coachSuggestions = []
+    }
+    
     private func bestInsight(from insights: [Insight]) -> Insight? {
-        return insights.min(by: { 
-            if $0.tier.priority == $1.tier.priority {
-                return $0.confidence > $1.confidence
-            }
-            return $0.tier.priority < $1.tier.priority
-        })
+        InsightOrdering.bestInsight(from: insights)
     }
     
     /// Builds coach prompt chips from surfaced insights, with honest fallbacks when none exist.

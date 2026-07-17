@@ -96,6 +96,11 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_logs_pet_source_key_unique
     ON public.logs(pet_id, source_key)
     WHERE source_key IS NOT NULL;
 
+-- DB-L4: Idempotent migration — add photo_url and severity to logs if missing.
+-- Older deployments created logs before these columns were added to CREATE TABLE.
+ALTER TABLE public.logs ADD COLUMN IF NOT EXISTS photo_url TEXT;
+ALTER TABLE public.logs ADD COLUMN IF NOT EXISTS severity INTEGER;
+
 -- 5. Symptoms Table — ⚠️  RESERVED / CURRENTLY UNUSED
 -- Symptoms are stored in the `logs` table with log_type = 'Symptom' (see LogCategory.symptom).
 -- The InsightEngine reads from `logs`, NOT from this table.

@@ -31,7 +31,11 @@ struct CoachChatView: View {
                             
                             ForEach(Array(viewModel.messages.enumerated()), id: \.element.id) { index, message in
                                 let showTimestamp = shouldShowTimestamp(for: index)
-                                MessageBubbleView(message: message, showTimestamp: showTimestamp)
+                                MessageBubbleView(
+                                    message: message,
+                                    showTimestamp: showTimestamp,
+                                    onRetry: message.isRetryable ? { retryFailedSend() } : nil
+                                )
                                     .id(message.id)
                                     .transition(.asymmetric(
                                         insertion: .move(edge: .bottom).combined(with: .opacity),
@@ -111,9 +115,11 @@ struct CoachChatView: View {
                 }
             }
         )
-        // Premium Wall
-        .sheet(isPresented: $viewModel.showPremiumWall) {
-            PaywallSheet(featureContext: "Unlimited Coaching")
+        .modifier(CoachPremiumWallModifier(petName: petName))
+        .alert("Session Expired", isPresented: $viewModel.showAuthError) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Please sign in again to continue chatting with Coach.")
         }
         .onAppear {
             Task {
@@ -131,6 +137,17 @@ struct CoachChatView: View {
                 heroVisible = true
             }
         }
+        .onChange(of: petStore.activePet?.id) { _, newPetId in
+            Task {
+                guard let ownerId = await authManager.getCurrentUserId() else { return }
+                await viewModel.fetchMessages(for: newPetId, ownerId: ownerId, forceRefresh: true)
+                await MainActor.run {
+                    if viewModel.messages.isEmpty {
+                        setInitialQuickReplies()
+                    }
+                }
+            }
+        }
     }
     
     // MARK: - Welcome Hero (empty state)
@@ -141,7 +158,7 @@ struct CoachChatView: View {
             freeQuestionsRemaining: $viewModel.freeQuestionsRemaining,
             petName: petName,
             onCameraTap: {
-                viewModel.showPremiumWall = true
+                viewModel.presentManualPremiumWall()
             },
             onSend: {
                 send(inputText)
@@ -325,6 +342,7 @@ struct CoachChatView: View {
                 }) {
                     Label("New Conversation", systemImage: "trash")
                 }
+                .disabled(viewModel.isSending || isWipingHistory)
             } label: {
                 Image(systemName: "ellipsis")
                     .font(.system(size: 18, weight: .semibold))
@@ -333,11 +351,12 @@ struct CoachChatView: View {
                     .background(Color.surfaceContainer.opacity(0.5))
                     .clipShape(Circle())
             }
+            .disabled(viewModel.isSending)
             .confirmationDialog("Start New Conversation?", isPresented: $showWipeConfirmation, titleVisibility: .visible) {
                 Button("Wipe History", role: .destructive) {
                     Task { await wipeHistory() }
                 }
-                .disabled(isWipingHistory)
+                .disabled(isWipingHistory || viewModel.isSending)
                 Button("Cancel", role: .cancel) {}
             } message: {
                 Text("This will permanently delete this pet's coach conversation from your account.")
@@ -362,7 +381,7 @@ struct CoachChatView: View {
     
     private func send(_ text: String) {
         if text == "See Premium" {
-            viewModel.showPremiumWall = true
+            viewModel.presentManualPremiumWall()
             return
         }
         
@@ -377,6 +396,15 @@ struct CoachChatView: View {
         }
     }
     
+    private func retryFailedSend() {
+        guard !viewModel.isSending else { return }
+        let activePet = petStore.activePet
+        Task {
+            let ownerId = await authManager.getCurrentUserId()
+            await viewModel.retryLastFailedSend(pet: activePet, ownerId: ownerId)
+        }
+    }
+    
     private func setInitialQuickReplies() {
         viewModel.quickReplies = [
             "Is \(petName)'s weight healthy?",
@@ -386,6 +414,7 @@ struct CoachChatView: View {
     }
     
     private func wipeHistory() async {
+        guard !viewModel.isSending else { return }
         guard let petId = petStore.activePet?.id else { return }
         guard !isWipingHistory else { return }
         isWipingHistory = true
@@ -437,6 +466,28 @@ struct TypingIndicator: View {
             withAnimation(baseAnimation.delay(0.0)) { offset1 = -4 }
             withAnimation(baseAnimation.delay(0.2)) { offset2 = -4 }
             withAnimation(baseAnimation.delay(0.4)) { offset3 = -4 }
+        }
+    }
+}
+
+private struct CoachPremiumWallModifier: ViewModifier {
+    @EnvironmentObject private var viewModel: CoachViewModel
+    let petName: String
+    
+    func body(content: Content) -> some View {
+        content
+            .sheet(isPresented: $viewModel.showPremiumWall, onDismiss: handleDismiss) {
+                PaywallSheet(
+                    featureContext: "Unlimited Coaching",
+                    trigger: viewModel.paywallTrigger,
+                    petName: petName
+                )
+            }
+    }
+    
+    private func handleDismiss() {
+        if case .coachQuotaExhausted = viewModel.paywallTrigger {
+            PaywallEventGate.markCoachQuotaPaywallDismissed()
         }
     }
 }

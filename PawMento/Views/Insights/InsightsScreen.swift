@@ -3,13 +3,19 @@ import SwiftUI
 struct InsightsScreen: View {
     @Environment(\.dismiss) var dismiss
     @EnvironmentObject var petStore: PetStore
+    @EnvironmentObject var logStore: LogStore
     @EnvironmentObject var toastManager: ToastManager
     @StateObject private var viewModel = InsightsViewModel()
     @State private var selectedInsight: Insight?
+    @State private var paywallInsight: Insight?
     @State private var showPaywall = false
     @State private var paywallFeatureContext: String? = nil
     @State private var showCoachChat = false
     @State private var showBreedBenchmarkDetail = false
+    @State private var showShareSheet = false
+    @State private var shareInsight: Insight?
+    @State private var showEventPaywall = false
+    @State private var eventPaywallInsight: Insight?
     
     @EnvironmentObject var coachViewModel: CoachViewModel
     @EnvironmentObject var authManager: AuthManager
@@ -31,6 +37,7 @@ struct InsightsScreen: View {
                 viewModel.isPremium = coachViewModel.isPremium
                 Task {
                     await viewModel.loadInsights(for: petStore.activePet)
+                    await checkFirstStrongInsightPaywall()
                 }
             }
             .onChange(of: coachViewModel.isPremium) { _, isPremium in
@@ -39,6 +46,13 @@ struct InsightsScreen: View {
             .onChange(of: petStore.activePet?.id) { _, _ in
                 Task {
                     await viewModel.loadInsights(for: petStore.activePet, forceRefresh: true)
+                    await checkFirstStrongInsightPaywall()
+                }
+            }
+            .onChange(of: logStore.logs.count) { _, _ in
+                Task {
+                    await viewModel.loadInsights(for: petStore.activePet, forceRefresh: true)
+                    await checkFirstStrongInsightPaywall()
                 }
             }
             .toolbar {
@@ -78,6 +92,7 @@ struct InsightsScreen: View {
                     Button(action: {
                         Task {
                             await viewModel.changeTimeRange(to: range, for: petStore.activePet)
+                            await checkFirstStrongInsightPaywall()
                         }
                     }) {
                         timeRangeLabel(range: range, isSelected: isSelected)
@@ -165,6 +180,7 @@ struct InsightsScreen: View {
         }
         .refreshable {
             await viewModel.refreshInsights(for: petStore.activePet)
+            await checkFirstStrongInsightPaywall()
         }
         .navigationDestination(item: $selectedInsight) { insight in
             InsightDetailScreen(insight: insight, onActionTapped: { action in
@@ -174,17 +190,28 @@ struct InsightsScreen: View {
                         let ownerId = await authManager.getCurrentUserId()
                         await coachViewModel.sendMessage("I'm looking at the insight: '\(insight.headline)'. Can you give me more advice on this?", pet: petStore.activePet, ownerId: ownerId)
                     }
-                } else {
-                    print("Tapped \(action.title) in detail screen")
+                } else if InsightShareHelper.isShareAction(action.title) {
+                    presentShare(for: insight)
                 }
             })
         }
         .sheet(isPresented: $showPaywall) {
-            PaywallSheet(insight: selectedInsight, featureContext: paywallFeatureContext)
+            PaywallSheet(insight: paywallInsight, featureContext: paywallFeatureContext)
                 .onDisappear {
-                    selectedInsight = nil
+                    paywallInsight = nil
                     paywallFeatureContext = nil
                 }
+        }
+        .sheet(isPresented: $showEventPaywall, onDismiss: {
+            eventPaywallInsight = nil
+        }) {
+            if let insight = eventPaywallInsight {
+                PaywallSheet(
+                    insight: insight,
+                    trigger: .firstStrongInsight,
+                    petName: petStore.activePet?.name ?? PetStore.fallbackPetName
+                )
+            }
         }
         .sheet(isPresented: $showBreedBenchmarkDetail) {
             if let benchmark = viewModel.breedBenchmark {
@@ -203,6 +230,17 @@ struct InsightsScreen: View {
         }
         .fullScreenCover(isPresented: $showCoachChat) {
             CoachChatView()
+        }
+        .sheet(isPresented: $showShareSheet) {
+            if let insight = shareInsight {
+                InsightShareSheet(
+                    items: [InsightShareHelper.shareText(
+                        for: insight,
+                        petName: petStore.activePet?.name ?? PetStore.fallbackPetName
+                    )]
+                )
+                .presentationDetents([.medium, .large])
+            }
         }
     }
     
@@ -250,14 +288,11 @@ struct InsightsScreen: View {
                 SectionHeader("This Week's Headline", style: .withRule)
                 
                 HeroInsightCard(insight: hero, isPremium: viewModel.isPremium, petName: petStore.activePet?.name ?? PetStore.fallbackPetName, onActionTapped: { action in
-                    print("Tapped \(action.title)")
-                }, onCardTapped: {
-                    if hero.isPremiumGated && !viewModel.isPremium {
-                        selectedInsight = hero
-                        showPaywall = true
-                    } else {
-                        selectedInsight = hero
+                    if InsightShareHelper.isShareAction(action.title) {
+                        presentShare(for: hero)
                     }
+                }, onCardTapped: {
+                    handleInsightTap(hero)
                 })
                 .contextMenu {
                     insightContextMenu(for: hero)
@@ -274,12 +309,7 @@ struct InsightsScreen: View {
                 
                 ForEach(viewModel.patternCards) { insight in
                     PatternCard(insight: insight, isPremium: viewModel.isPremium, onCardTapped: {
-                        if insight.isPremiumGated && !viewModel.isPremium {
-                            selectedInsight = insight
-                            showPaywall = true
-                        } else {
-                            selectedInsight = insight
-                        }
+                        handleInsightTap(insight)
                     })
                     .contextMenu {
                         insightContextMenu(for: insight)
@@ -329,7 +359,7 @@ struct InsightsScreen: View {
     @ViewBuilder
     private func insightContextMenu(for insight: Insight) -> some View {
         Button(action: {
-            print("Share \(insight.id)")
+            presentShare(for: insight)
         }) {
             Label("Share Insight", systemImage: "square.and.arrow.up")
         }
@@ -345,6 +375,44 @@ struct InsightsScreen: View {
         }) {
             Label("Not Relevant to \(petStore.activePet?.name ?? PetStore.fallbackPetName)", systemImage: "xmark.circle")
         }
+    }
+    
+    private func handleInsightTap(_ insight: Insight) {
+        if insight.isPremiumGated && !viewModel.isPremium {
+            // Paywall only — do not set selectedInsight (avoids ungated detail push).
+            paywallInsight = insight
+            showPaywall = true
+        } else {
+            selectedInsight = insight
+        }
+    }
+    
+    private func presentShare(for insight: Insight) {
+        if insight.isPremiumGated && !viewModel.isPremium {
+            paywallInsight = insight
+            showPaywall = true
+            return
+        }
+        shareInsight = insight
+        showShareSheet = true
+    }
+    
+    private func checkFirstStrongInsightPaywall() async {
+        guard !viewModel.isPremium else { return }
+        guard viewModel.viewState == .success else { return }
+        guard let userId = await authManager.getCurrentUserId() else { return }
+        
+        var insights: [Insight] = []
+        if let hero = viewModel.heroInsight {
+            insights.append(hero)
+        }
+        insights.append(contentsOf: viewModel.patternCards)
+        
+        guard let strong = PaywallEventGate.strongInsight(in: insights) else { return }
+        guard PaywallEventGate.claimFirstStrongInsightIfEligible(userId: userId) else { return }
+        
+        eventPaywallInsight = strong
+        showEventPaywall = true
     }
 }
 

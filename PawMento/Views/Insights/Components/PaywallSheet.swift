@@ -8,17 +8,50 @@ struct PaywallSheet: View {
     
     var insight: Insight? = nil
     var featureContext: String? = nil
+    var trigger: PaywallTrigger = .manual(featureContext: nil)
+    var petName: String = "your pet"
     
     @State private var purchaseError: String?
     
-    private var heroTitle: String {
-        if insight != nil {
-            return "Unlock this insight"
-        } else if let feature = featureContext {
-            return "Unlock \(feature)"
-        } else {
-            return "Upgrade to Premium"
+    private var resolvedFeatureContext: String? {
+        switch trigger {
+        case .manual(let context):
+            return context ?? featureContext
+        default:
+            return featureContext
         }
+    }
+    
+    private var heroTitle: String {
+        switch trigger {
+        case .firstStrongInsight:
+            return "You just unlocked your first strong pattern"
+        case .coachQuotaExhausted:
+            return "You've used your free questions"
+        case .manual:
+            if insight != nil {
+                return "Unlock this insight"
+            } else if let feature = resolvedFeatureContext {
+                return "Unlock \(feature)"
+            } else {
+                return "Upgrade to Premium"
+            }
+        }
+    }
+    
+    private var heroSubcopy: String {
+        switch trigger {
+        case .firstStrongInsight:
+            return "Go premium for full history and unlimited insights."
+        case .coachQuotaExhausted:
+            return "Go unlimited with \(petName)'s Coach."
+        case .manual:
+            return "Get deep-dive AI analysis, historical benchmarks, and unlimited coaching."
+        }
+    }
+    
+    private var showsInsightPreview: Bool {
+        insight != nil
     }
     
     var body: some View {
@@ -36,7 +69,7 @@ struct PaywallSheet: View {
                     .frame(width: 200, height: 200)
                     .blur(radius: 20)
                 
-                if insight != nil {
+                if showsInsightPreview {
                     VStack(spacing: 8) {
                         Image(systemName: "lock.open.fill")
                             .font(.system(size: 36, weight: .medium))
@@ -44,21 +77,34 @@ struct PaywallSheet: View {
                         Text(heroTitle)
                             .font(.headlineLG)
                             .foregroundColor(.primaryText)
+                            .multilineTextAlignment(.center)
                     }
+                    .padding(.horizontal, 24)
                 } else {
                     VStack(spacing: 8) {
-                        Image(systemName: "crown.fill")
+                        Image(systemName: triggerIcon)
                             .font(.system(size: 40, weight: .medium))
                             .foregroundColor(.primary)
-                        Text("PawMento Premium")
+                        Text(headerBrandLabel)
                             .font(.headlineLG)
                             .foregroundColor(.primaryText)
+                            .multilineTextAlignment(.center)
                     }
+                    .padding(.horizontal, 24)
                 }
             }
             .padding(.top, 32)
             
-            Text("Get deep-dive AI analysis, historical benchmarks, and unlimited coaching.")
+            if !showsInsightPreview, case .manual = trigger {
+                Text(heroTitle)
+                    .font(.headlineSM)
+                    .foregroundColor(.primaryText)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 28)
+                    .padding(.top, 4)
+            }
+            
+            Text(heroSubcopy)
                 .font(.bodyMD)
                 .foregroundColor(.secondaryText)
                 .multilineTextAlignment(.center)
@@ -145,6 +191,26 @@ struct PaywallSheet: View {
         .presentationDragIndicator(.visible)
         .task {
             await subscriptionManager.loadProducts()
+        }
+    }
+    
+    private var triggerIcon: String {
+        switch trigger {
+        case .firstStrongInsight:
+            return "sparkles"
+        case .coachQuotaExhausted:
+            return "bubble.left.and.bubble.right.fill"
+        case .manual:
+            return "crown.fill"
+        }
+    }
+    
+    private var headerBrandLabel: String {
+        switch trigger {
+        case .firstStrongInsight, .coachQuotaExhausted:
+            return heroTitle
+        case .manual:
+            return "PawMento Premium"
         }
     }
     

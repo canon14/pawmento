@@ -20,6 +20,7 @@ struct BubbleShape: Shape {
 struct MessageBubbleView: View {
     let message: ChatMessage
     var showTimestamp: Bool = true
+    var onRetry: (() -> Void)? = nil
     @State private var isRevealed: Bool = false
     @State private var appeared: Bool = false
     
@@ -138,7 +139,11 @@ struct MessageBubbleView: View {
         .padding(.trailing, 48)
         .textSelection(.enabled)
         .onTapGesture {
-            withAnimation(.easeInOut(duration: 0.2)) { isRevealed.toggle() }
+            if message.isRetryable, let onRetry {
+                onRetry()
+            } else {
+                withAnimation(.easeInOut(duration: 0.2)) { isRevealed.toggle() }
+            }
         }
     }
 }

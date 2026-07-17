@@ -33,7 +33,23 @@ struct QuickLogSheetView: View {
     }
     
     private var hasContent: Bool {
-        !note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || (selectedCategory == .med && !dose.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+        let trimmedNote = note.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmedNote.isEmpty { return true }
+        if selectedCategory == .med && !dose.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return true
+        }
+        if photo != nil { return true }
+        if selectedCategory == .symptom { return true }
+        return false
+    }
+    
+    /// Dose merged into note for More details (detail sheet has no separate dose field).
+    private var noteForDetailSheet: String {
+        let trimmedDose = dose.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard selectedCategory == .med, !trimmedDose.isEmpty else { return note }
+        let doseText = "Dose: \(trimmedDose)"
+        if note.contains(doseText) { return note }
+        return note.isEmpty ? doseText : "\(doseText)\n\n\(note)"
     }
     
     var body: some View {
@@ -198,6 +214,8 @@ struct QuickLogSheetView: View {
                     }
                     .font(.labelMD)
                     .foregroundColor(.primary)
+                    .disabled(isSaving || showSuccess)
+                    .opacity(isSaving || showSuccess ? 0.4 : 1)
                     .padding(.bottom, 8)
                 }
                 .frame(maxWidth: .infinity)
@@ -225,8 +243,13 @@ struct QuickLogSheetView: View {
             LogDetailSheet(
                 initialCategory: selectedCategory,
                 initialSeverity: severity,
-                initialNote: note,
-                initialPhoto: photo
+                initialNote: noteForDetailSheet,
+                initialPhoto: photo,
+                onCreateSaved: {
+                    showSuccess = true
+                    UserDefaults.standard.removeObject(forKey: draftKey)
+                    dismiss()
+                }
             )
         }
         .onAppear {
@@ -294,6 +317,8 @@ struct QuickLogSheetView: View {
             guard let userId = await authManager.getCurrentUserId() else {
                 await MainActor.run {
                     isSaving = false
+                    errorMessage = "Your session has expired. Please sign in again."
+                    showErrorAlert = true
                     showErrorShake = true
                 }
                 return
@@ -346,10 +371,17 @@ struct QuickLogSheetView: View {
                         ])
                         
                         toastManager.show(AppStrings.QuickLog.loggedFor(petName), actionLabel: AppStrings.QuickLog.undo) {
-                            // Undo logic
                             TelemetryEngine.shared.track(event: .quick_log_undo_tapped, properties: ["delete_log_id": log.id.uuidString])
-                            if let index = logStore.logs.firstIndex(where: { $0.id == log.id }) {
-                                logStore.logs.remove(at: index)
+                            Task { @MainActor in
+                                do {
+                                    guard let undoUserId = await authManager.getCurrentUserId() else {
+                                        toastManager.show("Couldn't undo — sign in again.", duration: 3.0)
+                                        return
+                                    }
+                                    try await logStore.deleteLog(log, userId: undoUserId)
+                                } catch {
+                                    toastManager.show("Couldn't undo — log still saved.", duration: 3.0)
+                                }
                             }
                         }
                         dismiss()
