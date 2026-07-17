@@ -13,8 +13,26 @@ struct CoachChatView: View {
         petStore.activePet?.name ?? PetStore.fallbackPetName
     }
     
+    /// Lightweight scroll trigger — avoids Equatable-diffing the full message array.
+    private var scrollSignal: String {
+        let last = viewModel.messages.last
+        return "\(viewModel.messages.count)|\(last?.id.uuidString ?? "")|\(last?.content.count ?? 0)"
+    }
+    
     private func hideKeyboard() {
         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+    }
+    
+    private func scrollToLatest(using proxy: ScrollViewProxy) {
+        if viewModel.isTyping {
+            withAnimation(.easeOut(duration: 0.2)) {
+                proxy.scrollTo("typingIndicator", anchor: .bottom)
+            }
+        } else if let lastId = viewModel.messages.last?.id {
+            withAnimation(.easeOut(duration: 0.2)) {
+                proxy.scrollTo(lastId, anchor: .bottom)
+            }
+        }
     }
     
     var body: some View {
@@ -79,14 +97,11 @@ struct CoachChatView: View {
                                 .transition(.move(edge: .bottom).combined(with: .opacity))
                         }
                         composerBar
+                        medicalSafetyDisclaimer
                     }
                 }
-                .onChange(of: viewModel.messages) { _, _ in
-                    if let last = viewModel.messages.last {
-                        withAnimation {
-                            proxy.scrollTo(last.id, anchor: .bottom)
-                        }
-                    }
+                .onChange(of: scrollSignal) { _, _ in
+                    scrollToLatest(using: proxy)
                 }
                 .onChange(of: viewModel.isTyping) { _, typing in
                     if typing {
@@ -100,15 +115,25 @@ struct CoachChatView: View {
             .onTapGesture {
                 hideKeyboard()
             }
+            // Edge-only dismiss — avoids fighting fullScreenCover / system swipe gestures.
+            .overlay(alignment: .leading) {
+                Color.clear
+                    .frame(width: 16)
+                    .frame(maxHeight: .infinity)
+                    .contentShape(Rectangle())
+                    .gesture(
+                        DragGesture(minimumDistance: 24)
+                            .onEnded { value in
+                                if value.translation.width > 60,
+                                   abs(value.translation.height) < 80 {
+                                    dismiss()
+                                }
+                            }
+                    )
+                    .accessibilityHidden(true)
+            }
         }
         .navigationBarHidden(true)
-        .gesture(
-            DragGesture().onEnded { value in
-                if value.startLocation.x < 50 && value.translation.width > 50 {
-                    dismiss()
-                }
-            }
-        )
         .modifier(CoachPremiumWallModifier(petName: petName))
         .alert("Session Expired", isPresented: $viewModel.showAuthError) {
             Button("OK", role: .cancel) {}
@@ -160,6 +185,18 @@ struct CoachChatView: View {
             isSending: viewModel.isSending,
             showsQuotaCounter: viewModel.shouldEnforceFreeQuota
         )
+    }
+    
+    private var medicalSafetyDisclaimer: some View {
+        Text("Coach offers general guidance, not veterinary diagnosis. For emergencies, contact your vet.")
+            .font(.caption)
+            .foregroundColor(.tertiaryText)
+            .multilineTextAlignment(.center)
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 20)
+            .padding(.top, 6)
+            .padding(.bottom, 8)
+            .accessibilityLabel("Coach offers general guidance, not veterinary diagnosis. For emergencies, contact your vet.")
     }
     
     @ViewBuilder
