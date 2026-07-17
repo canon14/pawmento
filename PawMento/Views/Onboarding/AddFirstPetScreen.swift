@@ -41,7 +41,7 @@ struct AddFirstPetScreen: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            // Navigation Bar
+            // Navigation Bar — Cancel only; submit is the bottom primary CTA
             HStack {
                 Button("Cancel") {
                     dismiss()
@@ -51,15 +51,6 @@ struct AddFirstPetScreen: View {
                 .disabled(isSubmitting)
                 
                 Spacer()
-                
-                if canSubmit {
-                    Button("Done") {
-                        submitForm()
-                    }
-                    .font(.labelMD)
-                    .foregroundColor(.primary)
-                    .disabled(isSubmitting)
-                }
             }
             .padding(.horizontal, 20)
             .padding(.top, 20)
