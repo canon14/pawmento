@@ -16,41 +16,19 @@ struct TopHeaderView: View {
     
     var body: some View {
         HStack {
-            HStack(spacing: 12) {
-                // Pet avatar: prefer photoImage → photoLocalURL → species emoji
-                Group {
-                    if let pet = petStore.activePet, let image = pet.photoImage {
-                        Image(uiImage: image)
-                            .resizable()
-                            .scaledToFill()
-                    } else if let pet = petStore.activePet, let photoURL = pet.photoLocalURL {
-                        CachedAsyncImage(url: photoURL) { img in
-                            img.resizable().scaledToFill()
-                        } placeholder: {
-                            speciesEmojiCircle
-                        }
-                    } else {
-                        speciesEmojiCircle
-                    }
-                }
-                .frame(width: 40, height: 40)
-                .clipShape(Circle())
-                .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
+            VStack(alignment: .leading, spacing: 4) {
+                Text("\(greetingTimeOfDay) \(greetingEmoji)")
+                    .font(.headlineSM)
+                    .foregroundColor(.primary)
+                    .tracking(-0.5)
                 
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("\(greetingTimeOfDay) \(greetingEmoji)")
-                        .font(.headlineSM)
-                        .foregroundColor(.primary)
-                        .tracking(-0.5)
+                HStack(spacing: 8) {
+                    Text(formattedDate)
+                        .font(.labelMD)
+                        .foregroundColor(.onSurfaceVariant)
                     
-                    HStack(spacing: 8) {
-                        Text(formattedDate)
-                            .font(.labelMD)
-                            .foregroundColor(.onSurfaceVariant)
-                        
-                        if petStore.activePet != nil {
-                            StreakChip(streak: loggingStreak)
-                        }
+                    if petStore.activePet != nil {
+                        StreakChip(streak: loggingStreak)
                     }
                 }
             }
@@ -73,28 +51,6 @@ struct TopHeaderView: View {
         .sheet(isPresented: $showSettings) {
             SettingsView()
         }
-    }
-    
-    // MARK: - Species emoji fallback (no photo available)
-    
-    private var speciesEmojiCircle: some View {
-        let emoji: String = {
-            guard let pet = petStore.activePet else { return "🐾" }
-            switch pet.species {
-            case .dog: return "🐶"
-            case .cat: return "🐱"
-            case .rabbit: return "🐰"
-            case .other: return "🐾"
-            }
-        }()
-        
-        return Circle()
-            .fill(Color.primaryContainer)
-            .frame(width: 40, height: 40)
-            .overlay(
-                Text(emoji)
-                    .font(.headlineMD)
-            )
     }
     
     private var greetingTimeOfDay: String {

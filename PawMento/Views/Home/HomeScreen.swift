@@ -140,8 +140,6 @@ struct HomeScreen: View {
                         )
                     }
                     
-                    PetSelectorCard(onAddPet: { showAddPetSheet = true })
-                    
                     WellnessScoreHero(
                         ringMode: homeViewModel.ringMode,
                         shouldPlayUnlockAnimation: homeViewModel.shouldPlayUnlockAnimation,
@@ -150,7 +148,8 @@ struct HomeScreen: View {
                         },
                         onViewTrendsTapped: {
                             showFullTimeline = true
-                        }
+                        },
+                        onAddPet: { showAddPetSheet = true }
                     )
                     
                     // ── Up Next ──

@@ -5,7 +5,9 @@ struct WellnessScoreHero: View {
     var shouldPlayUnlockAnimation: Bool = false
     var onUnlockAnimationComplete: (() -> Void)? = nil
     var onViewTrendsTapped: (() -> Void)? = nil
+    var onAddPet: (() -> Void)? = nil
     
+    @EnvironmentObject var petStore: PetStore
     @EnvironmentObject var logStore: LogStore
     @EnvironmentObject var medicationStore: MedicationStore
     
@@ -20,113 +22,128 @@ struct WellnessScoreHero: View {
     @State private var setupSubtitle = "Log your first entry"
     @State private var unlockScale: CGFloat = 1.0
     @State private var unlockOpacity: Double = 1.0
+    @State private var showPetSwitcher = false
     
     var body: some View {
-        Button(action: {
-            onViewTrendsTapped?()
-        }) {
-            VStack(spacing: 0) {
-                ZStack(alignment: .topTrailing) {
-                    RadialGradient(
-                        gradient: Gradient(colors: backgroundGradientColors),
-                        center: .top,
-                        startRadius: 0,
-                        endRadius: 200
-                    )
+        VStack(spacing: 0) {
+            ZStack(alignment: .top) {
+                RadialGradient(
+                    gradient: Gradient(colors: backgroundGradientColors),
+                    center: .top,
+                    startRadius: 0,
+                    endRadius: 220
+                )
+                
+                VStack(spacing: 0) {
+                    petIdentityRow
+                        .padding(.horizontal, 20)
+                        .padding(.top, 20)
                     
-                    VStack(spacing: 0) {
-                        ZStack {
-                            Circle()
-                                .stroke(Color(hex: "#F5F3EF"), style: StrokeStyle(lineWidth: 12, lineCap: .round))
-                                .rotationEffect(.degrees(-90))
-                            
-                            Circle()
-                                .trim(from: 0, to: progress)
-                                .stroke(ringGradient, style: StrokeStyle(lineWidth: 12, lineCap: .round))
-                                .rotationEffect(.degrees(-90))
-                                .blur(radius: 12)
-                                .opacity(0.6)
-                                .animation(.easeOut(duration: 1.0).delay(0.1), value: progress)
-                            
-                            Circle()
-                                .trim(from: 0, to: progress)
-                                .stroke(ringGradient, style: StrokeStyle(lineWidth: 12, lineCap: .round))
-                                .rotationEffect(.degrees(-90))
-                                .animation(.easeOut(duration: 1.0).delay(0.1), value: progress)
-                            
-                            if isSetupMode {
-                                VStack(spacing: 4) {
-                                    Text(setupCenterLabel)
-                                        .font(.headlineMD)
-                                        .foregroundColor(.primary)
-                                        .multilineTextAlignment(.center)
-                                    Text("Setup progress")
-                                        .font(.labelSM)
-                                        .foregroundColor(.onSurfaceVariant)
-                                }
-                                .padding(.horizontal, 8)
-                            } else {
-                                HStack(alignment: .firstTextBaseline, spacing: 0) {
-                                    Text("\(score)")
-                                        .font(.custom("PlusJakartaSans-Bold", size: 56))
-                                        .foregroundColor(.primary)
-                                        .contentTransition(.numericText(value: Double(score)))
-                                    Text("/100")
-                                        .font(.labelMD)
-                                        .foregroundColor(.onSurfaceVariant)
+                    Button(action: {
+                        onViewTrendsTapped?()
+                    }) {
+                        VStack(spacing: 0) {
+                            ZStack {
+                                Circle()
+                                    .stroke(Color(hex: "#F5F3EF"), style: StrokeStyle(lineWidth: 12, lineCap: .round))
+                                    .rotationEffect(.degrees(-90))
+                                
+                                Circle()
+                                    .trim(from: 0, to: progress)
+                                    .stroke(ringGradient, style: StrokeStyle(lineWidth: 12, lineCap: .round))
+                                    .rotationEffect(.degrees(-90))
+                                    .blur(radius: 12)
+                                    .opacity(0.6)
+                                    .animation(.easeOut(duration: 1.0).delay(0.1), value: progress)
+                                
+                                Circle()
+                                    .trim(from: 0, to: progress)
+                                    .stroke(ringGradient, style: StrokeStyle(lineWidth: 12, lineCap: .round))
+                                    .rotationEffect(.degrees(-90))
+                                    .animation(.easeOut(duration: 1.0).delay(0.1), value: progress)
+                                
+                                if isSetupMode {
+                                    VStack(spacing: 4) {
+                                        Text(setupCenterLabel)
+                                            .font(.headlineMD)
+                                            .foregroundColor(.primary)
+                                            .multilineTextAlignment(.center)
+                                        Text("Setup progress")
+                                            .font(.labelSM)
+                                            .foregroundColor(.onSurfaceVariant)
+                                    }
+                                    .padding(.horizontal, 8)
+                                } else {
+                                    HStack(alignment: .firstTextBaseline, spacing: 0) {
+                                        Text("\(score)")
+                                            .font(.custom("PlusJakartaSans-Bold", size: 56))
+                                            .foregroundColor(.primary)
+                                            .contentTransition(.numericText(value: Double(score)))
+                                        Text("/100")
+                                            .font(.labelMD)
+                                            .foregroundColor(.onSurfaceVariant)
+                                    }
                                 }
                             }
+                            .frame(width: 160, height: 160)
+                            .scaleEffect(unlockScale)
+                            .opacity(unlockOpacity)
+                            .accessibilityElement(children: .ignore)
+                            .accessibilityLabel(accessibilityRingLabel)
+                            .padding(.top, 28)
+                            .padding(.bottom, 20)
+                            
+                            Text(isSetupMode ? setupSubtitle : subtitleText(for: score))
+                                .font(.headlineSM)
+                                .foregroundColor(.onSurface)
+                                .padding(.bottom, 8)
+                            
+                            HStack(spacing: 4) {
+                                Image(systemName: deltaIcon)
+                                    .font(.bodySM)
+                                Text(deltaText)
+                                    .font(.labelMD)
+                            }
+                            .foregroundColor(deltaColor)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(deltaColor.opacity(0.15))
+                            .clipShape(Capsule())
+                            .overlay(Capsule().stroke(Color.white.opacity(0.6), lineWidth: 1))
+                            .shadow(color: Color.black.opacity(0.05), radius: 2, x: 0, y: 1)
+                            .padding(.bottom, 20)
+                            .opacity(showDelta ? 1 : 0)
+                            .scaleEffect(showDelta ? 1 : 0.8)
+                            
+                            HStack(spacing: 4) {
+                                Text("View trends")
+                                    .font(.labelMD)
+                                Image(systemName: "chevron.right")
+                                    .font(.bodySM)
+                            }
+                            .foregroundColor(.secondary)
+                            .padding(.bottom, 20)
                         }
-                        .frame(width: 160, height: 160)
-                        .scaleEffect(unlockScale)
-                        .opacity(unlockOpacity)
-                        .accessibilityElement(children: .ignore)
-                        .accessibilityLabel(accessibilityRingLabel)
-                        .padding(.top, 40)
-                        .padding(.bottom, 20)
-                        
-                        Text(isSetupMode ? setupSubtitle : subtitleText(for: score))
-                            .font(.headlineSM)
-                            .foregroundColor(.onSurface)
-                            .padding(.bottom, 8)
-                        
-                        HStack(spacing: 4) {
-                            Image(systemName: deltaIcon)
-                                .font(.bodySM)
-                            Text(deltaText)
-                                .font(.labelMD)
-                        }
-                        .foregroundColor(deltaColor)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(deltaColor.opacity(0.15))
-                        .clipShape(Capsule())
-                        .overlay(Capsule().stroke(Color.white.opacity(0.6), lineWidth: 1))
-                        .shadow(color: Color.black.opacity(0.05), radius: 2, x: 0, y: 1)
-                        .padding(.bottom, 20)
-                        .opacity(showDelta ? 1 : 0)
-                        .scaleEffect(showDelta ? 1 : 0.8)
-                        
-                        HStack(spacing: 4) {
-                            Text("View trends")
-                                .font(.labelMD)
-                            Image(systemName: "chevron.right")
-                                .font(.bodySM)
-                        }
-                        .foregroundColor(.secondary)
-                        .padding(.bottom, 20)
+                        .frame(maxWidth: .infinity)
+                        .contentShape(Rectangle())
                     }
-                    .frame(maxWidth: .infinity)
+                    .buttonStyle(SquishyCardStyle())
                 }
             }
-            .background(
-                Color.surfaceContainerLowest
-                    .overlay(.ultraThinMaterial.opacity(0.5))
-            )
-            .cornerRadius(AppRadius.card)
-            .warmShadow()
         }
-        .buttonStyle(SquishyCardStyle())
+        .background(
+            Color.surfaceContainerLowest
+                .overlay(.ultraThinMaterial.opacity(0.5))
+        )
+        .cornerRadius(AppRadius.card)
+        .warmShadow()
+        .confirmationDialog("Switch Pet", isPresented: $showPetSwitcher, titleVisibility: .visible) {
+            ForEach(petStore.pets) { pet in
+                Button(pet.id == petStore.activePet?.id ? "\(pet.name) ✓" : pet.name) {
+                    petStore.activePet = pet
+                }
+            }
+        }
         .onChange(of: ringMode) { _, newMode in
             applyRingMode(newMode, animated: true)
         }
@@ -142,6 +159,94 @@ struct WellnessScoreHero: View {
         }
         .onChange(of: medicationStore.medications.count) { _, _ in
             updateYesterdayComparison()
+        }
+    }
+    
+    // MARK: - Pet Identity
+    
+    private var petIdentityRow: some View {
+        HStack(spacing: 12) {
+            Button {
+                if petStore.pets.count > 1 {
+                    showPetSwitcher = true
+                }
+            } label: {
+                HStack(spacing: 12) {
+                    petAvatar
+                        .frame(width: 52, height: 52)
+                        .clipShape(Circle())
+                        .overlay(
+                            Circle().stroke(
+                                LinearGradient(
+                                    colors: [Color.primary, Color.primary.opacity(0.3)],
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                ),
+                                lineWidth: 2
+                            )
+                        )
+                        .shadow(color: Color.primary.opacity(0.2), radius: 4, x: 0, y: 2)
+                    
+                    HStack(spacing: 6) {
+                        Text(petStore.activePet?.name ?? "No Pet")
+                            .font(.headlineSM)
+                            .fontWeight(.bold)
+                            .foregroundColor(.onSurface)
+                            .lineLimit(1)
+                        
+                        if petStore.pets.count > 1 {
+                            Image(systemName: "chevron.down")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundColor(.onSurfaceVariant)
+                        }
+                    }
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .disabled(petStore.pets.count <= 1)
+            .accessibilityLabel(petStore.activePet.map { "\($0.name), active pet" } ?? "No pet selected")
+            .accessibilityHint(petStore.pets.count > 1 ? "Double tap to switch pets" : "")
+            
+            Spacer(minLength: 8)
+            
+            if let onAddPet {
+                Button(action: onAddPet) {
+                    Image(systemName: "plus")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(.primary)
+                        .frame(width: 40, height: 40)
+                        .background(Color.primaryContainer.opacity(0.5))
+                        .clipShape(Circle())
+                }
+                .buttonStyle(SquishyCardStyle())
+                .accessibilityLabel("Add pet")
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private var petAvatar: some View {
+        if let pet = petStore.activePet, let image = pet.photoImage {
+            Image(uiImage: image)
+                .resizable()
+                .scaledToFill()
+        } else if let pet = petStore.activePet, let photoURL = pet.photoLocalURL {
+            CachedAsyncImage(url: photoURL) { image in
+                image.resizable().scaledToFill()
+            } placeholder: {
+                ZStack {
+                    Color.surfaceContainerHigh
+                    ProgressView()
+                }
+            }
+        } else {
+            ZStack {
+                Color.surfaceContainerHigh
+                Image(systemName: "pawprint.fill")
+                    .font(.system(size: 22))
+                    .foregroundColor(Color.primary.opacity(0.6))
+            }
         }
     }
     
@@ -291,7 +396,8 @@ struct WellnessScoreHero: View {
         distinctDaysLogged: 0,
         petName: "Luna"
     )
-    return WellnessScoreHero(ringMode: .setupProgress(progress))
+    return WellnessScoreHero(ringMode: .setupProgress(progress), onAddPet: {})
+        .environmentObject(PetStore())
         .environmentObject(LogStore())
         .environmentObject(MedicationStore())
         .padding()
@@ -307,7 +413,8 @@ struct WellnessScoreHero: View {
         distinctDaysLogged: 3,
         petName: "Luna"
     )
-    return WellnessScoreHero(ringMode: .setupProgress(progress))
+    return WellnessScoreHero(ringMode: .setupProgress(progress), onAddPet: {})
+        .environmentObject(PetStore())
         .environmentObject(LogStore())
         .environmentObject(MedicationStore())
         .padding()
@@ -316,7 +423,8 @@ struct WellnessScoreHero: View {
 
 #Preview("Score mode") {
     let result = WellnessResult(score: 82, confidence: .sufficient)
-    return WellnessScoreHero(ringMode: .score(result))
+    return WellnessScoreHero(ringMode: .score(result), onAddPet: {})
+        .environmentObject(PetStore())
         .environmentObject(LogStore())
         .environmentObject(MedicationStore())
         .padding()
