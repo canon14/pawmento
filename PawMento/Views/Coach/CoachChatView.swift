@@ -43,17 +43,12 @@ struct CoachChatView: View {
                                     ))
                             }
                             
-                            // Follow-up quick replies (shown after AI response)
-                            if !viewModel.quickReplies.isEmpty {
-                                quickRepliesSection
-                                    .id("quickReplies")
-                                    .transition(.move(edge: .bottom).combined(with: .opacity))
-                            }
+                            // Follow-up chips live in the bottom inset (above composer)
                         }
                         
                         if viewModel.isTyping {
                             HStack {
-                                Image(systemName: "sparkles")
+                                Image(systemName: "pawprint.circle.fill")
                                     .font(.system(size: 14))
                                     .foregroundColor(.primary)
                                     .padding(.trailing, 4)
@@ -78,7 +73,13 @@ struct CoachChatView: View {
                     }
                 }
                 .safeAreaInset(edge: .bottom) {
-                    composerBar
+                    VStack(spacing: 0) {
+                        if !viewModel.messages.isEmpty && !viewModel.quickReplies.isEmpty {
+                            followUpQuickRepliesScroller
+                                .transition(.move(edge: .bottom).combined(with: .opacity))
+                        }
+                        composerBar
+                    }
                 }
                 .onChange(of: viewModel.messages) { _, _ in
                     if let last = viewModel.messages.last {
@@ -91,13 +92,6 @@ struct CoachChatView: View {
                     if typing {
                         withAnimation {
                             proxy.scrollTo("typingIndicator", anchor: .bottom)
-                        }
-                    }
-                }
-                .onChange(of: viewModel.quickReplies) { _, replies in
-                    if !replies.isEmpty {
-                        withAnimation(.easeOut(duration: 0.3).delay(0.2)) {
-                            proxy.scrollTo("quickReplies", anchor: .bottom)
                         }
                     }
                 }
@@ -221,7 +215,8 @@ struct CoachChatView: View {
                     .scaleEffect(heroVisible ? 1.0 : 0.5)
                     .opacity(heroVisible ? 1.0 : 0.0)
                 
-                Image(systemName: "sparkles")
+                // TODO: swap in a custom Coach mark asset when available in the catalog
+                Image(systemName: "pawprint.circle.fill")
                     .font(.system(size: 36, weight: .medium))
                     .foregroundColor(.primary)
                     .scaleEffect(heroVisible ? 1.0 : 0.3)
@@ -247,7 +242,7 @@ struct CoachChatView: View {
                 .animation(.easeOut(duration: 0.5).delay(0.3), value: heroVisible)
             
             if !viewModel.quickReplies.isEmpty {
-                quickRepliesSection
+                welcomeQuickRepliesSection
                     .padding(.top, 16)
                     .opacity(heroVisible ? 1.0 : 0.0)
                     .offset(y: heroVisible ? 0 : 12)
@@ -257,9 +252,10 @@ struct CoachChatView: View {
         .padding(.top, 60)
     }
     
-    // MARK: - Quick Replies (reusable for welcome + follow-up)
+    // MARK: - Quick Replies
     
-    private var quickRepliesSection: some View {
+    /// Vertical stack — welcome / empty state only.
+    private var welcomeQuickRepliesSection: some View {
         VStack(spacing: 10) {
             ForEach(viewModel.quickReplies, id: \.self) { reply in
                 Button(action: { send(reply) }) {
@@ -275,6 +271,7 @@ struct CoachChatView: View {
                     }
                     .padding(.horizontal, 18)
                     .padding(.vertical, 14)
+                    .frame(minHeight: 44)
                     .background(Color.primaryContainer.opacity(0.25))
                     .cornerRadius(AppRadius.md)
                     .overlay(
@@ -287,6 +284,44 @@ struct CoachChatView: View {
             }
         }
         .padding(.horizontal, 24)
+    }
+    
+    /// Horizontal chips — follow-ups after an answer (sits above composer).
+    private var followUpQuickRepliesScroller: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(viewModel.quickReplies, id: \.self) { reply in
+                    Button(action: { send(reply) }) {
+                        Text(reply)
+                            .font(.labelMD)
+                            .foregroundColor(.primaryText)
+                            .lineLimit(1)
+                            .padding(.horizontal, 14)
+                            .frame(minHeight: 44)
+                            .background(Color.primaryContainer.opacity(0.3))
+                            .clipShape(Capsule())
+                            .overlay(
+                                Capsule()
+                                    .stroke(Color.primary.opacity(0.12), lineWidth: 1)
+                            )
+                    }
+                    .buttonStyle(SquishyCardStyle())
+                    .disabled(viewModel.isSending)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+        }
+        .background(
+            Color.surfaceContainerLowest.opacity(0.85)
+                .background(.ultraThinMaterial)
+        )
+        .overlay(
+            Rectangle()
+                .frame(height: 1)
+                .foregroundColor(Color.primary.opacity(0.05)),
+            alignment: .top
+        )
     }
     
     // MARK: - Top Bar

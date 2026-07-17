@@ -93,7 +93,7 @@ struct MessageBubbleView: View {
                             .stroke(Color.primary.opacity(0.1), lineWidth: 1)
                     )
                 
-                Image(systemName: "sparkles")
+                Image(systemName: "pawprint.circle.fill")
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundColor(.primary)
             }

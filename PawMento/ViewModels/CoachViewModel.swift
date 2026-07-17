@@ -340,23 +340,49 @@ class CoachViewModel: ObservableObject {
         
         // 2. Stream via ai-proxy (quota checked before Anthropic; consumed after success).
         isTyping = true
-        defer { isTyping = false }
         
         let assistantMessageId = UUID()
-        let initialAssistantMessage = ChatMessage(id: assistantMessageId, role: .assistant, content: "", petId: pet?.id)
-        messages.append(initialAssistantMessage)
-        
         let systemPrompt = AICoachPrompt.buildPrompt(for: pet)
+        var didReceiveFirstToken = false
         
         do {
             let stream = AICoachClient.shared.streamAdvice(messages: apiMessages, systemPrompt: systemPrompt)
             for try await token in stream {
-                if let index = messages.firstIndex(where: { $0.id == assistantMessageId }) {
-                    messages[index].content += token
+                guard !token.isEmpty else { continue }
+                
+                if !didReceiveFirstToken {
+                    didReceiveFirstToken = true
+                    // Typing dots only until the first token renders.
+                    isTyping = false
+                    messages.append(ChatMessage(id: assistantMessageId, role: .assistant, content: token, petId: pet?.id))
+                } else if let index = messages.firstIndex(where: { $0.id == assistantMessageId }) {
+                    // Reassign so @Published notifies (in-place struct mutation would not).
+                    var updated = messages[index]
+                    updated.content += token
+                    messages[index] = updated
                 }
             }
             
-            guard let index = messages.firstIndex(where: { $0.id == assistantMessageId }) else { return }
+            isTyping = false
+            
+            guard didReceiveFirstToken,
+                  let index = messages.firstIndex(where: { $0.id == assistantMessageId }) else {
+                // No tokens arrived — show retryable failure without a blank bubble.
+                if let ownerId = ownerId {
+                    await CoachMessagePersistence.delete(id: userMessage.id, ownerId: ownerId)
+                }
+                let failure = ChatMessage(
+                    role: .assistant,
+                    content: "Something went wrong on my end. Please try again in a moment.",
+                    isRetryable: true,
+                    petId: pet?.id
+                )
+                messages.append(failure)
+                historyGeneration += 1
+                loadedPetId = pet?.id
+                return
+            }
+            
             let assistantContent = messages[index].content.trimmingCharacters(in: .whitespacesAndNewlines)
             
             if assistantContent.isEmpty {
@@ -407,6 +433,7 @@ class CoachViewModel: ObservableObject {
             loadedPetId = pet?.id
             
         } catch {
+            isTyping = false
             print("Coach stream failed: \(error)")
             
             if let index = messages.firstIndex(where: { $0.id == assistantMessageId }) {
@@ -424,6 +451,33 @@ class CoachViewModel: ObservableObject {
                     messages[index].content = "Something went wrong on my end. Please try again in a moment."
                     messages[index].isRetryable = true
                 }
+            } else if let coachError = error as? AICoachError, coachError == .quotaExhausted {
+                presentQuotaPaywallIfAllowed()
+            } else if let authError = error as? AICoachError, authError == .authenticationRequired {
+                showAuthError = true
+                messages.append(ChatMessage(
+                    role: .assistant,
+                    content: "Your session has expired. Please sign in again to continue.",
+                    petId: pet?.id
+                ))
+                historyGeneration += 1
+            } else {
+                let failureText: String
+                let retryable: Bool
+                if let urlError = error as? URLError, urlError.code == .notConnectedToInternet {
+                    failureText = "I lost connection — tap to retry."
+                    retryable = true
+                } else {
+                    failureText = "Something went wrong on my end. Please try again in a moment."
+                    retryable = true
+                }
+                messages.append(ChatMessage(
+                    role: .assistant,
+                    content: failureText,
+                    isRetryable: retryable,
+                    petId: pet?.id
+                ))
+                historyGeneration += 1
             }
             
             loadedPetId = pet?.id
