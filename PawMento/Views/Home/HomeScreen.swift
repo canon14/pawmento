@@ -18,6 +18,11 @@ struct HomeScreen: View {
     @State private var showCreateReminder = false
     @State private var reminderToEdit: Reminder? = nil
     @State private var showFullTimeline = false
+    @State private var isFetchingReminders = false
+    
+    private static let wellnessSectionHeight: CGFloat = 360
+    private static let upNextBodyHeight: CGFloat = 132
+    private static let timelineSectionHeight: CGFloat = 280
 
     
     var body: some View {
@@ -86,10 +91,12 @@ struct HomeScreen: View {
         .task(id: petStore.activePet?.id) {
             guard let petId = petStore.activePet?.id,
                   let pet = petStore.activePet else { return }
+            isFetchingReminders = true
             async let logs: Void = logStore.fetchLogs(for: petId)
             async let meds: Void = medicationStore.fetchMedications(for: petId)
             async let reminders: Void = reminderStore.fetchReminders()
             _ = await (logs, meds, reminders)
+            isFetchingReminders = false
             
             if logStore.logs.isEmpty {
                 await coachViewModel.generateWelcomePrimer(for: pet)
@@ -140,66 +147,10 @@ struct HomeScreen: View {
                         )
                     }
                     
-                    WellnessScoreHero(
-                        ringMode: homeViewModel.ringMode,
-                        shouldPlayUnlockAnimation: homeViewModel.shouldPlayUnlockAnimation,
-                        onUnlockAnimationComplete: {
-                            homeViewModel.acknowledgeUnlockAnimation()
-                        },
-                        onViewTrendsTapped: {
-                            showFullTimeline = true
-                        },
-                        onAddPet: { showAddPetSheet = true }
-                    )
+                    wellnessSection
                     
                     // ── Up Next ──
                     upNextRemindersSection
-                    
-                    // ── Loading / Error feedback ──
-                    if logStore.isFetching {
-                        HStack(spacing: 8) {
-                            ProgressView()
-                                .tint(.primary)
-                            Text("Loading logs…")
-                                .font(.bodySM)
-                                .foregroundColor(.onSurfaceVariant)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                    }
-                    
-                    if let error = logStore.fetchError {
-                        VStack(spacing: 8) {
-                            Text("Couldn't load logs")
-                                .font(.labelLG)
-                                .foregroundColor(.onSurface)
-                            Text(error)
-                                .font(.caption)
-                                .foregroundColor(.onSurfaceVariant)
-                                .lineLimit(2)
-                            Button {
-                                Task {
-                                    guard let petId = petStore.activePet?.id else { return }
-                                    await logStore.fetchLogs(for: petId)
-                                }
-                            } label: {
-                                HStack(spacing: 4) {
-                                    Image(systemName: "arrow.clockwise")
-                                    Text("Retry")
-                                }
-                                .font(.labelSM)
-                                .foregroundColor(.primary)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 8)
-                                .background(Color.primaryContainer.opacity(0.3))
-                                .cornerRadius(AppRadius.sm)
-                            }
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(16)
-                        .background(Color.warningBackground.opacity(0.5))
-                        .cornerRadius(AppRadius.md)
-                    }
                     
                     // ── Today's one thing ──
                     todaysOneThingBanner
@@ -210,12 +161,9 @@ struct HomeScreen: View {
                     })
                     
                     // ── Recent Activity ──
-                    RecentActivityTimeline(
-                        petName: petStore.activePet?.name ?? PetStore.fallbackPetName,
-                        onLogCTA: { showQuickLog = true }
-                    )
+                    recentActivitySection
                     
-                    // ── Quick Actions — horizontally scrolling compact cards ──
+                    // ── Quick Actions — static 2-up ──
                     quickActionsSection
                 }
                 .padding(.horizontal, 20)
@@ -225,6 +173,112 @@ struct HomeScreen: View {
         }
         .background(Color.background)
         .edgesIgnoringSafeArea(.bottom)
+    }
+    
+    // MARK: - Stabilized sections
+    
+    @ViewBuilder
+    private var wellnessSection: some View {
+        if logStore.isFetching {
+            SkeletonBlock()
+                .frame(maxWidth: .infinity)
+                .frame(height: Self.wellnessSectionHeight)
+        } else if let error = logStore.fetchError, logStore.logs.isEmpty {
+            homeSectionErrorCard(
+                title: "Couldn't load wellness",
+                detail: error,
+                retry: {
+                    Task {
+                        guard let petId = petStore.activePet?.id else { return }
+                        await logStore.fetchLogs(for: petId)
+                        refreshHomeState()
+                    }
+                }
+            )
+            .frame(height: Self.wellnessSectionHeight)
+        } else {
+            WellnessScoreHero(
+                ringMode: homeViewModel.ringMode,
+                shouldPlayUnlockAnimation: homeViewModel.shouldPlayUnlockAnimation,
+                onUnlockAnimationComplete: {
+                    homeViewModel.acknowledgeUnlockAnimation()
+                },
+                onViewTrendsTapped: {
+                    showFullTimeline = true
+                },
+                onAddPet: { showAddPetSheet = true }
+            )
+            .frame(minHeight: Self.wellnessSectionHeight)
+        }
+    }
+    
+    @ViewBuilder
+    private var recentActivitySection: some View {
+        if logStore.isFetching {
+            VStack(alignment: .leading, spacing: 16) {
+                SkeletonBlock(cornerRadius: AppRadius.sm)
+                    .frame(width: 140, height: 18)
+                SkeletonBlock(cornerRadius: AppRadius.sm)
+                    .frame(height: 52)
+                SkeletonBlock(cornerRadius: AppRadius.sm)
+                    .frame(height: 52)
+                SkeletonBlock(cornerRadius: AppRadius.sm)
+                    .frame(height: 52)
+                Spacer(minLength: 0)
+            }
+            .padding(20)
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+            .frame(height: Self.timelineSectionHeight)
+            .background(Color.surfaceContainerLowest)
+            .cornerRadius(AppRadius.card)
+        } else if let error = logStore.fetchError, logStore.logs.isEmpty {
+            homeSectionErrorCard(
+                title: "Couldn't load activity",
+                detail: error,
+                retry: {
+                    Task {
+                        guard let petId = petStore.activePet?.id else { return }
+                        await logStore.fetchLogs(for: petId)
+                    }
+                }
+            )
+            .frame(height: Self.timelineSectionHeight)
+        } else {
+            RecentActivityTimeline(
+                petName: petStore.activePet?.name ?? PetStore.fallbackPetName,
+                onLogCTA: { showQuickLog = true }
+            )
+            .frame(minHeight: Self.timelineSectionHeight)
+        }
+    }
+    
+    private func homeSectionErrorCard(title: String, detail: String, retry: @escaping () -> Void) -> some View {
+        VStack(spacing: 10) {
+            Text(title)
+                .font(.labelLG)
+                .foregroundColor(.onSurface)
+            Text(detail)
+                .font(.caption)
+                .foregroundColor(.onSurfaceVariant)
+                .lineLimit(2)
+                .multilineTextAlignment(.center)
+            Button(action: retry) {
+                HStack(spacing: 4) {
+                    Image(systemName: "arrow.clockwise")
+                    Text("Retry")
+                }
+                .font(.labelSM)
+                .foregroundColor(.primary)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(Color.primaryContainer.opacity(0.3))
+                .cornerRadius(AppRadius.sm)
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.warningBackground.opacity(0.5))
+        .cornerRadius(AppRadius.card)
     }
     
     // MARK: - First Run
@@ -293,46 +347,44 @@ struct HomeScreen: View {
         }
     }
     
-    // MARK: - Quick Actions (replaces side-by-side scaleEffect hack)
+    // MARK: - Quick Actions (static 2-up)
     
     private var quickActionsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             SectionHeader("Quick Actions")
             
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 14) {
-                    PatternAlertCard(
-                        setupProgress: homeViewModel.setupProgress,
-                        action: {
-                            selectedTab = .insights
-                        },
-                        onInsightsLoaded: { hasInsight in
-                            if let petId = petStore.activePet?.id {
-                                homeViewModel.updateHasFirstInsight(hasInsight, for: petId)
-                            }
-                            refreshHomeState()
-                        },
-                        onStrongInsightDetected: { insight in
-                            Task {
-                                if let userId = await authManager.getCurrentUserId() {
-                                    homeViewModel.presentFirstStrongInsightPaywallIfEligible(
-                                        insight: insight,
-                                        userId: userId,
-                                        isPremium: coachViewModel.isPremium
-                                    )
-                                }
+            HStack(alignment: .top, spacing: 14) {
+                PatternAlertCard(
+                    setupProgress: homeViewModel.setupProgress,
+                    action: {
+                        selectedTab = .insights
+                    },
+                    onInsightsLoaded: { hasInsight in
+                        if let petId = petStore.activePet?.id {
+                            homeViewModel.updateHasFirstInsight(hasInsight, for: petId)
+                        }
+                        refreshHomeState()
+                    },
+                    onStrongInsightDetected: { insight in
+                        Task {
+                            if let userId = await authManager.getCurrentUserId() {
+                                homeViewModel.presentFirstStrongInsightPaywallIfEligible(
+                                    insight: insight,
+                                    userId: userId,
+                                    isPremium: coachViewModel.isPremium
+                                )
                             }
                         }
-                    )
-                    .frame(width: 260)
-                    
-                    AskCoachCard(action: {
-                        showCoachChat = true
-                    })
-                    .frame(width: 260)
-                }
-                .padding(.vertical, 4) // Prevent shadow clipping
+                    }
+                )
+                .frame(maxWidth: .infinity)
+                
+                AskCoachCard(action: {
+                    showCoachChat = true
+                })
+                .frame(maxWidth: .infinity)
             }
+            .frame(minHeight: 170)
         }
     }
     
@@ -354,80 +406,88 @@ struct HomeScreen: View {
                 }
             }
             
-            if petReminders.isEmpty {
-                Button(action: { showCreateReminder = true }) {
-                    VStack(alignment: .leading, spacing: 6) {
-                        HStack {
-                            Image(systemName: "bell.badge")
-                                .foregroundColor(.primary)
-                            Text("Set your first reminder")
-                                .font(.labelLG)
-                                .foregroundColor(.ink900)
-                            Spacer()
+            Group {
+                if isFetchingReminders && petReminders.isEmpty {
+                    SkeletonBlock()
+                } else if petReminders.isEmpty {
+                    Button(action: { showCreateReminder = true }) {
+                        VStack(alignment: .leading, spacing: 6) {
+                            HStack {
+                                Image(systemName: "bell.badge")
+                                    .foregroundColor(.primary)
+                                Text("Set your first reminder")
+                                    .font(.labelLG)
+                                    .foregroundColor(.ink900)
+                                Spacer()
+                            }
+                            Text("Never miss meals, meds, or walks for \(petStore.activePet?.name ?? PetStore.fallbackPetName).")
+                                .font(.bodySM)
+                                .foregroundColor(.onSurfaceVariant)
+                                .multilineTextAlignment(.leading)
+                                .lineLimit(2)
                         }
-                        Text("Never miss meals, meds, or walks for \(petStore.activePet?.name ?? PetStore.fallbackPetName).")
-                            .font(.bodySM)
-                            .foregroundColor(.onSurfaceVariant)
-                            .multilineTextAlignment(.leading)
+                        .padding(16)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+                        .background(Color.primary.opacity(0.08))
+                        .cornerRadius(AppRadius.md)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16)
+                                .stroke(Color.primary.opacity(0.2), style: StrokeStyle(lineWidth: 1, dash: [6]))
+                        )
                     }
-                    .padding(16)
-                    .background(Color.primary.opacity(0.08))
-                    .cornerRadius(AppRadius.md)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 16)
-                            .stroke(Color.primary.opacity(0.2), style: StrokeStyle(lineWidth: 1, dash: [6]))
-                    )
-                }
-            } else {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 12) {
-                        ForEach(petReminders) { reminder in
-                            ReminderPillView(reminder: reminder, onLogTapped: {
-                                Task { @MainActor in
-                                    guard let category = LogCategory.fromStoredValue(reminder.categoryId) else { return }
-                                    guard let userId = try? await SupabaseManager.shared.client.auth.session.user.id else {
-                                        ToastManager.shared.show("Sign in again to log this reminder.", duration: 3.0)
-                                        return
-                                    }
-                                    
-                                    let sourceKey = NotificationManager.reminderPillLogSourceKey(reminderId: reminder.id)
-                                    let newLog = LogEntry(
-                                        id: UUID(),
-                                        petId: reminder.petId,
-                                        category: category,
-                                        note: "Logged from Reminder",
-                                        sourceKey: sourceKey
-                                    )
-                                    
-                                    do {
-                                        let inserted = try await logStore.saveLogIfAbsent(newLog, userId: userId)
-                                        if inserted {
-                                            ToastManager.shared.show("Logged from reminder")
-                                        } else {
-                                            ToastManager.shared.show("Already logged for today")
+                } else {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 12) {
+                            ForEach(petReminders) { reminder in
+                                ReminderPillView(reminder: reminder, onLogTapped: {
+                                    Task { @MainActor in
+                                        guard let category = LogCategory.fromStoredValue(reminder.categoryId) else { return }
+                                        guard let userId = try? await SupabaseManager.shared.client.auth.session.user.id else {
+                                            ToastManager.shared.show("Sign in again to log this reminder.", duration: 3.0)
+                                            return
                                         }
-                                    } catch {
-                                        TelemetryEngine.shared.track(event: .error_occurred, properties: ["message": "Failed to log from reminder: \(error.localizedDescription)"])
-                                        ToastManager.shared.show("Failed to log from reminder.", duration: 3.0)
+                                        
+                                        let sourceKey = NotificationManager.reminderPillLogSourceKey(reminderId: reminder.id)
+                                        let newLog = LogEntry(
+                                            id: UUID(),
+                                            petId: reminder.petId,
+                                            category: category,
+                                            note: "Logged from Reminder",
+                                            sourceKey: sourceKey
+                                        )
+                                        
+                                        do {
+                                            let inserted = try await logStore.saveLogIfAbsent(newLog, userId: userId)
+                                            if inserted {
+                                                ToastManager.shared.show("Logged from reminder")
+                                            } else {
+                                                ToastManager.shared.show("Already logged for today")
+                                            }
+                                        } catch {
+                                            TelemetryEngine.shared.track(event: .error_occurred, properties: ["message": "Failed to log from reminder: \(error.localizedDescription)"])
+                                            ToastManager.shared.show("Failed to log from reminder.", duration: 3.0)
+                                        }
                                     }
-                                }
-                            }, onEditTapped: {
-                                reminderToEdit = reminder
-                            }, onDeleteTapped: {
-                                Task {
-                                    do {
-                                        try await reminderStore.deleteReminder(reminder)
-                                    } catch {
-                                        ToastManager.shared.show("Failed to delete reminder.", duration: 3.0)
+                                }, onEditTapped: {
+                                    reminderToEdit = reminder
+                                }, onDeleteTapped: {
+                                    Task {
+                                        do {
+                                            try await reminderStore.deleteReminder(reminder)
+                                        } catch {
+                                            ToastManager.shared.show("Failed to delete reminder.", duration: 3.0)
+                                        }
                                     }
-                                }
-                            })
+                                })
+                            }
                         }
+                        .padding(.vertical, 8)
                     }
-                    .padding(.vertical, 8)
                 }
-                .contentMargins(.horizontal, 20, for: .scrollContent)
             }
+            .frame(maxWidth: .infinity)
+            .frame(height: Self.upNextBodyHeight)
+            .clipped()
         }
     }
 }

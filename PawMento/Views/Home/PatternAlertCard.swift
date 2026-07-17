@@ -44,7 +44,8 @@ struct PatternAlertCard: View {
         
         Group {
             if insightsVM.isAnalyzing {
-                Color.clear
+                SkeletonBlock()
+                    .frame(maxWidth: .infinity)
                     .frame(height: 170)
             } else if hasAlert, let insight = topInsight {
                 if isFirstInsightMilestone {
