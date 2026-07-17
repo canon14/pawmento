@@ -315,22 +315,30 @@ struct CoachChatView: View {
                     Text("Coach")
                         .font(.headlineSM)
                 }
-                HStack(spacing: 4) {
-                    let emoji: String = {
-                        guard let pet = petStore.activePet else { return "🐾" }
-                        switch pet.species {
-                        case .dog: return "🐶"
-                        case .cat: return "🐱"
-                        case .rabbit: return "🐰"
-                        case .other: return "🐾"
+                
+                if petStore.pets.count > 1 {
+                    Menu {
+                        ForEach(petStore.pets) { pet in
+                            Button {
+                                guard pet.id != petStore.activePet?.id else { return }
+                                hideKeyboard()
+                                inputText = ""
+                                petStore.activePet = pet
+                            } label: {
+                                if pet.id == petStore.activePet?.id {
+                                    Label(pet.name, systemImage: "checkmark")
+                                } else {
+                                    Text(pet.name)
+                                }
+                            }
                         }
-                    }()
-                    Text("\(emoji) \(petName)")
-                        .font(.labelSM)
-                        .foregroundColor(.secondaryText)
-                    Image(systemName: "chevron.down")
-                        .font(.caption)
-                        .foregroundColor(.secondaryText)
+                    } label: {
+                        petIdentityLabel(showsChevron: true)
+                    }
+                    .accessibilityLabel("Switch pet")
+                    .accessibilityHint("Choose which pet Coach is talking about")
+                } else {
+                    petIdentityLabel(showsChevron: false)
                 }
             }
             
@@ -378,6 +386,57 @@ struct CoachChatView: View {
     }
     
     // MARK: - Helpers
+    
+    private func petIdentityLabel(showsChevron: Bool) -> some View {
+        HStack(spacing: 6) {
+            petHeaderAvatar
+                .frame(width: 18, height: 18)
+                .clipShape(Circle())
+            
+            Text(petName)
+                .font(.labelSM)
+                .foregroundColor(.secondaryText)
+                .lineLimit(1)
+            
+            if showsChevron {
+                Image(systemName: "chevron.down")
+                    .font(.caption)
+                    .foregroundColor(.secondaryText)
+            }
+        }
+        .contentShape(Rectangle())
+    }
+    
+    @ViewBuilder
+    private var petHeaderAvatar: some View {
+        if let pet = petStore.activePet, let image = pet.photoImage {
+            Image(uiImage: image)
+                .resizable()
+                .scaledToFill()
+        } else if let pet = petStore.activePet, let photoURL = pet.photoLocalURL {
+            CachedAsyncImage(url: photoURL) { img in
+                img.resizable().scaledToFill()
+            } placeholder: {
+                Text(speciesEmoji(for: pet))
+                    .font(.system(size: 11))
+            }
+        } else if let pet = petStore.activePet {
+            Text(speciesEmoji(for: pet))
+                .font(.system(size: 11))
+        } else {
+            Text("🐾")
+                .font(.system(size: 11))
+        }
+    }
+    
+    private func speciesEmoji(for pet: Pet) -> String {
+        switch pet.species {
+        case .dog: return "🐶"
+        case .cat: return "🐱"
+        case .rabbit: return "🐰"
+        case .other: return "🐾"
+        }
+    }
     
     private func send(_ text: String) {
         if text == "See Premium" {
