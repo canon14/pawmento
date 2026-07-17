@@ -35,8 +35,9 @@ struct QuickLogSheetView: View {
     }
     
     /// Category alone unlocks save; note, photo, and dose stay optional.
+    /// Draft must be resolved before category/editing continues.
     private var canSave: Bool {
-        selectedCategory != nil
+        selectedCategory != nil && !showDraftBanner
     }
     
     /// Dose merged into note for More details (detail sheet has no separate dose field).
@@ -93,21 +94,13 @@ struct QuickLogSheetView: View {
                             .font(.labelSM)
                         Spacer()
                         Button(AppStrings.QuickLog.restore) {
-                            if let catVal = draft.categoryRawValue, let cat = LogCategory(rawValue: catVal) {
-                                selectedCategory = cat
-                            }
-                            note = draft.note ?? ""
-                            severity = draft.severity ?? 1
-                            dose = ""
-                            showDraftBanner = false
-                            UserDefaults.standard.removeObject(forKey: draftKey)
+                            restoreDraft(draft)
                         }
                         .font(.labelSM)
                         .foregroundColor(.primary)
                         
                         Button(AppStrings.QuickLog.discard) {
-                            showDraftBanner = false
-                            UserDefaults.standard.removeObject(forKey: draftKey)
+                            discardDraft()
                         }
                         .font(.labelSM)
                         .foregroundColor(.tertiaryText)
@@ -123,6 +116,7 @@ struct QuickLogSheetView: View {
                     ScrollView(showsIndicators: false) {
                         VStack(spacing: 24) {
                             // (1) Category first — tag before details
+                            // Locked while an unresolved draft prompt is visible
                             CategoryScrollerView(selectedCategory: $selectedCategory)
                                 .padding(.leading, 20)
                                 .padding(.trailing, 8)
@@ -137,6 +131,9 @@ struct QuickLogSheetView: View {
                                 )
                                 .scaleEffect(emphasizeCategory && !reduceMotion ? 1.02 : 1.0)
                                 .animation(.spring(response: 0.45, dampingFraction: 0.78), value: emphasizeCategory)
+                                .opacity(showDraftBanner ? 0.4 : 1)
+                                .allowsHitTesting(!showDraftBanner)
+                                .accessibilityElement(children: showDraftBanner ? .ignore : .contain)
                                 .id("categoryScroller")
                             
                             // (2) Photo + Note
@@ -295,9 +292,10 @@ struct QuickLogSheetView: View {
             // Never auto-raise the keyboard; note focus only via user tap.
             isNoteFocused = false
             
-            // Emphasize category only when nothing is pre-selected.
-            if selectedCategory == nil {
+            // Emphasize category only when nothing is pre-selected and no draft decision is pending.
+            if selectedCategory == nil && !showDraftBanner {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                    guard !showDraftBanner, selectedCategory == nil else { return }
                     withAnimation(.spring(response: 0.45, dampingFraction: 0.78)) {
                         emphasizeCategory = true
                     }
@@ -333,6 +331,54 @@ struct QuickLogSheetView: View {
                 }
             } else if showSuccess {
                 UserDefaults.standard.removeObject(forKey: draftKey)
+            }
+        }
+    }
+    
+    private func restoreDraft(_ draft: QuickLogDraft) {
+        if let catVal = draft.categoryRawValue, let cat = LogCategory(rawValue: catVal) {
+            selectedCategory = cat
+        }
+        note = draft.note ?? ""
+        severity = draft.severity ?? 1
+        dose = ""
+        clearDraftBanner()
+        // Restored category (if any) is already applied; leave focus unset.
+        if selectedCategory == nil {
+            promptCategoryEmphasisIfNeeded()
+        }
+    }
+    
+    private func discardDraft() {
+        clearDraftBanner()
+        // Mirror a fresh open: apply last-used category, then emphasize if still blank.
+        if let activePet = petStore.activePet {
+            selectedCategory = logStore.getLastUsedCategory(for: activePet.id)
+            if selectedCategory != nil {
+                TelemetryEngine.shared.track(event: .quick_log_category_selected, properties: [
+                    "category": selectedCategory!.rawValue,
+                    "was_preselected": true
+                ])
+            }
+        }
+        promptCategoryEmphasisIfNeeded()
+    }
+    
+    private func clearDraftBanner() {
+        showDraftBanner = false
+        draftToRestore = nil
+        UserDefaults.standard.removeObject(forKey: draftKey)
+    }
+    
+    private func promptCategoryEmphasisIfNeeded() {
+        guard selectedCategory == nil, !showDraftBanner else {
+            emphasizeCategory = false
+            return
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            guard selectedCategory == nil, !showDraftBanner else { return }
+            withAnimation(.spring(response: 0.45, dampingFraction: 0.78)) {
+                emphasizeCategory = true
             }
         }
     }
