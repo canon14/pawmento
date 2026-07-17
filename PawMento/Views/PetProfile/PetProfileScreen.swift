@@ -77,7 +77,7 @@ struct PetProfileScreen: View {
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 16)
-                .padding(.bottom, 120) // Extra padding for bottom nav
+                .padding(.bottom, AppSpacing.bottomNavClearance) // Extra padding for bottom nav
             }
             .refreshable {
                 if let pet = petStore.activePet {

@@ -9,6 +9,14 @@ struct AppSpacing {
     static let lg: CGFloat = 32
     static let xl: CGFloat = 48
     static let gutter: CGFloat = 16
+    
+    /// BottomNavBar content row + vertical paddings + scroll breathing room.
+    static let bottomNavContentHeight: CGFloat = 44
+    static let bottomNavTopPadding: CGFloat = 12
+    static let bottomNavBottomPadding: CGFloat = 24
+    static let bottomNavScrollBreathingRoom: CGFloat = 40
+    static let bottomNavClearance: CGFloat =
+        bottomNavContentHeight + bottomNavTopPadding + bottomNavBottomPadding + bottomNavScrollBreathingRoom
 }
 
 struct AppRadius {

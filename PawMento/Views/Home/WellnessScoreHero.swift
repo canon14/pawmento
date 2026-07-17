@@ -109,8 +109,6 @@ struct WellnessScoreHero: View {
                             .padding(.vertical, 6)
                             .background(deltaColor.opacity(0.15))
                             .clipShape(Capsule())
-                            .overlay(Capsule().stroke(Color.white.opacity(0.6), lineWidth: 1))
-                            .shadow(color: Color.black.opacity(0.05), radius: 2, x: 0, y: 1)
                             .padding(.bottom, 20)
                             .opacity(showDelta ? 1 : 0)
                             .scaleEffect(showDelta ? 1 : 0.8)

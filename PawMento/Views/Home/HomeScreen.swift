@@ -135,40 +135,33 @@ struct HomeScreen: View {
                 TopHeaderView(loggingStreak: homeViewModel.loggingStreak)
                 
                 VStack(spacing: 24) {
-                    // ── Hero Zone ──
                     if isFirstRunHome {
-                        WelcomeCoachCard(
-                            onFollowUpTapped: { question in
-                                openCoachChat(seeding: question)
-                            },
-                            onAskQuestionTapped: {
-                                showCoachChat = true
-                            }
-                        )
+                        firstRunEmptyState
+                    } else {
+                        // Loading / error / populated home
+                        wellnessSection
+                        
+                        // ── Up Next ──
+                        upNextRemindersSection
+                        
+                        // ── Today's one thing ──
+                        todaysOneThingBanner
+                        
+                        // ── Today ──
+                        TodayLogGrid(onLogAction: {
+                            showQuickLog = true
+                        })
+                        
+                        // ── Recent Activity ──
+                        recentActivitySection
+                        
+                        // ── Quick Actions — static 2-up ──
+                        quickActionsSection
                     }
-                    
-                    wellnessSection
-                    
-                    // ── Up Next ──
-                    upNextRemindersSection
-                    
-                    // ── Today's one thing ──
-                    todaysOneThingBanner
-                    
-                    // ── Today ──
-                    TodayLogGrid(onLogAction: {
-                        showQuickLog = true
-                    })
-                    
-                    // ── Recent Activity ──
-                    recentActivitySection
-                    
-                    // ── Quick Actions — static 2-up ──
-                    quickActionsSection
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 16)
-                .padding(.bottom, 120)
+                .padding(.bottom, AppSpacing.bottomNavClearance)
             }
         }
         .background(Color.background)
@@ -284,7 +277,44 @@ struct HomeScreen: View {
     // MARK: - First Run
     
     private var isFirstRunHome: Bool {
-        petStore.activePet != nil && !logStore.isFetching && logStore.logs.isEmpty
+        petStore.activePet != nil
+            && !logStore.isFetching
+            && logStore.logs.isEmpty
+            && logStore.fetchError == nil
+    }
+    
+    private var firstRunEmptyState: some View {
+        let petName = petStore.activePet?.name ?? PetStore.fallbackPetName
+        
+        return VStack(spacing: 24) {
+            Spacer(minLength: 24)
+            
+            Image(systemName: "pawprint.fill")
+                .font(.system(size: 40, weight: .medium))
+                .foregroundColor(.primary.opacity(0.7))
+            
+            Text("Log \(petName)'s first moment to start their wellness story")
+                .font(.headlineMD)
+                .foregroundColor(.onSurface)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 12)
+            
+            Button {
+                showQuickLog = true
+            } label: {
+                Text("Log a moment")
+            }
+            .buttonStyle(PrimaryButtonStyle())
+            .padding(.horizontal, 20)
+            
+            Spacer(minLength: 24)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 40)
+        .padding(.horizontal, 16)
+        .background(Color.surfaceContainerLowest)
+        .cornerRadius(AppRadius.card)
+        .warmShadow()
     }
     
     @ViewBuilder
