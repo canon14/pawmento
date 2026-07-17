@@ -14,35 +14,49 @@ struct PetProfileScreen: View {
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 24) {
                     if let pet = petStore.activePet {
-                        HeroCardView(pet: pet, viewModel: viewModel)
+                        // Overview
+                        VStack(alignment: .leading, spacing: 16) {
+                            SectionHeader("Overview")
+                            
+                            HeroCardView(pet: pet, viewModel: viewModel)
+                            
+                            AICoachCardView(pet: pet, viewModel: viewModel)
+                            
+                            HealthStatsSection()
+                        }
                         
-                        AICoachCardView(pet: pet, viewModel: viewModel)
-                        
-                        HealthStatsSection()
-                        
-                        RecentActivityPreview(logs: logStore.logs, petName: pet.name)
-                        
-                        CareTeamCard()
-                        
-                        // Vet PDF CTA
-                        VetPDFCTACard(logCount: logStore.logs.count)
-                        
-                        MedicationsCard(medications: viewModel.medications) {
-                            if let pet = petStore.activePet {
-                                Task {
-                                    await viewModel.refreshProfile(
-                                        for: pet,
-                                        logs: logStore.logs,
-                                        fetchedMedications: medicationStore.medications
-                                    )
+                        // Activity & Care
+                        VStack(alignment: .leading, spacing: 16) {
+                            SectionHeader("Activity & Care")
+                            
+                            RecentActivityPreview(logs: logStore.logs, petName: pet.name)
+                            
+                            CareTeamCard()
+                            
+                            VetPDFCTACard(logCount: logStore.logs.count)
+                            
+                            MedicationsCard(medications: viewModel.medications) {
+                                if let pet = petStore.activePet {
+                                    Task {
+                                        await viewModel.refreshProfile(
+                                            for: pet,
+                                            logs: logStore.logs,
+                                            fetchedMedications: medicationStore.medications
+                                        )
+                                    }
                                 }
                             }
                         }
                         
-                        VitalRecordsList()
-                        
-                        ArchiveButton(pet: pet)
-                            .id(pet.id)
+                        // Records
+                        VStack(alignment: .leading, spacing: 16) {
+                            SectionHeader("Records")
+                            
+                            VitalRecordsList()
+                            
+                            ArchiveButton(pet: pet)
+                                .id(pet.id)
+                        }
                     } else {
                         // Empty state (🟡 11.1 — was plain text)
                         VStack(spacing: 16) {
